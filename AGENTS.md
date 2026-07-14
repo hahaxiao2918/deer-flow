@@ -127,6 +127,33 @@ Rule of thumb: **root `make` = the full application**; **`backend/Makefile` and 
 
 These apply repo-wide; module guides own the module-specific detail.
 
+## Shanghai Electric Distribution and Upstream Sync
+
+This checkout is the Shanghai Electric distribution of DeerFlow. The shared
+long-lived customization branch is `codex/shanghai-electric`; preserve its
+commits when incorporating upstream changes.
+
+- **Remotes** — `origin` is the writable Fork (`hahaxiao2918/deer-flow`).
+  `upstream` is the read-only `bytedance/deer-flow` source. Never change remote
+  URLs or force-push without explicit user approval. The local `upstream`
+  push URL is deliberately disabled; always push enterprise changes only to
+  `origin`.
+- **Update workflow** — never replace this checkout with a fresh upstream clone
+  and never use `reset --hard` to update it. On `codex/shanghai-electric`, fetch
+  `upstream`, merge `upstream/main`, resolve conflicts while retaining local
+  customizations, run relevant checks, then push the resulting branch to
+  `origin`. This repository began as a shallow clone; run
+  `git fetch --unshallow upstream` once before the first historical merge.
+- **Branding ownership** — the root route redirects to `/login`. The branded
+  login experience is owned by `frontend/src/app/(auth)/login/page.tsx`; brand
+  images live under `frontend/public/images/branding/`. Do not restore the
+  original public landing page or replace Shanghai Electric identity without a
+  user request.
+- **Secrets and runtime state** — never commit tokens, `.env`, `config.yaml`,
+  `extensions_config.json`, or `.deer-flow` data. In particular, the local
+  `github token.md` is intentionally ignored. Docker builds from the current
+  checkout; `docker compose up --build` does not replace source control history.
+
 - **Documentation update policy** — keep docs in sync with code: update `README.md` for
   user-facing changes and the relevant `AGENTS.md` for development/architecture changes in
   the same change set.

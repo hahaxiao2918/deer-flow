@@ -123,6 +123,22 @@ NEXT_PUBLIC_LANGGRAPH_BASE_URL=http://localhost:8001/api
 
 Leave these unset for the standard `make dev` / Docker flow, where nginx serves the public `/api/langgraph/*` prefix and rewrites it to Gateway's native `/api/*` routes.
 
+## Shanghai Electric Branding
+
+This distribution starts at `/login`: `src/app/page.tsx` redirects there rather
+than rendering the upstream public landing page. Preserve the existing
+authentication behavior, including local login, registration, SSO provider
+buttons, setup handling, and authenticated redirects.
+
+- The branded login shell is `src/app/(auth)/login/page.tsx`.
+- The product title is `知识情报智能体` and the Shanghai Electric mark is shown
+  at the upper left.
+- Brand raster assets belong in `public/images/branding/` and should use
+  `next/image` when rendered in components.
+- Treat this as an enterprise customization: keep it when merging upstream
+  frontend updates unless the user explicitly asks to change the identity or
+  restore the original landing page.
+
 ## Resources
 
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)

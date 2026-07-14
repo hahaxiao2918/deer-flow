@@ -28,6 +28,7 @@ backend/scripts/benchmark/*.jsonl
 
 # Environment variables
 .env
+github token.md
 
 # Configuration files
 config.yaml
