@@ -1,8 +1,8 @@
 """Tests for SkillToolPolicyMiddleware."""
 
+import posixpath
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 from langchain_core.tools import tool as as_tool
@@ -73,23 +73,17 @@ class _FakeStorage:
 
 
 def _make_middleware(skills: list[Skill], *, available_skills: set[str] | None = None) -> SkillToolPolicyMiddleware:
-    storage = _FakeStorage(skills)
+    """Build middleware with an in-memory registry so tests stay hermetic.
 
-    def _get_storage(*args: Any, **kwargs: Any) -> _FakeStorage:
-        return storage
-
-    # Patch both user-scoped and global storage factories so the middleware hits our fake.
-    import deerflow.agents.middlewares.skill_tool_policy_middleware as policy_module
-
-    original_global = policy_module.get_or_new_skill_storage
-    original_user = policy_module.get_or_new_user_skill_storage
-    policy_module.get_or_new_skill_storage = _get_storage
-    policy_module.get_or_new_user_skill_storage = lambda user_id, **kwargs: storage
-    try:
-        return SkillToolPolicyMiddleware(available_skills=available_skills)
-    finally:
-        policy_module.get_or_new_skill_storage = original_global
-        policy_module.get_or_new_user_skill_storage = original_user
+    Patches the instance's registry loader rather than module-level storage
+    factories; this avoids the fragility where restoring a module patch in a
+    ``finally`` block happens before the test actually exercises the middleware.
+    """
+    mw = SkillToolPolicyMiddleware(available_skills=available_skills)
+    container_root = "/mnt/skills"
+    registry = {posixpath.normpath(skill.get_container_file_path(container_root)): skill for skill in skills}
+    mw._load_registry_by_path = lambda: registry
+    return mw
 
 
 class _ModelReq:

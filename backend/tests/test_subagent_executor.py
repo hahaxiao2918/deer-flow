@@ -76,6 +76,7 @@ def _setup_executor_classes():
         sys.modules[name] = MagicMock()
     storage_module = ModuleType("deerflow.skills.storage")
     storage_module.get_or_new_skill_storage = lambda **kwargs: SimpleNamespace(load_skills=lambda *, enabled_only: [])
+    storage_module.get_or_new_user_skill_storage = lambda user_id, **kwargs: SimpleNamespace(load_skills=lambda *, enabled_only: [])
     sys.modules["deerflow.skills.storage"] = storage_module
 
     # Import real classes inside fixture
@@ -326,6 +327,8 @@ class TestAgentConstruction:
             "lazy_init": True,
             "deferred_setup": None,
             "agent_name": "test-agent",
+            "user_id": None,
+            "available_skills": None,
         }
         assert captured["agent"]["model"] is model
         assert captured["agent"]["middleware"] is middlewares
@@ -1450,7 +1453,12 @@ class TestAsyncExecutionPath:
 
 class TestSkillAllowedTools:
     @pytest.mark.anyio
-    async def test_skill_allowed_tools_union_filters_agent_tools(self, classes, base_config, mock_agent, msg):
+    async def test_skill_allowed_tools_no_longer_filter_at_build_time(self, classes, base_config, mock_agent, msg):
+        """Subagent now binds the full tool surface at build time.
+
+        Allowed-tools filtering is enforced at runtime by
+        SkillToolPolicyMiddleware, matching the lead-agent semantics.
+        """
         SubagentExecutor = classes["SubagentExecutor"]
 
         final_state = {"messages": [msg.human("Task"), msg.ai("Done", "msg-1")]}
@@ -1465,7 +1473,8 @@ class TestSkillAllowedTools:
             await executor._aexecute("Task")
 
         create_agent_mock.assert_called_once()
-        assert [tool.name for tool in create_agent_mock.call_args.args[0]] == ["bash", "read_file"]
+        # All tools are bound; runtime middleware will restrict when a skill is active.
+        assert [tool.name for tool in create_agent_mock.call_args.args[0]] == ["bash", "read_file", "web_search"]
         assert [tool.name for tool in executor.tools] == ["bash", "read_file", "web_search"]
 
     @pytest.mark.anyio
@@ -1487,7 +1496,8 @@ class TestSkillAllowedTools:
         assert [tool.name for tool in executor.tools] == ["bash", "read_file", "web_search"]
 
     @pytest.mark.anyio
-    async def test_mixed_missing_allowed_tools_does_not_disable_explicit_restrictions(self, classes, base_config, mock_agent, msg):
+    async def test_mixed_missing_allowed_tools_does_not_filter_at_build_time(self, classes, base_config, mock_agent, msg):
+        """Even with explicit allowed-tools, subagent keeps all tools at build time."""
         SubagentExecutor = classes["SubagentExecutor"]
 
         final_state = {"messages": [msg.human("Task"), msg.ai("Done", "msg-1")]}
@@ -1501,11 +1511,12 @@ class TestSkillAllowedTools:
         with patch.object(executor, "_load_skills", load_skills), patch.object(executor, "_create_agent", return_value=mock_agent) as create_agent_mock:
             await executor._aexecute("Task")
 
-        assert [tool.name for tool in create_agent_mock.call_args.args[0]] == ["bash"]
+        assert [tool.name for tool in create_agent_mock.call_args.args[0]] == ["bash", "read_file", "web_search"]
         assert [tool.name for tool in executor.tools] == ["bash", "read_file", "web_search"]
 
     @pytest.mark.anyio
-    async def test_mixed_missing_allowed_tools_order_does_not_disable_explicit_restrictions(self, classes, base_config, mock_agent, msg):
+    async def test_mixed_missing_allowed_tools_order_does_not_filter_at_build_time(self, classes, base_config, mock_agent, msg):
+        """Order of legacy vs restricted skills must not affect build-time tool binding."""
         SubagentExecutor = classes["SubagentExecutor"]
 
         final_state = {"messages": [msg.human("Task"), msg.ai("Done", "msg-1")]}
@@ -1519,11 +1530,12 @@ class TestSkillAllowedTools:
         with patch.object(executor, "_load_skills", load_skills), patch.object(executor, "_create_agent", return_value=mock_agent) as create_agent_mock:
             await executor._aexecute("Task")
 
-        assert [tool.name for tool in create_agent_mock.call_args.args[0]] == ["bash"]
+        assert [tool.name for tool in create_agent_mock.call_args.args[0]] == ["bash", "read_file", "web_search"]
         assert [tool.name for tool in executor.tools] == ["bash", "read_file", "web_search"]
 
     @pytest.mark.anyio
-    async def test_empty_allowed_tools_contributes_no_tools(self, classes, base_config, mock_agent, msg, caplog):
+    async def test_empty_allowed_tools_does_not_filter_at_build_time(self, classes, base_config, mock_agent, msg, caplog):
+        """Empty allowed-tools no longer collapses the subagent tool surface at build time."""
         SubagentExecutor = classes["SubagentExecutor"]
 
         final_state = {"messages": [msg.human("Task"), msg.ai("Done", "msg-1")]}
@@ -1537,9 +1549,8 @@ class TestSkillAllowedTools:
         with patch.object(executor, "_load_skills", load_skills), patch.object(executor, "_create_agent", return_value=mock_agent) as create_agent_mock, caplog.at_level("INFO"):
             await executor._aexecute("Task")
 
-        assert [tool.name for tool in create_agent_mock.call_args.args[0]] == ["read_file"]
+        assert [tool.name for tool in create_agent_mock.call_args.args[0]] == ["bash", "read_file", "web_search"]
         assert [tool.name for tool in executor.tools] == ["bash", "read_file", "web_search"]
-        assert "declared empty allowed-tools" in caplog.text
 
     @pytest.mark.anyio
     async def test_skill_load_failure_fails_without_creating_agent(self, classes, base_config, mock_agent):

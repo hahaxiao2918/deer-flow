@@ -83,7 +83,17 @@ class LocalSkillStorage(SkillStorage):
                 dir_names[:] = sorted(name for name in dir_names if not name.startswith("."))
                 if SKILL_MD_FILE not in file_names:
                     continue
-                yield category, category_path, Path(current_root) / SKILL_MD_FILE
+                skill_dir = Path(current_root)
+                # Eval/calibration fixtures are stored inside skill packages for
+                # testing the skill reviewer, but they are not standalone skills
+                # and must not be discovered as enabled skills.
+                try:
+                    rel_parts = skill_dir.relative_to(category_path).parts
+                except ValueError:
+                    rel_parts = skill_dir.parts
+                if any(rel_parts[i] == "evals" and rel_parts[i + 1] == "fixtures" for i in range(len(rel_parts) - 1)):
+                    continue
+                yield category, category_path, skill_dir / SKILL_MD_FILE
 
     def read_custom_skill(self, name: str) -> str:
         if not self.custom_skill_exists(name):

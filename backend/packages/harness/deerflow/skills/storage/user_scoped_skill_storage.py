@@ -268,7 +268,14 @@ class UserScopedSkillStorage(LocalSkillStorage):
                 dir_names[:] = sorted(name for name in dir_names if not name.startswith("."))
                 if SKILL_MD_FILE not in file_names:
                     continue
-                yield SkillCategory.PUBLIC, public_path, Path(current_root) / SKILL_MD_FILE
+                skill_dir = Path(current_root)
+                try:
+                    rel_parts = skill_dir.relative_to(public_path).parts
+                except ValueError:
+                    rel_parts = skill_dir.parts
+                if any(rel_parts[i] == "evals" and rel_parts[i + 1] == "fixtures" for i in range(len(rel_parts) - 1)):
+                    continue
+                yield SkillCategory.PUBLIC, public_path, skill_dir / SKILL_MD_FILE
 
         # 2. Custom skills: prefer user-level directory
         user_custom_exists = False
@@ -278,8 +285,15 @@ class UserScopedSkillStorage(LocalSkillStorage):
                 dir_names[:] = sorted(name for name in dir_names if not name.startswith(".") and name != ".history")
                 if SKILL_MD_FILE not in file_names:
                     continue
+                skill_dir = Path(current_root)
+                try:
+                    rel_parts = skill_dir.relative_to(user_custom_path).parts
+                except ValueError:
+                    rel_parts = skill_dir.parts
+                if any(rel_parts[i] == "evals" and rel_parts[i + 1] == "fixtures" for i in range(len(rel_parts) - 1)):
+                    continue
                 user_custom_exists = True
-                yield SkillCategory.CUSTOM, user_custom_path, Path(current_root) / SKILL_MD_FILE
+                yield SkillCategory.CUSTOM, user_custom_path, skill_dir / SKILL_MD_FILE
 
         # 3. Fallback: if user has no custom skills, load from global custom
         #    as LEGACY (read-only) so legacy skills are visible but not
@@ -293,7 +307,14 @@ class UserScopedSkillStorage(LocalSkillStorage):
                     dir_names[:] = sorted(name for name in dir_names if not name.startswith(".") and name != ".history")
                     if SKILL_MD_FILE not in file_names:
                         continue
-                    yield SkillCategory.LEGACY, global_custom_path, Path(current_root) / SKILL_MD_FILE
+                    skill_dir = Path(current_root)
+                    try:
+                        rel_parts = skill_dir.relative_to(global_custom_path).parts
+                    except ValueError:
+                        rel_parts = skill_dir.parts
+                    if any(rel_parts[i] == "evals" and rel_parts[i + 1] == "fixtures" for i in range(len(rel_parts) - 1)):
+                        continue
+                    yield SkillCategory.LEGACY, global_custom_path, skill_dir / SKILL_MD_FILE
 
     # ------------------------------------------------------------------
     # Install — redirect custom_dir to user directory

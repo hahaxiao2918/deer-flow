@@ -282,6 +282,8 @@ def build_subagent_runtime_middlewares(
     deferred_setup: "DeferredToolSetup | None" = None,
     mcp_routing_middleware: AgentMiddleware | None = None,
     agent_name: str | None = None,
+    user_id: str | None = None,
+    available_skills: set[str] | None = None,
 ) -> list[AgentMiddleware]:
     """Middlewares shared by subagent runtime before subagent-only middlewares."""
     if app_config is None:
@@ -435,6 +437,23 @@ def build_subagent_runtime_middlewares(
     )
     if summarization_middleware is not None:
         middlewares.append(summarization_middleware)
+
+    # SkillToolPolicyMiddleware — mirror the lead agent: enforce each skill's
+    # allowed-tools only when that skill is actually active this turn (slash
+    # activation or captured in skill_context). Previously subagents applied the
+    # union of *all* enabled skills' allowed-tools at build time, which stripped
+    # most tools whenever any enabled skill declared the field. This runtime
+    # filter keeps the full tool surface available unless a skill is genuinely
+    # active, matching the semantics introduced for the lead agent in #72d9b21.
+    from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
+
+    middlewares.append(
+        SkillToolPolicyMiddleware(
+            available_skills=available_skills,
+            app_config=app_config,
+            user_id=user_id,
+        )
+    )
 
     # SystemMessageCoalescingMiddleware (#4040) — DurableContextMiddleware above
     # inserts a second ``SystemMessage(authority_contract)`` after the leading

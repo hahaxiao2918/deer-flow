@@ -465,9 +465,9 @@ The `allowed-tools` frontmatter field restricts which tools the model may call *
 1. **Explicit slash activation**: the user starts a turn with `/skill-name task`. `SkillActivationMiddleware` records the activated skill's canonical container path on the runtime context.
 2. **In-context loading**: the model reads the skill's `SKILL.md` during the thread, and `DurableContextMiddleware` captures the reference in `ThreadState.skill_context`.
 
-`SkillToolPolicyMiddleware` (registered in `lead_agent/agent.py::build_middlewares`) computes the union of `allowed-tools` across all active skills on every model call and filters `request.tools` to that union plus the framework builtins `read_file` and `review_skill_package`. If no active skill declares `allowed-tools`, the full tool list is preserved. This replaces the older compile-time behavior that restricted the agent whenever any *enabled* skill declared `allowed-tools`.
+`SkillToolPolicyMiddleware` (registered in `lead_agent/agent.py::build_middlewares` and in `build_subagent_runtime_middlewares`) computes the union of `allowed-tools` across all active skills on every model call and filters `request.tools` to that union plus the framework builtins `read_file` and `review_skill_package`. If no active skill declares `allowed-tools`, the full tool list is preserved. This replaces the older compile-time behavior that restricted the agent whenever any *enabled* skill declared `allowed-tools`.
 
-Subagents do not use this middleware; they apply their own compile-time filtering based on the skills they are configured to load (`subagents.agents.<name>.skills`).
+Subagents use the same runtime middleware. They still load configured skill content into their system prompt, but the `allowed-tools` restriction is only applied when a skill is actually active in the current turn (slash activation or captured in `skill_context`), matching the lead-agent semantics.
 
 #### Request-Scoped Secrets (`required-secrets`)
 

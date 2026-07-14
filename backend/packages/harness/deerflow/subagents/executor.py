@@ -26,7 +26,6 @@ from deerflow.agents.thread_state import SandboxState, ThreadDataState, ThreadSt
 from deerflow.config import get_app_config
 from deerflow.config.app_config import AppConfig
 from deerflow.models import create_chat_model
-from deerflow.skills.tool_policy import filter_tools_by_skill_allowed_tools
 from deerflow.skills.types import Skill
 from deerflow.subagents.config import SubagentConfig, resolve_subagent_model_name
 from deerflow.subagents.step_events import capture_new_step_messages
@@ -510,6 +509,8 @@ class SubagentExecutor:
             "lazy_init": True,
             "deferred_setup": deferred_setup,
             "agent_name": self.config.name,
+            "user_id": self.user_id,
+            "available_skills": set(self.config.skills) if self.config.skills is not None else None,
         }
         if mcp_routing_middleware is not None:
             middleware_kwargs["mcp_routing_middleware"] = mcp_routing_middleware
@@ -579,9 +580,6 @@ class SubagentExecutor:
             return [s for s in all_skills if s.name in allowed]
         return all_skills
 
-    def _apply_skill_allowed_tools(self, skills: list[Skill]) -> list[BaseTool]:
-        return filter_tools_by_skill_allowed_tools(self._base_tools, skills)
-
     async def _load_skill_messages(self, skills: list[Skill]) -> list[SystemMessage]:
         """Load skill content as conversation items based on config.skills.
 
@@ -624,27 +622,27 @@ class SubagentExecutor:
 
         Returns:
             ``(state, final_tools, deferred_setup)``. ``final_tools`` is the
-            policy-filtered tool list with the ``tool_search`` tool appended when
+            full bound tool list with the ``tool_search`` tool appended when
             deferral applies; ``deferred_setup`` is consumed by ``_create_agent``
             so the agent build and the injected ``<available-deferred-tools>``
             section share one catalog/hash.
+
+        Note:
+            Skill ``allowed-tools`` are enforced at runtime by
+            ``SkillToolPolicyMiddleware`` (only for skills that are actually
+            active this turn), not at subagent build time. This mirrors the
+            lead-agent semantics introduced in #72d9b21.
         """
         # Lazy import: see the TYPE_CHECKING note at the top of this module -
         # importing tool_search runs tools/builtins/__init__, which would
         # re-enter this package during its own initialization.
         from deerflow.tools.builtins.tool_search import assemble_deferred_tools, get_deferred_tools_prompt_section, get_mcp_routing_hints_prompt_section
 
-        # Load skills as conversation items (Codex pattern)
+        # Load skills as conversation items (Codex pattern).  Their allowed-tools
+        # policy is applied at runtime by SkillToolPolicyMiddleware, not here.
         skills = await self._load_skills()
-        filtered_tools = self._apply_skill_allowed_tools(skills)
-        # Assemble deferred tool_search AFTER policy filtering (fail-closed),
-        # mirroring the lead path so subagents stop binding full MCP schemas.
-        # The generated tool_search helper is intentionally not subject to the
-        # subagent's name-level allow/deny (config.tools / disallowed_tools):
-        # its catalog is built from the already-filtered list, so it can never
-        # surface a tool the policy denied. This matches the lead agent.
         enabled = (self.app_config or get_app_config()).tool_search.enabled
-        final_tools, deferred_setup = assemble_deferred_tools(filtered_tools, enabled=enabled)
+        final_tools, deferred_setup = assemble_deferred_tools(self._base_tools, enabled=enabled)
         skill_messages = await self._load_skill_messages(skills)
 
         # Combine system_prompt and skills into a single SystemMessage.
@@ -660,7 +658,7 @@ class SubagentExecutor:
         deferred_section = get_deferred_tools_prompt_section(deferred_names=deferred_setup.deferred_names)
         if deferred_section:
             system_parts.append(deferred_section)
-        mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(filtered_tools, deferred_names=deferred_setup.deferred_names)
+        mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(self._base_tools, deferred_names=deferred_setup.deferred_names)
         if mcp_routing_hints_section:
             system_parts.append(mcp_routing_hints_section)
 
