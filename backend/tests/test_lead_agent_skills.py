@@ -270,7 +270,9 @@ def test_make_lead_agent_empty_skills_passed_correctly(monkeypatch):
     assert captured_skills[-1] == {"skill1"}
 
 
-def test_make_lead_agent_filters_tools_from_available_skills(monkeypatch):
+def test_make_lead_agent_preserves_all_tools_at_compile_time(monkeypatch):
+    """allowed-tools is now enforced at runtime by SkillToolPolicyMiddleware,
+    so compile-time tool assembly must keep every tool available."""
     from unittest.mock import MagicMock
 
     from deerflow.agents.lead_agent import agent as lead_agent_module
@@ -293,9 +295,11 @@ def test_make_lead_agent_filters_tools_from_available_skills(monkeypatch):
 
     agent_kwargs = lead_agent_module.make_lead_agent({"configurable": {"agent_name": "test"}})
 
-    # With skills.deferred_discovery=True, describe_skill is added to tools
+    # Runtime filtering now handles allowed-tools; compile time keeps every tool.
     tool_names = [tool.name for tool in agent_kwargs["tools"]]
+    assert "bash" in tool_names
     assert "read_file" in tool_names
+    assert "web_search" in tool_names
     assert "describe_skill" in tool_names
 
 
@@ -330,12 +334,14 @@ def test_make_lead_agent_all_legacy_skills_preserve_all_tools(monkeypatch):
 
     agent_kwargs = lead_agent_module.make_lead_agent({"configurable": {"agent_name": "test"}})
 
-    # describe_skill is appended after skill-allowed-tools filtering (it bypasses policy).
+    # Legacy skills (allowed_tools=None) impose no restriction at runtime either.
     tool_names = [tool.name for tool in agent_kwargs["tools"]]
     assert tool_names == ["bash", "read_file", "update_agent", "describe_skill"]
 
 
-def test_make_lead_agent_enforces_allowed_tools_when_skill_cache_is_cold(monkeypatch):
+def test_make_lead_agent_preserves_all_tools_when_skill_cache_is_cold(monkeypatch):
+    """Runtime tool policy means compile-time assembly keeps all tools even when
+    an enabled skill declares allowed-tools."""
     from unittest.mock import MagicMock
 
     from deerflow.agents.lead_agent import agent as lead_agent_module
@@ -361,9 +367,12 @@ def test_make_lead_agent_enforces_allowed_tools_when_skill_cache_is_cold(monkeyp
 
     agent_kwargs = lead_agent_module.make_lead_agent({"configurable": {"agent_name": "test"}})
 
-    # describe_skill is appended after skill-allowed-tools filtering (it bypasses policy).
+    # Runtime middleware will restrict to read_file when the skill is active.
     tool_names = [tool.name for tool in agent_kwargs["tools"]]
-    assert tool_names == ["read_file", "describe_skill"]
+    assert "bash" in tool_names
+    assert "read_file" in tool_names
+    assert "web_search" in tool_names
+    assert "describe_skill" in tool_names
 
 
 def test_make_lead_agent_fails_closed_when_skill_policy_load_fails(monkeypatch):

@@ -437,6 +437,7 @@ def test_build_middlewares_passes_explicit_app_config_to_shared_factory(monkeypa
 def test_build_middlewares_places_mcp_routing_before_deferred_filter(monkeypatch):
     from deerflow.agents.middlewares.deferred_tool_filter_middleware import DeferredToolFilterMiddleware
     from deerflow.agents.middlewares.mcp_routing_middleware import McpRoutingMiddleware
+    from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
     from deerflow.tools.builtins.tool_search import DeferredToolSetup
 
     app_config = _make_app_config([_make_model("safe-model", supports_thinking=False)], loop_detection=LoopDetectionConfig(enabled=False))
@@ -458,7 +459,32 @@ def test_build_middlewares_places_mcp_routing_before_deferred_filter(monkeypatch
 
     routing_idx = next(i for i, middleware in enumerate(middlewares) if isinstance(middleware, McpRoutingMiddleware))
     filter_idx = next(i for i, middleware in enumerate(middlewares) if isinstance(middleware, DeferredToolFilterMiddleware))
+    policy_idx = next(i for i, middleware in enumerate(middlewares) if isinstance(middleware, SkillToolPolicyMiddleware))
     assert routing_idx < filter_idx
+    assert policy_idx < filter_idx
+
+
+def test_build_middlewares_includes_skill_tool_policy_middleware(monkeypatch):
+    from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
+
+    app_config = _make_app_config([_make_model("safe-model", supports_thinking=False)], loop_detection=LoopDetectionConfig(enabled=False))
+
+    monkeypatch.setattr(lead_agent_module, "get_app_config", lambda: app_config)
+    monkeypatch.setattr(lead_agent_module, "build_lead_runtime_middlewares", lambda *, app_config, lazy_init=True: [])
+    monkeypatch.setattr(lead_agent_module, "_create_summarization_middleware", lambda *, app_config=None: None)
+    monkeypatch.setattr(lead_agent_module, "_create_todo_list_middleware", lambda is_plan_mode: None)
+
+    middlewares = lead_agent_module.build_middlewares(
+        {"configurable": {"is_plan_mode": False, "subagent_enabled": False}},
+        model_name="safe-model",
+        app_config=app_config,
+        available_skills={"skill-a"},
+        user_id="user-1",
+    )
+
+    policy = next(m for m in middlewares if isinstance(m, SkillToolPolicyMiddleware))
+    assert policy._available_skills == {"skill-a"}
+    assert policy._user_id == "user-1"
 
 
 def test_build_middlewares_uses_loop_detection_config(monkeypatch):

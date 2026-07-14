@@ -45,7 +45,6 @@ from deerflow.config.app_config import AppConfig, get_app_config
 from deerflow.config.memory_config import should_use_memory_tools
 from deerflow.config.subagents_config import DEFAULT_MAX_TOTAL_SUBAGENTS_PER_RUN
 from deerflow.models import create_chat_model
-from deerflow.skills.tool_policy import ALWAYS_AVAILABLE_BUILTIN_TOOL_NAMES, filter_tools_by_skill_allowed_tools
 from deerflow.skills.types import Skill
 from deerflow.tracing import build_tracing_callbacks
 
@@ -331,6 +330,20 @@ def build_middlewares(
     if model_config is not None and model_config.supports_vision:
         middlewares.append(ViewImageMiddleware())
 
+    # Enforce per-skill allowed-tools only for skills that are actually active
+    # this turn (slash activation + in-context skill_context). Must run after
+    # SkillActivationMiddleware has recorded slash state and after
+    # DurableContextMiddleware has captured skill_context from tool results.
+    from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
+
+    middlewares.append(
+        SkillToolPolicyMiddleware(
+            available_skills=available_skills,
+            app_config=resolved_app_config,
+            user_id=user_id,
+        )
+    )
+
     # Auto-promote deferred MCP schemas from PR1 routing metadata before the
     # deferred filter decides which schemas to hide for this model call.
     if mcp_routing_middleware is not None:
@@ -531,10 +544,9 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
             container_base_path=container_base_path,
         )
         raw_tools = get_available_tools(model_name=model_name, subagent_enabled=subagent_enabled, app_config=resolved_app_config) + [setup_agent]
-        filtered = filter_tools_by_skill_allowed_tools(raw_tools, skills_for_tool_policy, always_allowed_tool_names=ALWAYS_AVAILABLE_BUILTIN_TOOL_NAMES)
         if non_interactive:
-            filtered = [tool for tool in filtered if tool.name not in _NON_INTERACTIVE_DISABLED_TOOL_NAMES]
-        final_tools, setup = assemble_deferred_tools(filtered, enabled=resolved_app_config.tool_search.enabled)
+            raw_tools = [tool for tool in raw_tools if tool.name not in _NON_INTERACTIVE_DISABLED_TOOL_NAMES]
+        final_tools, setup = assemble_deferred_tools(raw_tools, enabled=resolved_app_config.tool_search.enabled)
         mcp_routing_middleware = build_mcp_routing_middleware(
             final_tools,
             setup,
@@ -596,16 +608,16 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     extra_tools = [update_agent] if agent_name and not is_webhook_channel else []
     # Default lead agent (unchanged behavior)
     raw_tools = get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled, app_config=resolved_app_config)
-    filtered = filter_tools_by_skill_allowed_tools(raw_tools + extra_tools, skills_for_tool_policy, always_allowed_tool_names=ALWAYS_AVAILABLE_BUILTIN_TOOL_NAMES)
+    tools_for_deferral = raw_tools + extra_tools
     if non_interactive:
-        filtered = [tool for tool in filtered if tool.name not in _NON_INTERACTIVE_DISABLED_TOOL_NAMES]
-    final_tools, setup = assemble_deferred_tools(filtered, enabled=resolved_app_config.tool_search.enabled)
+        tools_for_deferral = [tool for tool in tools_for_deferral if tool.name not in _NON_INTERACTIVE_DISABLED_TOOL_NAMES]
+    final_tools, setup = assemble_deferred_tools(tools_for_deferral, enabled=resolved_app_config.tool_search.enabled)
     mcp_routing_middleware = build_mcp_routing_middleware(
         final_tools,
         setup,
         top_k=resolved_app_config.tool_search.auto_promote_top_k,
     )
-    mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(filtered, deferred_names=setup.deferred_names)
+    mcp_routing_hints_section = get_mcp_routing_hints_prompt_section(tools_for_deferral, deferred_names=setup.deferred_names)
     if skill_setup.describe_skill_tool:
         final_tools.append(skill_setup.describe_skill_tool)
     if should_use_memory_tools(resolved_app_config.memory):
