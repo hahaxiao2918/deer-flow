@@ -24,17 +24,20 @@ DingTalk) bridge into the same agent through the Gateway.
 
 A single `make dev` / Docker stack runs four cooperating services:
 
-| Service         | Port   | Role                                                                 |
-| --------------- | ------ | ------------------------------------------------------------------- |
-| **Nginx**       | `2026` | Unified reverse-proxy entry point — open this in the browser        |
-| **Gateway API** | `8001` | FastAPI REST API + embedded LangGraph-compatible agent runtime      |
-| **Frontend**    | `3000` | Next.js web interface                                               |
-| **Provisioner** | `8002` | Optional — only when sandbox is configured for provisioner/K8s mode |
+| Service         | Port                                                              | Role                                                                 |
+| --------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **Nginx**       | `12026` (`make dev`); `2026` (Docker)                            | Unified reverse-proxy entry point — open this in the browser        |
+| **Gateway API** | `18001` (`make dev`); `8001` (Docker)                            | FastAPI REST API + embedded LangGraph-compatible agent runtime      |
+| **Frontend**    | `13000` (`make dev`); `3000` (Docker)                            | Next.js web interface                                               |
+| **Provisioner** | `8002`                                                            | Optional — only when sandbox is configured for provisioner/K8s mode |
 
 Nginx is the single public entry: it serves the frontend and proxies `/api/langgraph/*`
 to the Gateway's LangGraph runtime, rewriting it to Gateway's native `/api/*` routes; all
 other `/api/*` go straight to the Gateway REST routers. See
 [backend/AGENTS.md](backend/AGENTS.md) for the runtime and router detail.
+
+For the current local `make dev` setup, browse to `http://localhost:12026`.
+Production and Docker Compose continue to expose `http://localhost:2026` by default.
 
 ## Repository Map
 
