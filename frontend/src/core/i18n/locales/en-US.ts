@@ -17,6 +17,9 @@ export const enUS: Translations = {
     localName: "English",
   },
 
+  // Skill catalog (empty: en-US falls back to raw skill metadata)
+  skillCatalog: {},
+
   // Common
   common: {
     home: "Home",

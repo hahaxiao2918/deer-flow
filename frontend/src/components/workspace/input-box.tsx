@@ -1051,8 +1051,9 @@ export function InputBox({
             skills,
             slashSkillQuery,
             builtinSlashCommands,
+            t,
           ),
-    [builtinSlashCommands, skills, slashSkillQuery],
+    [builtinSlashCommands, skills, slashSkillQuery, t],
   );
   const showSkillSuggestions =
     !disabled &&
@@ -1858,7 +1859,10 @@ export function InputBox({
                     </span>
                     {suggestion.description && (
                       <span className="text-muted-foreground block truncate text-xs">
-                        {suggestion.description}
+                        {suggestion.displayName &&
+                        suggestion.displayName !== suggestion.name
+                          ? `${suggestion.displayName} · ${suggestion.description}`
+                          : suggestion.description}
                       </span>
                     )}
                   </span>

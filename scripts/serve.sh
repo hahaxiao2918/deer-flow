@@ -37,6 +37,14 @@ if [ -f "$REPO_ROOT/.env" ]; then
     set +a
 fi
 
+# ── Service ports ────────────────────────────────────────────────────────────
+# Moved off the common 8001/3000/2026 defaults onto high, uncommon ports
+# (all below the 32768 ephemeral floor to avoid collisions). Override any of
+# them via the environment or .env before launching.
+GATEWAY_PORT="${GATEWAY_PORT:-18001}"
+FRONTEND_PORT="${FRONTEND_PORT:-13000}"
+NGINX_PORT="${NGINX_PORT:-12026}"
+
 _pick_python() {
     local candidate
     for candidate in python3 python py; do
@@ -119,7 +127,7 @@ _is_deerflow_pid() {
 # (or starting, which stops first) isn't silently killing someone else's run.
 _report_reclaimed_ports() {
     local port pid files root owner
-    for port in 8001 3000 2026; do
+    for port in "$GATEWAY_PORT" "$FRONTEND_PORT" "$NGINX_PORT"; do
         for pid in $(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null); do
             _is_deerflow_pid "$pid" || continue
             files=$(lsof -b -w -p "$pid" 2>/dev/null)
@@ -261,9 +269,9 @@ stop_all() {
     # so a lingering nginx (or any deer-flow process) that _kill_repo_nginx did
     # not match by name still gets reclaimed — otherwise `make dev` fails its
     # nginx port preflight.
-    _kill_repo_port 8001
-    _kill_repo_port 3000
-    _kill_repo_port 2026
+    _kill_repo_port "$GATEWAY_PORT"
+    _kill_repo_port "$FRONTEND_PORT"
+    _kill_repo_port "$NGINX_PORT"
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
 }
@@ -402,9 +410,9 @@ echo ""
 echo "  Mode: $MODE_LABEL"
 echo ""
 echo "  Services:"
-echo "    Gateway     → localhost:8001  (REST API + agent runtime)"
-echo "    Frontend    → localhost:3000  (Next.js)"
-echo "    Nginx       → localhost:2026  (reverse proxy)"
+echo "    Gateway     → localhost:$GATEWAY_PORT  (REST API + agent runtime)"
+echo "    Frontend    → localhost:$FRONTEND_PORT  (Next.js)"
+echo "    Nginx       → localhost:$NGINX_PORT  (reverse proxy)"
 echo ""
 
 # ── Cleanup handler ──────────────────────────────────────────────────────────
@@ -459,18 +467,18 @@ mkdir -p temp/client_body_temp temp/proxy_temp temp/fastcgi_temp temp/uwsgi_temp
 
 # 1. Gateway API
 run_service "Gateway" \
-    "cd backend && PYTHONPATH=. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
-    8001 30
+    "cd backend && PYTHONPATH=. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port $GATEWAY_PORT $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
+    "$GATEWAY_PORT" 30
 
 # 2. Frontend
 run_service "Frontend" \
-    "cd frontend && $FRONTEND_CMD > ../logs/frontend.log 2>&1" \
-    3000 120
+    "cd frontend && PORT=$FRONTEND_PORT $FRONTEND_CMD > ../logs/frontend.log 2>&1" \
+    "$FRONTEND_PORT" 120
 
 # 3. Nginx
 run_service "Nginx" \
     "nginx -g 'daemon off;' -c '$REPO_ROOT/docker/nginx/nginx.local.conf' -p '$REPO_ROOT' > logs/nginx.log 2>&1" \
-    2026 10
+    "$NGINX_PORT" 10
 
 # ── Ready ────────────────────────────────────────────────────────────────────
 
@@ -479,11 +487,11 @@ echo "=========================================="
 echo "  ✓ DeerFlow is running!  [$MODE_LABEL]"
 echo "=========================================="
 echo ""
-echo "  🌐 http://localhost:2026"
+echo "  🌐 http://localhost:$NGINX_PORT"
 echo ""
 echo "  Routing: Frontend → Nginx → Gateway"
 echo "  API:     /api/langgraph/*  →  Gateway agent runtime"
-echo "           /api/*              →  Gateway REST API (8001)"
+echo "           /api/*              →  Gateway REST API ($GATEWAY_PORT)"
 echo ""
 echo "  📋 Logs: logs/{gateway,frontend,nginx}.log"
 echo ""

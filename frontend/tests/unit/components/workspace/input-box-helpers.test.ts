@@ -17,6 +17,7 @@ import {
   readGoalResponseError,
   type SlashSuggestion,
 } from "@/components/workspace/input-box-helpers";
+import { enUS } from "@/core/i18n/locales/en-US";
 import type { Skill } from "@/core/skills";
 
 function makeSkill(name: string, enabled = true): Skill {
@@ -207,7 +208,7 @@ describe("getMatchingSkillSuggestions", () => {
       makeSkill("reviewer-disabled", false),
     ];
 
-    const result = getMatchingSkillSuggestions(skills, "rev", []);
+    const result = getMatchingSkillSuggestions(skills, "rev", [], enUS);
 
     expect(result.map((s) => s.name)).toEqual(["review"]);
     expect(result.every((s) => s.kind === "skill")).toBe(true);
@@ -218,6 +219,7 @@ describe("getMatchingSkillSuggestions", () => {
       [makeSkill("goal-helper")],
       "goal",
       builtins,
+      enUS,
     );
 
     expect(result.map((s) => s.name)).toContain("goal-helper");
@@ -229,6 +231,7 @@ describe("getMatchingSkillSuggestions", () => {
       [makeSkill("goal"), makeSkill("goal-helper")],
       "goal",
       builtins,
+      enUS,
     );
 
     expect(result.map((s) => `${s.kind}:${s.name}`)).toEqual([
@@ -241,7 +244,7 @@ describe("getMatchingSkillSuggestions", () => {
     const skills = Array.from({ length: 10 }, (_, i) =>
       makeSkill(`skill-${i}`),
     );
-    const result = getMatchingSkillSuggestions(skills, "", []);
+    const result = getMatchingSkillSuggestions(skills, "", [], enUS);
     expect(result.length).toBeLessThanOrEqual(6);
   });
 });

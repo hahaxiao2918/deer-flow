@@ -1,4 +1,6 @@
+import type { Translations } from "@/core/i18n/locales/types";
 import type { Skill } from "@/core/skills";
+import { getSkillDisplayText } from "@/core/skills/display";
 export {
   SUGGESTION_TEMPLATE_PLACEHOLDER_PATTERN,
   findSuggestionTemplatePlaceholder,
@@ -8,6 +10,7 @@ export const MAX_SKILL_SUGGESTIONS = 6;
 
 export type SlashSuggestion = {
   name: string;
+  displayName?: string;
   description: string;
   kind: "builtin" | "skill";
 };
@@ -119,6 +122,7 @@ export function getMatchingSkillSuggestions(
   skills: Skill[],
   query: string,
   builtinCommands: SlashSuggestion[],
+  t: Translations,
 ): SlashSuggestion[] {
   const normalizedQuery = query.toLowerCase();
   const builtinCommandNames = new Set(
@@ -159,11 +163,15 @@ export function getMatchingSkillSuggestions(
       return a.index - b.index;
     })
     .slice(0, MAX_SKILL_SUGGESTIONS)
-    .map(({ skill }) => ({
-      name: skill.name,
-      description: skill.description,
-      kind: "skill" as const,
-    }));
+    .map(({ skill }) => {
+      const display = getSkillDisplayText(skill, t);
+      return {
+        name: skill.name,
+        displayName: display.displayName,
+        description: display.description,
+        kind: "skill" as const,
+      };
+    });
 
   return [...skillMatches, ...builtinMatches].slice(0, MAX_SKILL_SUGGESTIONS);
 }

@@ -75,6 +75,19 @@ Human input requests are a structured message protocol layered on normal chat hi
 
 Tool-calling AI messages can contain user-visible text as well as `tool_calls`. `core/messages/utils.ts` keeps these turns in an `assistant:processing` group, and `components/workspace/messages/message-group.tsx` must render the visible text as a processing step instead of treating the message as only tool metadata. This preserves provider text such as error explanations or "trying another approach" notes during tool-heavy runs.
 
+### Skill display names and descriptions
+
+The Gateway `GET /api/skills` endpoint returns each skill's raw `name` and `description` from its `SKILL.md` frontmatter. Those same strings are consumed by the agent runtime to decide when a skill should be triggered, so translating them in the backend or in `SKILL.md` would change runtime behavior.
+
+To show localized skill text in the UI without affecting the runtime:
+
+- Add per-skill entries to `src/core/i18n/locales/<locale>.ts` under `skillCatalog`, keyed by the stable `skill.name` (the same identifier used for slash commands and API calls).
+- Use `getSkillDisplayText(skill, t)` from `src/core/skills/display.ts` when rendering a skill card or slash suggestion. It returns `{ displayName, description }`, falling back to the raw `skill.name` / `skill.description` when no catalog entry exists.
+- `skill.name` must stay untranslated everywhere it is used as an identifier (React keys, API calls, slash-command token, `Switch` toggle handler). Only the rendered display text is localized.
+- The settings skill list (`src/components/workspace/settings/skill-settings-page.tsx`) and the composer slash-suggestion popover (`src/components/workspace/input-box.tsx` via `input-box-helpers.ts`) currently consume the overlay.
+
+This lets custom or newly installed skills gracefully fall back to their original English metadata until a translation is added.
+
 ### Key Patterns
 
 - **Server Components by default**, `"use client"` only for interactive components

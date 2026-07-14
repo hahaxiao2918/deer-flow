@@ -6,6 +6,9 @@ export interface Translations {
     localName: string;
   };
 
+  // Skill catalog (frontend-only display overlay; keyed by stable skill.name)
+  skillCatalog: Record<string, { displayName: string; description: string }>;
+
   // Common
   common: {
     home: string;

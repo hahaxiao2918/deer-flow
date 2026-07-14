@@ -17,6 +17,123 @@ export const zhCN: Translations = {
     localName: "中文",
   },
 
+  // Skill catalog (frontend-only display overlay; keyed by stable skill.name)
+  skillCatalog: {
+    "academic-paper-review": {
+      displayName: "学术论文评审",
+      description:
+        "对学术论文、预印本或科研文章进行评审、批判与总结，评估研究方法、创新点与文献定位，并给出建设性反馈。",
+    },
+    bootstrap: {
+      displayName: "智能体初始化",
+      description:
+        "通过温暖的自适应对话，引导用户创建或更新个性化的 SOUL.md，定义 AI 伙伴的身份、性格与行为方式。",
+    },
+    "chart-visualization": {
+      displayName: "图表可视化",
+      description:
+        "根据用户数据从 26 种图表类型中选择最合适的方案，并生成可视化图片。",
+    },
+    "claude-to-deerflow": {
+      displayName: "DeerFlow 交互",
+      description:
+        "通过 DeerFlow HTTP API 向另一个 DeerFlow 实例发送消息、查询模型/技能/智能体、管理记忆、上传文件或委托深度研究任务。",
+    },
+    "code-documentation": {
+      displayName: "代码文档生成",
+      description:
+        "为代码、API、库或软件项目生成 README、API 参考、架构文档、更新日志和开发者指南。",
+    },
+    "consulting-analysis": {
+      displayName: "咨询分析报告",
+      description:
+        "撰写市场分析、消费者洞察、品牌分析、财务分析、行业研究、竞争情报或投资尽调等专业报告。",
+    },
+    "data-analysis": {
+      displayName: "数据分析",
+      description:
+        "对上传的 Excel/CSV 文件进行统计分析、汇总、透视表、SQL 查询等结构化数据探索。",
+    },
+    "deep-research": {
+      displayName: "深度研究",
+      description:
+        "针对需要网络调研的问题进行系统化多角度研究，替代单次浅层搜索，主动触发以获取在线信息。",
+    },
+    "find-skills": {
+      displayName: "发现技能",
+      description:
+        "当用户问“怎么实现某功能”“有没有某个 skill”时，帮助发现并安装合适的技能。",
+    },
+    "frontend-design": {
+      displayName: "前端设计",
+      description:
+        "构建高质量的网页组件、落地页、仪表盘、React 组件或 HTML/CSS 布局，避免千篇一律的 AI 风格。",
+    },
+    "github-deep-research": {
+      displayName: "GitHub 深度研究",
+      description:
+        "对任意 GitHub 仓库进行多轮深度研究，生成包含执行摘要、时间线、指标分析和 Mermaid 图表的结构化报告。",
+    },
+    "image-generation": {
+      displayName: "图像生成",
+      description:
+        "根据提示生成、创作或想象图像，包括角色、场景、产品等视觉内容，支持参考图引导。",
+    },
+    "music-generation": {
+      displayName: "音乐生成",
+      description:
+        "根据风格/情绪提示和可选歌词，通过 MiniMax 音乐 API 生成背景音乐、主题曲、歌曲等。",
+    },
+    "newsletter-generation": {
+      displayName: "新闻通讯生成",
+      description:
+        "撰写新闻简报、每周摘要、行业简报或精选内容汇总，支持多源内容整理与专业排版。",
+    },
+    "podcast-generation": {
+      displayName: "播客生成",
+      description: "将文本内容转换为双主持人对话形式的播客音频。",
+    },
+    "ppt-generation": {
+      displayName: "PPT 生成",
+      description:
+        "根据主题生成带有配图的可视化幻灯片，并打包为 PowerPoint 文件。",
+    },
+    "skill-creator": {
+      displayName: "技能创建",
+      description:
+        "创建新技能、修改和优化现有技能，运行评估测试、基准测试并优化技能描述以提升触发准确率。",
+    },
+    "skill-reviewer": {
+      displayName: "技能审核",
+      description:
+        "对 DeerFlow 技能包进行就绪性、触发条件、安全边界、资源和证据的审核。",
+    },
+    "surprise-me": {
+      displayName: "惊喜我",
+      description:
+        "当用户说“surprise me”或想要惊喜/灵感时，动态发现并创造性地组合其他已启用技能，带来意想不到的体验。",
+    },
+    "systematic-literature-review": {
+      displayName: "系统文献综述",
+      description:
+        "针对某个主题进行系统性文献综述、调研或多篇学术论文综合，输出 APA/IEEE/BibTeX 格式报告。",
+    },
+    "vercel-deploy-claimable": {
+      displayName: "Vercel 部署",
+      description:
+        "将应用或网站部署到 Vercel，返回预览 URL 和可认领的部署链接，无需认证。",
+    },
+    "video-generation": {
+      displayName: "视频生成",
+      description: "根据提示生成、创作或想象视频，支持参考图引导。",
+    },
+    "web-design-guidelines": {
+      displayName: "网页设计规范审查",
+      description:
+        "检查 UI 代码是否符合 Web 界面设计规范、可访问性、UX 最佳实践。",
+    },
+  },
+
   // Common
   common: {
     home: "首页",

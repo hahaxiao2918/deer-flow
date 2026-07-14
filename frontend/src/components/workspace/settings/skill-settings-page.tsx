@@ -25,6 +25,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/core/auth/AuthProvider";
 import { useI18n } from "@/core/i18n/hooks";
 import { SkillRequestError } from "@/core/skills/api";
+import { getSkillDisplayText } from "@/core/skills/display";
 import { useEnableSkill, useSkills } from "@/core/skills/hooks";
 import type { Skill } from "@/core/skills/type";
 import { env } from "@/env";
@@ -99,29 +100,34 @@ function SkillSettingsList({
         <EmptySkill onCreateSkill={handleCreateSkill} />
       )}
       {filteredSkills.length > 0 &&
-        filteredSkills.map((skill) => (
-          <Item className="w-full" variant="outline" key={skill.name}>
-            <ItemContent>
-              <ItemTitle>
-                <div className="flex items-center gap-2">{skill.name}</div>
-              </ItemTitle>
-              <ItemDescription className="line-clamp-4">
-                {skill.description}
-              </ItemDescription>
-            </ItemContent>
-            <ItemActions>
-              <Switch
-                checked={skill.enabled}
-                disabled={
-                  env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" || !isAdmin
-                }
-                onCheckedChange={(checked) =>
-                  enableSkill({ skillName: skill.name, enabled: checked })
-                }
-              />
-            </ItemActions>
-          </Item>
-        ))}
+        filteredSkills.map((skill) => {
+          const display = getSkillDisplayText(skill, t);
+          return (
+            <Item className="w-full" variant="outline" key={skill.name}>
+              <ItemContent>
+                <ItemTitle>
+                  <div className="flex items-center gap-2">
+                    {display.displayName}
+                  </div>
+                </ItemTitle>
+                <ItemDescription className="line-clamp-4">
+                  {display.description}
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <Switch
+                  checked={skill.enabled}
+                  disabled={
+                    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" || !isAdmin
+                  }
+                  onCheckedChange={(checked) =>
+                    enableSkill({ skillName: skill.name, enabled: checked })
+                  }
+                />
+              </ItemActions>
+            </Item>
+          );
+        })}
     </div>
   );
 }
