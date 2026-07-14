@@ -138,12 +138,16 @@ commits when incorporating upstream changes.
   URLs or force-push without explicit user approval. The local `upstream`
   push URL is deliberately disabled; always push enterprise changes only to
   `origin`.
-- **Update workflow** — never replace this checkout with a fresh upstream clone
-  and never use `reset --hard` to update it. On `codex/shanghai-electric`, fetch
-  `upstream`, merge `upstream/main`, resolve conflicts while retaining local
-  customizations, run relevant checks, then push the resulting branch to
-  `origin`. This repository began as a shallow clone; run
-  `git fetch --unshallow upstream` once before the first historical merge.
+- **Update workflow** — when the user asks to update, synchronize upstream, or
+  continue maintenance, the agent owns the full workflow without asking the
+  user to run commands: fetch `upstream`, merge `upstream/main` into
+  `codex/shanghai-electric`, retain local customizations while resolving
+  conflicts, run relevant checks, commit, push to `origin`, and rebuild the
+  local Docker stack with `docker compose -f docker/docker-compose.yaml up -d
+  --build`. Never replace this checkout with a fresh upstream clone or use
+  `reset --hard` to update it. Ask the user only when a new credential,
+  permission, external approval, or a genuinely product-defining conflict is
+  required; report all other outcomes after completing the work.
 - **Branding ownership** — the root route redirects to `/login`. The branded
   login experience is owned by `frontend/src/app/(auth)/login/page.tsx`; brand
   images live under `frontend/public/images/branding/`. Do not restore the
