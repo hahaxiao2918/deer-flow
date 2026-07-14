@@ -135,6 +135,11 @@ buttons, setup handling, and authenticated redirects.
   at the upper left.
 - Brand raster assets belong in `public/images/branding/` and should use
   `next/image` when rendered in components.
+- `src/app/layout.tsx` declares the Shanghai Electric symbol as the browser
+  favicon. Keep that metadata pointing at the branded asset.
+- `components/workspace/workspace-nav-menu.tsx` intentionally exposes only
+  Settings in its lower-left dropdown; do not reintroduce upstream website,
+  GitHub, support, issue, or About links without an explicit request.
 - Treat this as an enterprise customization: keep it when merging upstream
   frontend updates unless the user explicitly asks to change the identity or
   restore the original landing page.

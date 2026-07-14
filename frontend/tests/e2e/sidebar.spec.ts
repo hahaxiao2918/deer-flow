@@ -30,6 +30,36 @@ test.describe("Sidebar navigation", () => {
     await expect(page).toHaveURL(/\/workspace\/agents/);
   });
 
+  test("settings menu only exposes Settings", async ({ page }) => {
+    mockLangGraphAPI(page);
+
+    await page.goto("/workspace/chats/new");
+
+    const sidebar = page.locator("[data-sidebar='sidebar']");
+    await sidebar
+      .getByRole("button", { name: "Settings and more" })
+      .click({ timeout: 15_000 });
+
+    await expect(
+      page.getByRole("menuitem", { name: "Settings" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "DeerFlow's official website" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("menuitem", { name: "DeerFlow on GitHub" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("menuitem", { name: "Report an issue" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("menuitem", { name: "Contact us" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("menuitem", { name: "About DeerFlow" }),
+    ).toHaveCount(0);
+  });
+
   test("Agents button is disabled with a hover tooltip when agents_api is off", async ({
     page,
   }) => {
