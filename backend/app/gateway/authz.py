@@ -37,6 +37,8 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 from fastapi import HTTPException, Request
 
+from app.gateway.auth_disabled import is_auth_disabled
+
 if TYPE_CHECKING:
     from app.gateway.auth.models import User
 
@@ -268,14 +270,12 @@ def require_permission(
 
             # Owner check for thread-specific resources.
             #
-            # 2.0-rc moved thread metadata into the SQL persistence layer
-            # (``threads_meta`` table). We verify ownership via
-            # ``ThreadMetaStore.check_access``: it returns True for
-            # missing rows (untracked legacy thread) and for rows whose
-            # ``user_id`` is NULL (shared / pre-auth data), so this is
-            # strict-deny rather than strict-allow — only an *existing*
-            # row with a *different* user_id triggers 404.
-            if owner_check:
+            # Auth-disabled mode is local-dev only: every request runs as a
+            # synthetic admin user, so cross-user ownership checks are both
+            # impossible (there is no real owner) and unnecessary. Skip them.
+            if owner_check and is_auth_disabled():
+                pass
+            elif owner_check:
                 from app.gateway.internal_auth import INTERNAL_OWNER_USER_ID_HEADER_NAME, INTERNAL_SYSTEM_ROLE
 
                 thread_id = kwargs.get("thread_id")

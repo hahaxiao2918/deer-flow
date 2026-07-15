@@ -1,10 +1,35 @@
 """Tests for artifact path resolution fallback in auth-disabled mode."""
 
+import asyncio
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from app.gateway.path_utils import _resolve_across_user_buckets, resolve_thread_virtual_path
+
+
+def test_require_permission_skips_owner_check_when_auth_disabled(monkeypatch):
+    """Auth-disabled mode must bypass thread owner_check to allow cross-user access."""
+    from app.gateway.authz import require_permission
+
+    monkeypatch.setenv("DEER_FLOW_AUTH_DISABLED", "1")
+
+    @require_permission("threads", "read", owner_check=True)
+    async def handler(thread_id: str, request):
+        return {"ok": True, "thread_id": thread_id}
+
+    class FakeRequest:
+        state = SimpleNamespace()
+
+    FakeRequest.state.auth = SimpleNamespace(
+        is_authenticated=True,
+        has_permission=lambda _r, _a: True,
+        user=SimpleNamespace(id="default"),
+    )
+
+    result = asyncio.run(handler(thread_id="t1", request=FakeRequest()))
+    assert result["ok"] is True
 
 
 @pytest.fixture
