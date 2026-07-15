@@ -54,5 +54,18 @@
       }
     }
   },
-  "skills": {}
+  "skills": {
+    "skill-reviewer": { "enabled": false },
+    "skill-creator": { "enabled": false },
+    "find-skills": { "enabled": false },
+    "claude-to-deerflow": { "enabled": false },
+    "bootstrap": { "enabled": false },
+    "surprise-me": { "enabled": false },
+    "vercel-deploy": { "enabled": false },
+    "web-design-guidelines": { "enabled": false },
+    "image-generation": { "enabled": false },
+    "music-generation": { "enabled": false },
+    "podcast-generation": { "enabled": false },
+    "video-generation": { "enabled": false }
+  }
 }
