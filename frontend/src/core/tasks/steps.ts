@@ -54,6 +54,46 @@ function contentToText(content: unknown): string {
   return "";
 }
 
+/**
+ * Find the originating tool-call args for a tool-result step.
+ *
+ * The backend emits separate step events: AI steps carry `tool_calls` with args,
+ * and the following tool-result steps only carry `tool_name`. To show a useful
+ * label (e.g. the web_search query or web_fetch URL) on each tool-result row,
+ * we walk backwards from the tool step to the nearest AI step that requested a
+ * tool with the same name.
+ *
+ * This is heuristic: if a single AI step requests multiple tools with the same
+ * name, we can only return the first match. In practice that is rare.
+ */
+export function findToolCallArgsForStep(
+  steps: SubtaskStep[],
+  toolStep: SubtaskStep,
+): SubtaskStepToolCall | undefined {
+  if (toolStep.kind !== "tool" || !toolStep.tool_name) {
+    return undefined;
+  }
+  const index = steps.findIndex(
+    (s) => s.message_index === toolStep.message_index,
+  );
+  if (index < 0) {
+    return undefined;
+  }
+  for (let i = index - 1; i >= 0; i--) {
+    const step = steps[i];
+    if (step?.kind !== "ai" || !step.tool_calls?.length) {
+      continue;
+    }
+    const match = step.tool_calls.find(
+      (call) => call.name === toolStep.tool_name,
+    );
+    if (match) {
+      return match;
+    }
+  }
+  return undefined;
+}
+
 /** Normalize a raw subagent message (live `task_running` payload) into a step. */
 export function messageToStep(
   message: RawMessage,

@@ -13,17 +13,56 @@ export function explainLastToolCall(message: AIMessage, t: Translations) {
 }
 
 export function explainToolCall(toolCall: ToolCall, t: Translations) {
-  if (toolCall.name === "web_search" || toolCall.name === "image_search") {
-    return t.toolCalls.searchFor(toolCall.args.query);
-  } else if (toolCall.name === "web_fetch") {
-    return t.toolCalls.viewWebPage;
-  } else if (toolCall.name === "present_files") {
-    return t.toolCalls.presentFiles;
-  } else if (toolCall.name === "write_todos") {
-    return t.toolCalls.writeTodos;
-  } else if (toolCall.args.description) {
-    return toolCall.args.description;
-  } else {
-    return t.toolCalls.useTool(toolCall.name);
+  return explainToolCallByNameAndArgs(toolCall.name, toolCall.args, t);
+}
+
+export function explainToolCallByNameAndArgs(
+  name: string | undefined,
+  args: unknown,
+  t: Translations,
+) {
+  if (name === "web_search" || name === "image_search") {
+    const query =
+      args && typeof args === "object" && "query" in args
+        ? (args as { query?: unknown }).query
+        : undefined;
+    if (typeof query === "string" && query) {
+      return t.toolCalls.searchFor(query);
+    }
+    return t.toolCalls.searchForRelatedInfo;
   }
+
+  if (name === "web_fetch") {
+    const url =
+      args && typeof args === "object" && "url" in args
+        ? (args as { url?: unknown }).url
+        : undefined;
+    if (typeof url === "string" && url) {
+      return `${t.toolCalls.viewWebPage}: ${url}`;
+    }
+    return t.toolCalls.viewWebPage;
+  }
+
+  if (name === "present_files") {
+    return t.toolCalls.presentFiles;
+  }
+
+  if (name === "write_todos") {
+    return t.toolCalls.writeTodos;
+  }
+
+  if (
+    args &&
+    typeof args === "object" &&
+    "description" in args &&
+    typeof (args as { description?: unknown }).description === "string"
+  ) {
+    return (args as { description: string }).description;
+  }
+
+  if (name) {
+    return t.toolCalls.useTool(name);
+  }
+
+  return undefined;
 }

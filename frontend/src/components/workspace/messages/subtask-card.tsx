@@ -29,8 +29,11 @@ import {
   formatSubtaskTokenUsage,
   resolveSubtaskModelLabel,
 } from "@/core/tasks/presentation";
-import { stepsForDisplay } from "@/core/tasks/steps";
-import { explainLastToolCall } from "@/core/tools/utils";
+import { findToolCallArgsForStep, stepsForDisplay } from "@/core/tasks/steps";
+import {
+  explainLastToolCall,
+  explainToolCallByNameAndArgs,
+} from "@/core/tools/utils";
 import { cn } from "@/lib/utils";
 
 import { CitationLink } from "../citations/citation-link";
@@ -213,22 +216,34 @@ export function SubtaskCard({
             ) : (
               <SparklesIcon className="size-4" />
             );
+
+            let label: React.ReactNode;
+            if (step.kind === "tool") {
+              const toolCall = findToolCallArgsForStep(task.steps ?? [], step);
+              label =
+                explainToolCallByNameAndArgs(
+                  step.tool_name,
+                  toolCall?.args,
+                  t,
+                ) ??
+                step.tool_name ??
+                t.subtasks[task.status];
+            } else {
+              label = (
+                <div className="text-muted-foreground line-clamp-3 text-sm">
+                  <MarkdownContent
+                    content={step.text}
+                    isLoading={false}
+                    rehypePlugins={rehypePlugins}
+                  />
+                </div>
+              );
+            }
+
             return (
               <ChainOfThoughtStep
                 key={`${step.message_index}-${i}`}
-                label={
-                  step.kind === "tool" ? (
-                    (step.tool_name ?? t.subtasks[task.status])
-                  ) : (
-                    <div className="text-muted-foreground line-clamp-3 text-sm">
-                      <MarkdownContent
-                        content={step.text}
-                        isLoading={false}
-                        rehypePlugins={rehypePlugins}
-                      />
-                    </div>
-                  )
-                }
+                label={label}
                 icon={icon}
               />
             );
