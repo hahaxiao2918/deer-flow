@@ -323,6 +323,9 @@ Gateway owns `/api/langgraph/*` and translates those public LangGraph-compatible
 
 #### Docker Production Deployment
 
+For the Shanghai Electric distribution, run through the checklist in
+[`docs/production-deployment.md`](docs/production-deployment.md) before deploying.
+
 `deploy.sh` supports building and starting separately:
 
 ```bash

@@ -164,6 +164,11 @@ commits when incorporating upstream changes.
 - **Documentation update policy** — keep docs in sync with code: update `README.md` for
   user-facing changes and the relevant `AGENTS.md` for development/architecture changes in
   the same change set.
+- **Dev-only parameters must be production-documented** — any environment variable, config
+  flag, or shortcut that is only safe for local development (e.g. `DEER_FLOW_AUTH_DISABLED=1`)
+  must be added to the production-deployment checklist in `docs/production-deployment.md`
+  as part of the same change set. The checklist is the operations handoff source of truth
+  for removing these parameters before deploying to production.
 - **Test-driven development** — features and bug fixes ship with tests. Backend tests live
   in `backend/tests/` (TDD is mandatory there; see [backend/AGENTS.md](backend/AGENTS.md));
   frontend tests live in `frontend/tests/`.
