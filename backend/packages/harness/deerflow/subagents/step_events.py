@@ -135,7 +135,7 @@ def truncate_step_text(text: str, max_chars: int) -> tuple[str, bool]:
 
 
 def _bounded_tool_call(call: dict[str, Any], max_chars: int) -> dict[str, Any]:
-    """Return ``{name, args}`` for a captured tool call, capping large args (#3779).
+    """Return ``{id, name, args}`` for a captured tool call, capping large args (#3779).
 
     ``build_subagent_step`` caps the ``text`` field, but tool-call ``args`` were
     copied verbatim, so a ``write_file``/``bash`` call carrying a big payload (full
@@ -143,13 +143,17 @@ def _bounded_tool_call(call: dict[str, Any], max_chars: int) -> dict[str, Any]:
     row and streamed frame. When the JSON-serialized args exceed ``max_chars`` we
     replace the structured value with a truncated serialized preview and flag it
     with ``args_truncated`` — small args stay structured for the card to inspect.
+
+    The tool-call ``id`` is preserved so the frontend can pair each tool-result
+    step with the exact call that produced it, even when multiple tools share the
+    same name (e.g. several ``web_search`` calls in one assistant turn).
     """
     name = call.get("name")
     args = call.get("args")
     serialized = args if isinstance(args, str) else json.dumps(args, default=str, ensure_ascii=False)
     if max_chars >= 0 and len(serialized) > max_chars:
-        return {"name": name, "args": serialized[:max_chars], "args_truncated": True}
-    return {"name": name, "args": args}
+        return {"id": call.get("id"), "name": name, "args": serialized[:max_chars], "args_truncated": True}
+    return {"id": call.get("id"), "name": name, "args": args}
 
 
 def build_subagent_step(
@@ -182,6 +186,7 @@ def build_subagent_step(
 
     if kind == "tool":
         step["tool_name"] = message.get("name")
+        step["tool_call_id"] = message.get("tool_call_id")
     else:
         step["tool_calls"] = [_bounded_tool_call(call, max_chars) for call in (message.get("tool_calls") or [])]
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "@rstest/core";
 
 import {
   eventsToSteps,
+  findToolCallArgsForStep,
   mergeSteps,
   messageToStep,
   stepsForDisplay,
@@ -23,19 +24,26 @@ describe("messageToStep", () => {
     expect(step.message_index).toBe(1);
     expect(step.text).toBe("Let me search.");
     expect(step.tool_calls).toEqual([
-      { name: "web_search", args: { query: "x" } },
+      { id: "c1", name: "web_search", args: { query: "x" } },
     ]);
     expect(step.tool_name).toBeUndefined();
   });
 
   it("normalizes a tool message into a tool step with its output", () => {
     const step = messageToStep(
-      { type: "tool", id: "t-1", name: "web_search", content: "results" },
+      {
+        type: "tool",
+        id: "t-1",
+        name: "web_search",
+        tool_call_id: "c1",
+        content: "results",
+      },
       2,
     );
 
     expect(step.kind).toBe("tool");
     expect(step.tool_name).toBe("web_search");
+    expect(step.tool_call_id).toBe("c1");
     expect(step.text).toBe("results");
     expect(step.tool_calls).toBeUndefined();
   });
@@ -216,5 +224,60 @@ describe("eventsToSteps", () => {
   it("returns empty array when no events match", () => {
     expect(eventsToSteps(events, "missing")).toEqual([]);
     expect(eventsToSteps([], "call_1")).toEqual([]);
+  });
+});
+
+describe("findToolCallArgsForStep", () => {
+  it("matches a tool step to its originating tool call by tool_call_id", () => {
+    const steps = [
+      messageToStep(
+        {
+          type: "ai",
+          content: "",
+          tool_calls: [
+            { name: "web_search", args: { query: "q1" }, id: "c1" },
+            { name: "web_search", args: { query: "q2" }, id: "c2" },
+          ],
+        },
+        1,
+      ),
+      messageToStep(
+        {
+          type: "tool",
+          name: "web_search",
+          tool_call_id: "c2",
+          content: "results for q2",
+        },
+        2,
+      ),
+    ];
+
+    const args = findToolCallArgsForStep(steps, steps[1]!);
+    expect(args).toEqual({ id: "c2", name: "web_search", args: { query: "q2" } });
+  });
+
+  it("falls back to name matching when tool_call_id is absent", () => {
+    const steps = [
+      messageToStep(
+        {
+          type: "ai",
+          content: "",
+          tool_calls: [{ name: "web_search", args: { query: "q1" } }],
+        },
+        1,
+      ),
+      messageToStep(
+        { type: "tool", name: "web_search", content: "results" },
+        2,
+      ),
+    ];
+
+    const args = findToolCallArgsForStep(steps, steps[1]!);
+    expect(args).toEqual({ name: "web_search", args: { query: "q1" } });
+  });
+
+  it("returns undefined for non-tool steps", () => {
+    const aiStep = messageToStep({ type: "ai", content: "hello" }, 1);
+    expect(findToolCallArgsForStep([aiStep], aiStep)).toBeUndefined();
   });
 });

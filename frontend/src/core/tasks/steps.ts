@@ -11,6 +11,7 @@
  */
 
 export interface SubtaskStepToolCall {
+  id?: string;
   name?: string;
   args?: unknown;
 }
@@ -22,13 +23,15 @@ export interface SubtaskStep {
   truncated?: boolean;
   tool_calls?: SubtaskStepToolCall[];
   tool_name?: string;
+  tool_call_id?: string;
 }
 
 type RawMessage = {
   type?: string;
   content?: unknown;
   name?: string;
-  tool_calls?: { name?: string; args?: unknown; [key: string]: unknown }[];
+  tool_call_id?: string;
+  tool_calls?: { id?: string; name?: string; args?: unknown; [key: string]: unknown }[];
   [key: string]: unknown;
 };
 
@@ -70,7 +73,7 @@ export function findToolCallArgsForStep(
   steps: SubtaskStep[],
   toolStep: SubtaskStep,
 ): SubtaskStepToolCall | undefined {
-  if (toolStep.kind !== "tool" || !toolStep.tool_name) {
+  if (toolStep.kind !== "tool") {
     return undefined;
   }
   const index = steps.findIndex(
@@ -84,11 +87,24 @@ export function findToolCallArgsForStep(
     if (step?.kind !== "ai" || !step.tool_calls?.length) {
       continue;
     }
-    const match = step.tool_calls.find(
-      (call) => call.name === toolStep.tool_name,
-    );
-    if (match) {
-      return match;
+    // Prefer exact tool_call_id match when both sides provide it.
+    if (toolStep.tool_call_id) {
+      const match = step.tool_calls.find(
+        (call) => call.id === toolStep.tool_call_id,
+      );
+      if (match) {
+        return match;
+      }
+    }
+    // Fallback to name matching for payloads from older backends or tools that
+    // omit tool_call_id.
+    if (toolStep.tool_name) {
+      const match = step.tool_calls.find(
+        (call) => call.name === toolStep.tool_name,
+      );
+      if (match) {
+        return match;
+      }
     }
   }
   return undefined;
@@ -108,8 +124,10 @@ export function messageToStep(
 
   if (kind === "tool") {
     step.tool_name = message.name;
+    step.tool_call_id = message.tool_call_id;
   } else {
     step.tool_calls = (message.tool_calls ?? []).map((call) => ({
+      id: call.id,
       name: call.name,
       args: call.args,
     }));
@@ -182,6 +200,7 @@ export function eventsToSteps(
       truncated: content.truncated,
       tool_calls: content.tool_calls,
       tool_name: content.tool_name,
+      tool_call_id: content.tool_call_id,
     });
   }
   return steps.sort((a, b) => a.message_index - b.message_index);

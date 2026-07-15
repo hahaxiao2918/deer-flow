@@ -39,7 +39,9 @@ def test_ai_message_becomes_ai_step_with_tool_calls():
     assert step["kind"] == "ai"
     assert step["text"] == "Let me search the web."
     assert step["truncated"] is False
-    assert step["tool_calls"] == [{"name": "web_search", "args": {"query": "deerflow"}}]
+    assert step["tool_calls"] == [
+        {"id": "call_1", "name": "web_search", "args": {"query": "deerflow"}},
+    ]
     assert "tool_name" not in step
 
 
@@ -56,6 +58,7 @@ def test_tool_message_becomes_tool_step_with_output():
 
     assert step["kind"] == "tool"
     assert step["tool_name"] == "web_search"
+    assert step["tool_call_id"] == "call_1"
     assert step["text"] == "Result: DeerFlow is a LangGraph super-agent."
     assert step["truncated"] is False
     assert "tool_calls" not in step
@@ -161,7 +164,39 @@ def test_none_content_flattens_to_empty_string():
     assert step["text"] == ""
 
 
-def test_ai_step_caps_large_tool_call_args():
+def test_ai_step_preserves_tool_call_ids_for_distinct_calls():
+    """Multiple calls with the same name must remain distinguishable by id."""
+    message = {
+        "type": "ai",
+        "content": None,
+        "tool_calls": [
+            {"name": "web_search", "args": {"query": "q1"}, "id": "call_1"},
+            {"name": "web_search", "args": {"query": "q2"}, "id": "call_2"},
+            {"name": "web_fetch", "args": {"url": "https://example.com"}, "id": "call_3"},
+        ],
+    }
+
+    step = build_subagent_step(message, task_id="t", message_index=1)
+
+    assert step["tool_calls"] == [
+        {"id": "call_1", "name": "web_search", "args": {"query": "q1"}},
+        {"id": "call_2", "name": "web_search", "args": {"query": "q2"}},
+        {"id": "call_3", "name": "web_fetch", "args": {"url": "https://example.com"}},
+    ]
+
+
+def test_tool_step_preserves_tool_call_id():
+    message = {
+        "type": "tool",
+        "name": "web_search",
+        "tool_call_id": "call_2",
+        "content": "results for q2",
+    }
+
+    step = build_subagent_step(message, task_id="t", message_index=2)
+
+    assert step["tool_call_id"] == "call_2"
+
     # Regression for #3779: build_subagent_step capped `text` but copied
     # `tool_calls[].args` verbatim, so a write_file/bash call carrying a big
     # payload produced an unbounded persisted row. Args must now be capped too.
