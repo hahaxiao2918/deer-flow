@@ -491,6 +491,26 @@ def test_system_prompt_template_contains_file_editing_workflow_rule():
     assert "append=True" in template
 
 
+def test_system_prompt_template_uses_neutral_super_agent_identity(monkeypatch):
+    """Keep the default lead-agent identity free of product branding."""
+    template = prompt_module.SYSTEM_PROMPT_TEMPLATE
+
+    assert "{role_identity}" in template
+    assert "open-source super agent" not in template
+
+    config = _make_minimal_app_config()
+    monkeypatch.setattr("deerflow.config.get_app_config", lambda: config)
+    monkeypatch.setattr(prompt_module, "get_or_new_skill_storage", lambda app_config=None: SimpleNamespace(load_skills=lambda enabled_only=True: []))
+    monkeypatch.setattr(prompt_module, "get_agent_soul", lambda agent_name=None: "")
+
+    default_prompt = prompt_module.apply_prompt_template(app_config=config)
+    custom_prompt = prompt_module.apply_prompt_template(agent_name="researcher", app_config=config)
+
+    assert "<role>\nYou are a super agent.\n</role>" in default_prompt
+    assert "DeerFlow 2.0" not in default_prompt
+    assert "<role>\nYou are researcher, a super agent.\n</role>" in custom_prompt
+
+
 def test_system_prompt_template_requires_virtual_paths_for_output_images():
     template = prompt_module.SYSTEM_PROMPT_TEMPLATE
 
@@ -506,7 +526,7 @@ def test_system_prompt_template_preserves_placeholders():
     """
     template = prompt_module.SYSTEM_PROMPT_TEMPLATE
     for ph in (
-        "{agent_name}",
+        "{role_identity}",
         "{soul}",
         "{self_update_section}",
         "{subagent_thinking}",

@@ -160,6 +160,9 @@ commits when incorporating upstream changes.
   `extensions_config.json`, or `.deer-flow` data. In particular, the local
   `github token.md` is intentionally ignored. Docker builds from the current
   checkout; `docker compose up --build` does not replace source control history.
+  Keep `backend/.deer-flow` excluded from the Docker build context: it contains
+  live per-thread state and can include sandbox-owned paths that the Docker
+  builder cannot read.
 
 - **Documentation update policy** — keep docs in sync with code: update `README.md` for
   user-facing changes and the relevant `AGENTS.md` for development/architecture changes in
