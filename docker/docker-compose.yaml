@@ -130,8 +130,9 @@ services:
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
       # Proxy values (HTTP_PROXY/HTTPS_PROXY/ALL_PROXY) are inherited from ../.env via env_file.
       # Only NO_PROXY is declared here so internal service hostnames are always exempt from the proxy.
-      - NO_PROXY=${NO_PROXY:-}${NO_PROXY:+,}localhost,127.0.0.1,::1,gateway,frontend,nginx,provisioner,host.docker.internal
-      - no_proxy=${no_proxy:-}${no_proxy:+,}localhost,127.0.0.1,::1,gateway,frontend,nginx,provisioner,host.docker.internal
+      - DEERFLOW_PATENT_MCP_TOKEN=${DEERFLOW_PATENT_MCP_TOKEN:?set an internal token before enabling patent-data-mcp}
+      - NO_PROXY=${NO_PROXY:-}${NO_PROXY:+,}localhost,127.0.0.1,::1,gateway,frontend,nginx,provisioner,patent-data-mcp,host.docker.internal
+      - no_proxy=${no_proxy:-}${no_proxy:+,}localhost,127.0.0.1,::1,gateway,frontend,nginx,provisioner,patent-data-mcp,host.docker.internal
     env_file:
       - ../.env
     extra_hosts:
@@ -142,6 +143,32 @@ services:
     networks:
       - deer-flow
     restart: unless-stopped
+
+  # ── Cost-governed Patent Data MCP (internal only) ─────────────────────────
+  patent-data-mcp:
+    build:
+      context: ../services/deerflow-patent-data-mcp
+      dockerfile: Dockerfile
+    environment:
+      - ZHIHUIYA_API_KEY=${ZHIHUIYA_API_KEY}
+      - ZHIHUIYA_BASE_URL=${ZHIHUIYA_BASE_URL}
+      - MCP_TOKEN=${DEERFLOW_PATENT_MCP_TOKEN:?set an internal token before enabling patent-data-mcp}
+      - DATA_MCP_PROJECT_BUDGETS_JSON=${DEERFLOW_PATENT_MCP_PROJECT_BUDGETS_JSON:?set a JSON project budget map before enabling patent-data-mcp}
+      - DATA_MCP_STATE_PATH=/data/deerflow-patent-data-mcp.sqlite3
+      - DATA_MCP_CACHE_TTL_SECONDS=${DEERFLOW_PATENT_MCP_CACHE_TTL_SECONDS:-2592000}
+      - NO_PROXY=${NO_PROXY:-}${NO_PROXY:+,}localhost,127.0.0.1,::1,gateway,frontend,nginx,patent-data-mcp
+      - no_proxy=${no_proxy:-}${no_proxy:+,}localhost,127.0.0.1,::1,gateway,frontend,nginx,patent-data-mcp
+    volumes:
+      - patent-data-mcp-state:/data
+    networks:
+      - deer-flow
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; assert urlopen('http://127.0.0.1:8092/health').status == 200"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
 
   # ── Sandbox Provisioner (optional, Kubernetes mode) ────────────────────────
   provisioner:
@@ -177,6 +204,7 @@ services:
       retries: 6
 volumes:
   redis-data:
+  patent-data-mcp-state:
 
 networks:
   deer-flow:

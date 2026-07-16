@@ -52,6 +52,15 @@
           }
         }
       }
+    },
+    "patent-data": {
+      "enabled": false,
+      "type": "http",
+      "url": "http://patent-data-mcp:8092/mcp",
+      "headers": {
+        "Authorization": "Bearer $DEERFLOW_PATENT_MCP_TOKEN"
+      },
+      "description": "Internal cost-governed patent data MCP. Enable only after setting a dedicated token and a JSON project budget map."
     }
   },
   "skills": {
