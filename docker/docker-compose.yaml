@@ -162,6 +162,7 @@ services:
       - patent-data-mcp-state:/data
     networks:
       - deer-flow
+      - web-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; assert urlopen('http://127.0.0.1:8092/health').status == 200"]

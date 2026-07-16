@@ -36,6 +36,10 @@ The tracked `extensions_config.example.json` contains a disabled `patent-data` e
 
 Before that change, run `scripts/preflight.py` from the repository root with the production environment loaded. It validates the dedicated token, non-empty project budget map, internal-only MCP URL, and runtime Skill states without making an upstream request.
 
+## External MCP reverse proxy
+
+When deployed on the shared proxy host, the sidecar also joins `web-network` so the host-level `nginx-proxy` can reach it by the Docker name `patent-data-mcp`. Install `nginx/ipmcp.conf` as `/home/share/nginx/conf.d/ipmcp.conf`, validate it in `nginx-proxy`, then reload that container. It serves both `http://ipmcp.server.starlove.top/mcp` and HTTPS. The public route still requires the dedicated MCP bearer token; use HTTPS for any client outside the trusted internal network.
+
 ## Validation sequence
 
 1. Install service and test dependencies in an isolated environment; run `pytest -q`.
