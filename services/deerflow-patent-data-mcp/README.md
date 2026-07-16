@@ -34,6 +34,8 @@ DEERFLOW_PATENT_MCP_PROJECT_BUDGETS_JSON={"approved-project-id":10.00}
 
 The tracked `extensions_config.example.json` contains a disabled `patent-data` entry. After the sidecar is healthy, an operator must copy that entry into the ignored runtime `extensions_config.json`, change `enabled` to `true`, and restart/reload the Gateway using the normal deployment procedure. This deliberate last step prevents an unreviewed branch checkout from changing the active MCP registry.
 
+Before that change, run `scripts/preflight.py` from the repository root with the production environment loaded. It validates the dedicated token, non-empty project budget map, internal-only MCP URL, and runtime Skill states without making an upstream request.
+
 ## Validation sequence
 
 1. Install service and test dependencies in an isolated environment; run `pytest -q`.
