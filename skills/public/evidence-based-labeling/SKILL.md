@@ -48,7 +48,7 @@ Treat a stated effect as the applicant's assertion unless independently validate
 
 For each publication include: `publication_number`, `decision_status`, `labels`, `decisive_reason`, `counterevidence`, `ambiguity`, and `review_needed`.
 
-Set `decision_status` to exactly one of `labeled`, `partial`, `insufficient_evidence`, `retrieval_failed`, or `conflict`. Each `labels` entry contains `label`, `decision` (`positive`, `negative`, `uncertain`, or `not_applicable`), `evidence_ids`, `evidence_level`, and `confidence`. Use `negative` only when the rubric defines observable exclusion evidence; absence alone is `uncertain`.
+Set `decision_status` to exactly one of `labeled`, `partial`, `insufficient_evidence`, `retrieval_failed`, or `conflict`. Each `labels` entry contains `label`, `decision` (`positive`, `negative`, `uncertain`, or `not_applicable`), `evidence_ids`, `evidence_level`, and `confidence`. Set confidence to exactly `low`, `medium`, or `high`; do not use numeric confidence. Use `negative` only when the rubric defines observable exclusion evidence; absence alone is `uncertain`.
 
 ## Guardrails
 

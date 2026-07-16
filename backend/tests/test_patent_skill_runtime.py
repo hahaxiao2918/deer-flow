@@ -59,8 +59,12 @@ def test_all_patent_skills_support_clarification_and_artifact_handoff():
         assert required_tools <= set(parsed.allowed_tools or ())
         body = parsed.skill_file.read_text(encoding="utf-8")
         assert "schema_version" in body
+        assert "schema_version: 2.0.0" in body
         assert "analysis_id" in body
         assert "status" in body
+
+    labeling = (SKILLS_ROOT / "evidence-based-labeling" / "SKILL.md").read_text(encoding="utf-8")
+    assert "do not use numeric confidence" in labeling
 
 
 def test_runtime_manifest_and_schema_are_version_aligned():
