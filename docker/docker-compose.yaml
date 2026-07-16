@@ -131,6 +131,7 @@ services:
       # Proxy values (HTTP_PROXY/HTTPS_PROXY/ALL_PROXY) are inherited from ../.env via env_file.
       # Only NO_PROXY is declared here so internal service hostnames are always exempt from the proxy.
       - DEERFLOW_PATENT_MCP_TOKEN=${DEERFLOW_PATENT_MCP_TOKEN:?set an internal token before enabling patent-data-mcp}
+      - DEERFLOW_PATENT_MCP_AUTHORIZATION=${DEERFLOW_PATENT_MCP_AUTHORIZATION:?set the full Bearer authorization value before enabling patent-data-mcp}
       - NO_PROXY=${NO_PROXY:-}${NO_PROXY:+,}localhost,127.0.0.1,::1,gateway,frontend,nginx,provisioner,patent-data-mcp,host.docker.internal
       - no_proxy=${no_proxy:-}${no_proxy:+,}localhost,127.0.0.1,::1,gateway,frontend,nginx,provisioner,patent-data-mcp,host.docker.internal
     env_file:

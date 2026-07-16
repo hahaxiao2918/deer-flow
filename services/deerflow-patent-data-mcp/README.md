@@ -27,10 +27,11 @@ The tracked compose file requires two new operator variables before it will star
 
 ```text
 DEERFLOW_PATENT_MCP_TOKEN=<new internal bearer token; do not reuse a historical MCP token>
+DEERFLOW_PATENT_MCP_AUTHORIZATION=Bearer <the same internal token>
 DEERFLOW_PATENT_MCP_PROJECT_BUDGETS_JSON={"approved-project-id":10.00}
 ```
 
-`ZHIHUIYA_API_KEY` remains in the sidecar environment only. The Gateway receives only `DEERFLOW_PATENT_MCP_TOKEN` so that it can call `http://patent-data-mcp:8092/mcp` on the private `deer-flow` network.
+`ZHIHUIYA_API_KEY` remains in the sidecar environment only. The Gateway receives only `DEERFLOW_PATENT_MCP_TOKEN` and the complete `DEERFLOW_PATENT_MCP_AUTHORIZATION` header value so that it can call `http://patent-data-mcp:8092/mcp` on the private `deer-flow` network. The complete header variable is required because Deerflow expands environment variables only when the whole configured header value is a variable reference.
 
 The tracked `extensions_config.example.json` contains a disabled `patent-data` entry. After the sidecar is healthy, an operator must copy that entry into the ignored runtime `extensions_config.json`, change `enabled` to `true`, and restart/reload the Gateway using the normal deployment procedure. This deliberate last step prevents an unreviewed branch checkout from changing the active MCP registry.
 

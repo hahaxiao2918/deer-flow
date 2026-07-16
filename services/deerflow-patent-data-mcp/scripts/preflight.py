@@ -65,8 +65,8 @@ def main() -> None:
         fail("runtime config must contain enabled mcpServers.patent-data")
     if mcp.get("url") != "http://patent-data-mcp:8092/mcp":
         fail("patent-data MCP URL must remain internal")
-    if mcp.get("headers", {}).get("Authorization") != "Bearer $DEERFLOW_PATENT_MCP_TOKEN":
-        fail("patent-data MCP must use the dedicated token placeholder")
+    if mcp.get("headers", {}).get("Authorization") != "$DEERFLOW_PATENT_MCP_AUTHORIZATION":
+        fail("patent-data MCP must use the complete dedicated authorization placeholder")
     disabled = [name for name in SKILLS if not (config.get("skills") or {}).get(name, {}).get("enabled")]
     print(f"PASS: budgets={len(budgets)}; mcp=patent-data; disabled_skills={len(disabled)}")
     if disabled:
