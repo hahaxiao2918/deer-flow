@@ -18,7 +18,7 @@ Produce a bounded `CorpusManifest`, not a claim of exhaustive ownership or portf
 
 ## Runtime contract
 
-1. Treat this as the corpus-building stage. Emit `schema_version`, `analysis_id`, `artifact_type: corpus_manifest`, `status`, scope, assumptions, query log, document identifiers, accounting, and limitations.
+1. Treat this as the corpus-building stage. Emit `schema_version: 2.0.0`, `analysis_id`, `artifact_type: corpus_manifest`, `status`, scope, assumptions, query log, document identifiers, accounting, and limitations.
 2. Use the runtime-provided run identifier when visible. Otherwise generate a stable analysis identifier; never ask the user for an internal project or run ID.
 3. Default the analysis unit to `publication_document`. Identify documents by `publication_number` with country code and kind code when available. Keep application and grant-publication identifiers separate.
 4. Set `family_normalized: false` unless an authorized source explicitly supplies the declared family definition. Never convert publication counts into invention counts when family normalization is unavailable.

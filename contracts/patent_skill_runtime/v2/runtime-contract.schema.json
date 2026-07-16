@@ -123,13 +123,25 @@
     },
     "labelDecision": {
       "type": "object",
-      "required": ["publication_number", "processing_status", "labels", "evidence_ids", "evidence_level", "review_needed"],
+      "required": ["publication_number", "decision_status", "labels", "review_needed"],
       "properties": {
         "publication_number": {"type": "string"},
-        "processing_status": {"enum": ["included", "excluded", "boundary", "insufficient_evidence", "retrieval_failed"]},
-        "labels": {"type": "array", "items": {"type": "string"}},
-        "evidence_ids": {"type": "array", "items": {"type": "string"}},
-        "evidence_level": {"enum": ["E3", "E2", "E1", "I", "U"]},
+        "decision_status": {"enum": ["labeled", "partial", "insufficient_evidence", "retrieval_failed", "conflict"]},
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "decision", "evidence_ids", "evidence_level", "confidence"],
+            "properties": {
+              "label": {"type": "string"},
+              "decision": {"enum": ["positive", "negative", "uncertain", "not_applicable"]},
+              "evidence_ids": {"type": "array", "items": {"type": "string"}},
+              "evidence_level": {"enum": ["E3", "E2", "E1", "I", "U"]},
+              "confidence": {"enum": ["low", "medium", "high"]}
+            },
+            "additionalProperties": true
+          }
+        },
         "review_needed": {"type": "boolean"}
       },
       "additionalProperties": true

@@ -12,23 +12,23 @@
   "skills": {
     "applicant-tech-patent-retrieval": {
       "version": "2.0.0",
-      "sha256": "fee02b28c8542c9642f84653d0a5350e684038b73f788eb835b724f09d723f94"
+      "sha256": "177f13d6620daa209cbb84b783d6be622704f5df7b39e9094f7b576db3bec2b5"
     },
     "evidence-based-labeling": {
       "version": "2.0.0",
-      "sha256": "d5c40edffea9b37a3f710bb179cdc247505c200300833600b83585487f72ca43"
+      "sha256": "5eb507c2f4c4900da4787653fcb24b71b4a00630e8a81e250b7d25093fa0103d"
     },
     "technology-insight-analysis": {
       "version": "2.0.0",
-      "sha256": "a45ed7672977ce0acee54ef7ad8f1cea1d7c699292789ef41645f6eb1b0fc9c5"
+      "sha256": "f739ba3532c77fc9ef7c56660a8c3df07dd11a98ef6d8ff6e9d3de272892f7a3"
     },
     "tech-evolution-analysis": {
       "version": "2.0.0",
-      "sha256": "7105c71b0a5f6c15c4710ddedcde46d2b82ce3e1e7e7e4ce982a4c3530d6978f"
+      "sha256": "7b9d276e4ab294e8c08e93467550f9959d3a2d6f74fb56ffb2025ad1d5fdcd85"
     },
     "black-swan-tech-radar": {
       "version": "2.0.0",
-      "sha256": "03ac078e8372f6c3c91d44c7beb235f52f8f0d362714ed4f9eb66b1da8421603"
+      "sha256": "e86b951ddeb45155f9bca81a82d422d40d0ee09b5ccfa4ae47ab41013a433106"
     }
   },
   "runtime_policy": {

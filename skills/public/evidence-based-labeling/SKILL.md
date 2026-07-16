@@ -18,7 +18,7 @@ Turn a versioned rubric and a bounded publication set into reproducible `LabelDe
 ## Runtime contract
 
 1. Require either an upstream `CorpusManifest`/`EvidenceCard` set or explicit publication identifiers. Never start open-ended discovery.
-2. Emit `schema_version`, `analysis_id`, `artifact_type: label_decisions`, `status`, `rubric_version`, `analysis_unit`, document-level decisions, unresolved conflicts, and aggregate checks.
+2. Emit `schema_version: 2.0.0`, `analysis_id`, `artifact_type: label_decisions`, `status`, `rubric_version`, `analysis_unit`, document-level decisions, unresolved conflicts, and aggregate checks.
 3. Default the analysis unit to `publication_document`. Preserve `publication_number`, `application_number`, and possible duplicate/family ambiguity as separate fields.
 4. When another skill will consume the result, write it to `workspace/patent-analysis/<analysis_id>/label-decisions.json`; otherwise return the same structure inline.
 
@@ -46,7 +46,9 @@ Treat a stated effect as the applicant's assertion unless independently validate
 
 ## Label decision fields
 
-Include: `publication_number`, `processing_status`, `labels`, `evidence_ids`, `evidence_level`, `confidence`, `decisive_reason`, `counterevidence`, `ambiguity`, and `review_needed`.
+For each publication include: `publication_number`, `decision_status`, `labels`, `decisive_reason`, `counterevidence`, `ambiguity`, and `review_needed`.
+
+Set `decision_status` to exactly one of `labeled`, `partial`, `insufficient_evidence`, `retrieval_failed`, or `conflict`. Each `labels` entry contains `label`, `decision` (`positive`, `negative`, `uncertain`, or `not_applicable`), `evidence_ids`, `evidence_level`, and `confidence`. Use `negative` only when the rubric defines observable exclusion evidence; absence alone is `uncertain`.
 
 ## Guardrails
 
