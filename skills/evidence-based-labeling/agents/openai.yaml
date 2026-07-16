@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evidence-Based Labeling"
+  short_description: "Label patent sets with cited evidence."
+  default_prompt: "Use $evidence-based-labeling to label a patent set with auditable evidence."

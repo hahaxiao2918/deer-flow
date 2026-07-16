@@ -1,0 +1,4 @@
+interface:
+  display_name: "Black Swan Technology Radar"
+  short_description: "Surface weak-signal technology risks from patents."
+  default_prompt: "Use $black-swan-tech-radar to assess emerging technology signals."

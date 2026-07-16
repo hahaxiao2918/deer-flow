@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technology Evolution Analysis"
+  short_description: "Trace technical evolution from patent evidence."
+  default_prompt: "Use $tech-evolution-analysis to trace a technology trajectory."
