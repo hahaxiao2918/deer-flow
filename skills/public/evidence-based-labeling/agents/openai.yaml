@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evidence-Based Labeling"
+  short_description: "Apply auditable rules to each patent publication."
+  default_prompt: "Use $evidence-based-labeling to apply a versioned rubric to a bounded publication set with document-level evidence."

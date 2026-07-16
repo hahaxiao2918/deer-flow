@@ -1,4 +1,0 @@
-interface:
-  display_name: "Applicant Patent Retrieval"
-  short_description: "Retrieve applicant technology patents with cost control."
-  default_prompt: "Use $applicant-tech-patent-retrieval to retrieve an applicant patent set."

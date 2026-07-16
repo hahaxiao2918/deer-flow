@@ -1,4 +1,0 @@
-interface:
-  display_name: "Technology Insight Analysis"
-  short_description: "Analyze patent evidence into technical insights."
-  default_prompt: "Use $technology-insight-analysis to analyze a patent set."

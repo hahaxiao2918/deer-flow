@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deerflow.local/contracts/patent-skill-runtime/v2/runtime-contract.schema.json",
+  "title": "Deerflow Patent Skill Runtime Contract v2",
+  "type": "object",
+  "required": ["schema_version", "analysis_id", "artifact_type", "status"],
+  "properties": {
+    "schema_version": {"const": "2.0.0"},
+    "analysis_id": {"type": "string", "minLength": 1},
+    "artifact_type": {
+      "enum": ["research_brief", "corpus_manifest", "evidence_cards", "label_decisions", "route_map", "evolution_map", "weak_signal_register"]
+    },
+    "status": {"$ref": "#/$defs/status"},
+    "skill_name": {"type": "string"},
+    "skill_version": {"type": "string"},
+    "created_at": {"type": "string"},
+    "upstream_artifacts": {"type": "array", "items": {"type": "string"}},
+    "assumptions": {"type": "array", "items": {"type": "string"}},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "payload": {"type": "object"}
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "status": {
+      "enum": ["needs_input", "scope_ambiguous", "ready", "no_results", "partial_data", "insufficient_evidence", "unsupported_request", "completed"]
+    },
+    "documentIdentifier": {
+      "type": "object",
+      "required": ["publication_number"],
+      "properties": {
+        "publication_number": {"type": "string", "minLength": 1},
+        "application_number": {"type": ["string", "null"]},
+        "grant_publication_number": {"type": ["string", "null"]},
+        "family_id": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "researchBrief": {
+      "type": "object",
+      "required": ["research_question", "expected_deliverable", "analysis_unit", "cutoff_date", "stop_rule"],
+      "properties": {
+        "research_question": {"type": "string", "minLength": 1},
+        "expected_deliverable": {"type": "string", "minLength": 1},
+        "analysis_unit": {"enum": ["publication_document", "application", "simple_family", "extended_family"]},
+        "cutoff_date": {"type": "string"},
+        "scope": {"type": "object"},
+        "defaults_applied": {"type": "array", "items": {"type": "string"}},
+        "stop_rule": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    },
+    "corpusManifest": {
+      "type": "object",
+      "required": ["origin", "analysis_unit", "family_normalized", "documents", "query_log", "accounting"],
+      "properties": {
+        "origin": {"enum": ["user_supplied", "retrieved", "upstream"]},
+        "analysis_unit": {"enum": ["publication_document", "application", "simple_family", "extended_family"]},
+        "family_normalized": {"type": "boolean"},
+        "family_definition": {"type": ["string", "null"]},
+        "documents": {"type": "array", "items": {"$ref": "#/$defs/documentIdentifier"}},
+        "query_log": {"type": "array", "items": {"type": "object"}},
+        "accounting": {
+          "type": "object",
+          "properties": {
+            "raw_hits": {"type": ["integer", "null"], "minimum": 0},
+            "unique_publications": {"type": ["integer", "null"], "minimum": 0},
+            "reviewed": {"type": ["integer", "null"], "minimum": 0},
+            "included": {"type": ["integer", "null"], "minimum": 0},
+            "boundary": {"type": ["integer", "null"], "minimum": 0},
+            "excluded": {"type": ["integer", "null"], "minimum": 0},
+            "truncated": {"type": "boolean"}
+          },
+          "required": ["truncated"],
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "evidenceCard": {
+      "type": "object",
+      "required": ["evidence_id", "publication_number", "proposition_type", "value", "support", "epistemic_status", "claim_relation", "evidence_level"],
+      "properties": {
+        "evidence_id": {"type": "string", "minLength": 1},
+        "publication_number": {"type": "string", "minLength": 1},
+        "proposition_type": {"enum": ["problem", "technical_means", "stated_effect", "component", "constraint", "counterevidence"]},
+        "value": {"type": "string"},
+        "support": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "locator", "text_or_paraphrase"],
+            "properties": {
+              "field": {"type": "string"},
+              "locator": {"type": "string"},
+              "text_or_paraphrase": {"type": "string"},
+              "source_language": {"type": ["string", "null"]},
+              "translation_status": {"type": ["string", "null"]}
+            },
+            "additionalProperties": true
+          }
+        },
+        "epistemic_status": {"enum": ["observed", "model_interpretation", "conflict", "missing"]},
+        "claim_relation": {"enum": ["claimed", "described", "background", "not_applicable"]},
+        "evidence_level": {"enum": ["E3", "E2", "E1", "I", "U"]},
+        "applicant_assertion": {"type": "boolean"},
+        "caveats": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "analysisClaim": {
+      "type": "object",
+      "required": ["claim_id", "claim_type", "text", "evidence_ids", "counterevidence_ids", "confidence"],
+      "properties": {
+        "claim_id": {"type": "string"},
+        "claim_type": {"type": "string"},
+        "text": {"type": "string"},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "counterevidence_ids": {"type": "array", "items": {"type": "string"}},
+        "confidence": {"enum": ["low", "medium", "high"]},
+        "limitations": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "labelDecision": {
+      "type": "object",
+      "required": ["publication_number", "processing_status", "labels", "evidence_ids", "evidence_level", "review_needed"],
+      "properties": {
+        "publication_number": {"type": "string"},
+        "processing_status": {"enum": ["included", "excluded", "boundary", "insufficient_evidence", "retrieval_failed"]},
+        "labels": {"type": "array", "items": {"type": "string"}},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}},
+        "evidence_level": {"enum": ["E3", "E2", "E1", "I", "U"]},
+        "review_needed": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "transitionClaim": {
+      "allOf": [
+        {"$ref": "#/$defs/analysisClaim"},
+        {
+          "type": "object",
+          "required": ["date_basis", "prior_period", "later_period", "alternative_explanations"],
+          "properties": {
+            "date_basis": {"enum": ["earliest_priority_date", "application_date", "publication_date"]},
+            "prior_period": {"type": "string"},
+            "later_period": {"type": "string"},
+            "alternative_explanations": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      ]
+    },
+    "weakSignal": {
+      "type": "object",
+      "required": ["signal_id", "state", "mechanism", "baseline_contrast", "evidence_ids", "counterevidence_ids", "alternative_explanations", "falsification_condition", "monitoring_trigger", "low_regret_action"],
+      "properties": {
+        "signal_id": {"type": "string"},
+        "state": {"enum": ["isolated_hypothesis", "candidate_signal", "monitored_signal", "insufficient_evidence"]},
+        "mechanism": {"type": "string"},
+        "baseline_contrast": {"type": "string"},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}},
+        "counterevidence_ids": {"type": "array", "items": {"type": "string"}},
+        "alternative_explanations": {"type": "array", "items": {"type": "string"}},
+        "falsification_condition": {"type": "string"},
+        "monitoring_trigger": {"type": "string"},
+        "low_regret_action": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

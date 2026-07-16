@@ -1,0 +1,4 @@
+interface:
+  display_name: "Applicant Patent Retrieval"
+  short_description: "Build an auditable applicant patent corpus."
+  default_prompt: "Use $applicant-tech-patent-retrieval to build a bounded, auditable publication corpus for an applicant and technology scope."

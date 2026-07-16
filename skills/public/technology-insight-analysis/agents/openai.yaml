@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technology Insight Analysis"
+  short_description: "Map technical routes from patent evidence."
+  default_prompt: "Use $technology-insight-analysis to turn a bounded patent-publication corpus into an evidence-backed technical route map."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technology Weak-Signal Radar"
+  short_description: "Register falsifiable weak and discontinuous signals."
+  default_prompt: "Use $black-swan-tech-radar to build a falsifiable weak-signal register and monitoring plan from a bounded patent corpus."

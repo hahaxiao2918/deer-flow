@@ -1,0 +1,40 @@
+{
+  "suite": "deerflow-patent-analysis-skills",
+  "release": "2.0.0",
+  "runtime_contract": "2.0.0",
+  "schema": "contracts/patent_skill_runtime/v2/runtime-contract.schema.json",
+  "baseline": {
+    "release": "1.0.0",
+    "source_commit": "2beac6d4",
+    "layout": "skills/<skill-name>",
+    "runtime_discovered": false
+  },
+  "skills": {
+    "applicant-tech-patent-retrieval": {
+      "version": "2.0.0",
+      "sha256": "fee02b28c8542c9642f84653d0a5350e684038b73f788eb835b724f09d723f94"
+    },
+    "evidence-based-labeling": {
+      "version": "2.0.0",
+      "sha256": "d5c40edffea9b37a3f710bb179cdc247505c200300833600b83585487f72ca43"
+    },
+    "technology-insight-analysis": {
+      "version": "2.0.0",
+      "sha256": "a45ed7672977ce0acee54ef7ad8f1cea1d7c699292789ef41645f6eb1b0fc9c5"
+    },
+    "tech-evolution-analysis": {
+      "version": "2.0.0",
+      "sha256": "7105c71b0a5f6c15c4710ddedcde46d2b82ce3e1e7e7e4ce982a4c3530d6978f"
+    },
+    "black-swan-tech-radar": {
+      "version": "2.0.0",
+      "sha256": "03ac078e8372f6c3c91d44c7beb235f52f8f0d362714ed4f9eb66b1da8421603"
+    }
+  },
+  "runtime_policy": {
+    "primary_skill_per_user_intent": true,
+    "reuse_upstream_artifacts": true,
+    "general_subagent_delegation": false,
+    "reason": "Deerflow currently preloads all enabled skills into general-purpose subagents without activating their allowed-tools policy."
+  }
+}

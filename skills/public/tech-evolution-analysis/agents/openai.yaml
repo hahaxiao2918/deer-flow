@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technology Evolution Analysis"
+  short_description: "Trace technical transitions with explicit date semantics."
+  default_prompt: "Use $tech-evolution-analysis to trace evidence-backed route changes across declared patent-document time slices."
