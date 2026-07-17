@@ -5,6 +5,7 @@
 # Commands:
 #   deploy.sh                    — build + start
 #   deploy.sh build              — build all images (mode-agnostic)
+#   deploy.sh check              — validate deployment inputs and live mounts
 #   deploy.sh start              — start from pre-built images
 #   deploy.sh down               — stop and remove containers
 #
@@ -13,6 +14,7 @@
 # Examples:
 #   deploy.sh                    # build + start
 #   deploy.sh build              # build all images
+#   deploy.sh check              # validate without changing containers
 #   deploy.sh start              # start pre-built images
 #   deploy.sh down               # stop and remove containers
 #
@@ -21,11 +23,11 @@
 set -e
 
 case "${1:-}" in
-    build|start|down)
+    build|check|start|down)
         CMD="$1"
         if [ -n "${2:-}" ]; then
             echo "Unknown argument: $2"
-            echo "Usage: deploy.sh [build|start|down]"
+            echo "Usage: deploy.sh [build|check|start|down]"
             exit 1
         fi
         ;;
@@ -34,7 +36,7 @@ case "${1:-}" in
         ;;
     *)
         echo "Unknown argument: $1"
-        echo "Usage: deploy.sh [build|start|down]"
+        echo "Usage: deploy.sh [build|check|start|down]"
         exit 1
         ;;
 esac
@@ -44,11 +46,12 @@ cd "$REPO_ROOT"
 
 ENV_FILE="$REPO_ROOT/.env"
 DOCKER_DIR="$REPO_ROOT/docker"
-if [ -f "$ENV_FILE" ]; then
-    COMPOSE_CMD=(docker compose --env-file "$ENV_FILE" -p deer-flow -f "$DOCKER_DIR/docker-compose.yaml")
-else
-    COMPOSE_CMD=(docker compose -p deer-flow -f "$DOCKER_DIR/docker-compose.yaml")
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Missing required deployment environment file: $ENV_FILE" >&2
+    echo "Copy .env.example to .env and configure it before deploying." >&2
+    exit 1
 fi
+COMPOSE_CMD=(docker compose --env-file "$ENV_FILE" -p deer-flow -f "$DOCKER_DIR/docker-compose.yaml")
 
 load_uv_extras_from_dotenv() {
     local line=""
@@ -80,6 +83,47 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
+
+require_regular_file() {
+    local variable_name="$1"
+    local path="${!variable_name}"
+    local resolved=""
+
+    if [ ! -e "$path" ]; then
+        echo -e "${RED}✗ Required host file does not exist: $path${NC}" >&2
+        exit 1
+    fi
+    if [ ! -f "$path" ]; then
+        echo -e "${RED}✗ Required host path is not a regular file: $path${NC}" >&2
+        echo "  Refusing to deploy because Docker bind mounts can turn a missing file into a directory." >&2
+        exit 1
+    fi
+    resolved="$(readlink -f -- "$path")"
+    if [ -z "$resolved" ] || [ ! -f "$resolved" ]; then
+        echo -e "${RED}✗ Cannot resolve required host file: $path${NC}" >&2
+        exit 1
+    fi
+    printf -v "$variable_name" '%s' "$resolved"
+    export "$variable_name"
+}
+
+verify_gateway_mount() {
+    local destination="$1"
+    local expected="$2"
+    local actual=""
+    local mount_type=""
+
+    expected="$(readlink -f -- "$expected")"
+    actual="$(docker inspect deer-flow-gateway --format "{{range .Mounts}}{{if eq .Destination \"$destination\"}}{{.Source}}{{end}}{{end}}")"
+    mount_type="$(docker inspect deer-flow-gateway --format "{{range .Mounts}}{{if eq .Destination \"$destination\"}}{{.Type}}{{end}}{{end}}")"
+    if [ "$mount_type" != "bind" ] || [ "$actual" != "$expected" ] || [ ! -f "$actual" ]; then
+        echo -e "${RED}✗ Gateway mount verification failed for $destination${NC}" >&2
+        echo "  expected bind source: $expected" >&2
+        echo "  actual $mount_type source: ${actual:-missing}" >&2
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Gateway mount: $actual → $destination${NC}"
+}
 
 # ── DEER_FLOW_HOME ────────────────────────────────────────────────────────────
 
@@ -134,6 +178,12 @@ if [ ! -f "$DEER_FLOW_EXTENSIONS_CONFIG_PATH" ]; then
 else
     echo -e "${GREEN}✓ extensions_config.json: $DEER_FLOW_EXTENSIONS_CONFIG_PATH${NC}"
 fi
+
+# Resolve bind sources before Compose sees them. Docker otherwise creates a
+# directory for a missing host path, which can make the gateway appear started
+# while its runtime configuration is unusable.
+require_regular_file DEER_FLOW_CONFIG_PATH
+require_regular_file DEER_FLOW_EXTENSIONS_CONFIG_PATH
 
 
 # ── BETTER_AUTH_SECRET ───────────────────────────────────────────────────────
@@ -353,6 +403,20 @@ fi
 
 echo ""
 
+# ── Check only ───────────────────────────────────────────────────────────────
+
+if [ "$CMD" = "check" ]; then
+    "${COMPOSE_CMD[@]}" config --quiet
+    if docker inspect deer-flow-gateway >/dev/null 2>&1; then
+        verify_gateway_mount "/app/backend/config.yaml" "$DEER_FLOW_CONFIG_PATH"
+        verify_gateway_mount "/app/backend/extensions_config.json" "$DEER_FLOW_EXTENSIONS_CONFIG_PATH"
+    else
+        echo -e "${YELLOW}⚠ Gateway is not running; live mount verification skipped.${NC}"
+    fi
+    echo -e "${GREEN}✓ Deployment inputs and Compose configuration are valid.${NC}"
+    exit 0
+fi
+
 # ── Start / Up ───────────────────────────────────────────────────────────────
 
 if [ "$CMD" = "start" ]; then
@@ -367,6 +431,9 @@ else
     # shellcheck disable=SC2086
     "${COMPOSE_CMD[@]}" up --build -d --remove-orphans $services
 fi
+
+verify_gateway_mount "/app/backend/config.yaml" "$DEER_FLOW_CONFIG_PATH"
+verify_gateway_mount "/app/backend/extensions_config.json" "$DEER_FLOW_EXTENSIONS_CONFIG_PATH"
 
 echo ""
 echo "=========================================="

@@ -146,8 +146,8 @@ commits when incorporating upstream changes.
   user to run commands: fetch `upstream`, merge `upstream/main` into
   `codex/shanghai-electric`, retain local customizations while resolving
   conflicts, run relevant checks, commit, push to `origin`, and rebuild the
-  local Docker stack with `docker compose -f docker/docker-compose.yaml up -d
-  --build`. Never replace this checkout with a fresh upstream clone or use
+  local Docker stack from the repository root with `./scripts/deploy.sh`.
+  Never replace this checkout with a fresh upstream clone or use
   `reset --hard` to update it. Ask the user only when a new credential,
   permission, external approval, or a genuinely product-defining conflict is
   required; report all other outcomes after completing the work.
@@ -160,6 +160,19 @@ commits when incorporating upstream changes.
   `extensions_config.json`, or `.deer-flow` data. In particular, the local
   `github token.md` is intentionally ignored. Docker builds from the current
   checkout; `docker compose up --build` does not replace source control history.
+
+- **Production deployment safety** — `scripts/deploy.sh` is the only supported
+  entry point for rebuilding, starting, or stopping the production DeerFlow
+  stack. Do not run ad-hoc `docker compose up`, `down`, `stop`, or `rm` commands
+  for `gateway`, `frontend`, or `nginx`; the deployment script owns the `.env`
+  file, host-path exports, sandbox overlay, project name, and mount validation.
+  Before considering a deployment successful, the script must confirm that
+  `config.yaml` and `extensions_config.json` are regular host files and that the
+  running gateway mounts those exact resolved paths. A directory at either file
+  path is a hard failure; never delete it or replace it without inspecting its
+  contents. Operations in this repository must target only the `deer-flow`
+  Compose project and must not stop, restart, or recreate unrelated containers
+  such as `ipa-gateway`.
 
 - **Documentation update policy** — keep docs in sync with code: update `README.md` for
   user-facing changes and the relevant `AGENTS.md` for development/architecture changes in
