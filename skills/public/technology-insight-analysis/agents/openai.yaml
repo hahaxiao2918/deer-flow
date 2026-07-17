@@ -1,0 +1,4 @@
+interface:
+  display_name: "Patent Technology Route Map"
+  short_description: "Map static technical routes from a frozen patent corpus."
+  default_prompt: "Use $technology-insight-analysis to build a static evidence-linked RouteMap from this corpus."

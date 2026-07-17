@@ -130,8 +130,13 @@ class ToolResultSanitizationMiddleware(AgentMiddleware[AgentState]):
     avoided and the metadata-tagging follow-up.
     """
 
+    def __init__(self, *, untrusted_tool_prefixes: list[str] | tuple[str, ...] | None = None) -> None:
+        super().__init__()
+        self._untrusted_tool_prefixes = tuple(prefix for prefix in (untrusted_tool_prefixes or ()) if prefix)
+
     def _should_sanitize(self, request: ToolCallRequest) -> bool:
-        return request.tool_call.get("name") in _REMOTE_CONTENT_TOOL_NAMES
+        name = request.tool_call.get("name")
+        return isinstance(name, str) and (name in _REMOTE_CONTENT_TOOL_NAMES or name.startswith(self._untrusted_tool_prefixes))
 
     @override
     def wrap_tool_call(

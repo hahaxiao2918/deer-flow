@@ -1,0 +1,4 @@
+interface:
+  display_name: "Patent Evidence Labeling"
+  short_description: "Create evidence-cited multi-dimensional patent labels."
+  default_prompt: "Use $evidence-based-labeling on this frozen RetrievalManifest and preserve unknown and conflict states."

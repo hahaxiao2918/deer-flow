@@ -1,0 +1,4 @@
+interface:
+  display_name: "Applicant Patent Corpus Retrieval"
+  short_description: "Build and freeze a traceable applicant patent corpus."
+  default_prompt: "Use $applicant-tech-patent-retrieval to build a bounded RetrievalManifest for this applicant and technical scope."

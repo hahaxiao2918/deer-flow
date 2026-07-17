@@ -455,6 +455,29 @@ def _load_enabled_skills_for_tool_policy(available_skills: set[str] | None, *, a
     return [skill for skill in skills if skill.name in available_skills]
 
 
+def _resolve_agent_skills(
+    available_skills: set[str] | None,
+    agent_config,
+    *,
+    app_config: AppConfig,
+    user_id: str | None = None,
+) -> list[Skill]:
+    """Load enabled Skills and apply the custom agent's strict contract."""
+    loaded = _load_enabled_skills_for_tool_policy(None, app_config=app_config, user_id=user_id)
+    requested = getattr(agent_config, "skills", None) if agent_config is not None else None
+    if requested is None and available_skills is not None:
+        requested = sorted(available_skills)
+
+    from deerflow.skills.resolution import resolve_explicit_skills
+
+    return resolve_explicit_skills(
+        loaded,
+        requested,
+        strict=bool(getattr(agent_config, "strict_skill_resolution", False)),
+        owner=f"agent:{getattr(agent_config, 'name', 'default')}",
+    )
+
+
 def make_lead_agent(config: RunnableConfig):
     """LangGraph graph factory; keep the signature compatible with LangGraph Server."""
     runtime_config = _get_runtime_config(config)
@@ -555,7 +578,12 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
             existing = list(existing)
         config["callbacks"] = [*existing, *tracing_callbacks]
 
-    skills_for_tool_policy = _load_enabled_skills_for_tool_policy(available_skills, app_config=resolved_app_config, user_id=resolved_user_id)
+    skills_for_tool_policy = _resolve_agent_skills(
+        available_skills,
+        agent_config,
+        app_config=resolved_app_config,
+        user_id=resolved_user_id,
+    )
 
     # Build skill search setup (deferred skill discovery).
     # Controlled by skills.deferred_discovery — independent from tool_search.enabled.

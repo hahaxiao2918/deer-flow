@@ -173,6 +173,9 @@ class AgentConfig(BaseModel):
     # - []: no subagents (and therefore no task tool)
     # - ["general-purpose", ...]: explicit delegation whitelist
     subagents: list[str] | None = None
+    # Fail construction when an explicitly listed Skill is unavailable.
+    # False preserves the historical silent-filtering behavior.
+    strict_skill_resolution: bool = False
     # Optional binding to GitHub repositories so this agent can respond to
     # webhook events from the gateway dispatcher. None means "no GitHub
     # integration", which is the case for every existing agent.

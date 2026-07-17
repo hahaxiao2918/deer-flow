@@ -1,4 +1,5 @@
 name: patent-research
+strict_skill_resolution: true
 description: 专利检索、证据标引、技术洞察、演进分析与弱信号监测
 skills:
   - deep-research

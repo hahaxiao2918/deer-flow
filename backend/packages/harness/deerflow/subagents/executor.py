@@ -564,7 +564,10 @@ class SubagentExecutor:
             storage_kwargs = {"app_config": self.app_config} if self.app_config is not None else {}
             storage = await asyncio.to_thread(get_or_new_skill_storage, **storage_kwargs)
             # Use asyncio.to_thread to avoid blocking the event loop (LangGraph ASGI requirement)
-            all_skills = await asyncio.to_thread(storage.load_skills, enabled_only=True)
+            all_skills = await asyncio.to_thread(
+                storage.load_skills,
+                enabled_only=not self.config.strict_skill_resolution,
+            )
             logger.info(f"[trace={self.trace_id}] Subagent {self.config.name} loaded {len(all_skills)} enabled skills from disk")
         except Exception:
             logger.exception(f"[trace={self.trace_id}] Failed to load skills for subagent {self.config.name}")
@@ -574,11 +577,14 @@ class SubagentExecutor:
             logger.info(f"[trace={self.trace_id}] Subagent {self.config.name} no enabled skills found")
             return []
 
-        # Filter by config.skills whitelist
-        if self.config.skills is not None:
-            allowed = set(self.config.skills)
-            return [s for s in all_skills if s.name in allowed]
-        return all_skills
+        from deerflow.skills.resolution import resolve_explicit_skills
+
+        return resolve_explicit_skills(
+            all_skills,
+            self.config.skills,
+            strict=self.config.strict_skill_resolution,
+            owner=f"subagent:{self.config.name}",
+        )
 
     async def _load_skill_messages(self, skills: list[Skill]) -> list[SystemMessage]:
         """Load skill content as conversation items based on config.skills.

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deerflow.local/contracts/patent-research/v2/weak-signal-register.json",
+  "title": "WeakSignalRegister",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "artifact_type", "report_label", "corpus_id", "cutoff", "signals", "limitations", "search_gap_requests"],
+  "properties": {
+    "contract_version": {"const": "patent-research.v2"}, "artifact_type": {"const": "WeakSignalRegister"}, "report_label": {"const": "专利弱信号候选"},
+    "corpus_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "cutoff": {"type": "string"},
+    "signals": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["signal_id", "candidate", "novelty_within_corpus", "evidence_strength", "supporting_evidence_ids", "contradictory_evidence_ids", "alternative_explanations", "falsification_condition", "monitoring_trigger", "review_horizon"], "properties": {"signal_id": {"type": "string"}, "candidate": {"type": "string"}, "novelty_within_corpus": {"enum": ["low", "medium", "high"]}, "evidence_strength": {"enum": ["low", "medium", "high"]}, "supporting_evidence_ids": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}, "contradictory_evidence_ids": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}, "alternative_explanations": {"type": "array", "items": {"type": "string"}}, "falsification_condition": {"type": "string"}, "monitoring_trigger": {"type": "string"}, "review_horizon": {"type": "string"}}}},
+    "limitations": {"type": "array", "items": {"type": "string"}}, "search_gap_requests": {"type": "array", "items": {"type": "object"}}
+  }
+}

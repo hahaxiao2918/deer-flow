@@ -104,6 +104,10 @@ class CustomSubagentConfig(BaseModel):
         default=None,
         description="Skill names whitelist (None = inherit all enabled skills, [] = no skills)",
     )
+    strict_skill_resolution: bool = Field(
+        default=False,
+        description="Fail subagent construction when an explicit Skill is unavailable",
+    )
     model: str = Field(
         default="inherit",
         description="Model to use - 'inherit' uses parent's model",

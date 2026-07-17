@@ -44,6 +44,7 @@ from deerflow.config.token_usage_config import TokenUsageConfig
 from deerflow.config.tool_config import ToolConfig, ToolGroupConfig
 from deerflow.config.tool_output_config import ToolOutputConfig
 from deerflow.config.tool_progress_config import ToolProgressConfig
+from deerflow.config.tool_result_sanitization_config import ToolResultSanitizationConfig
 from deerflow.config.tool_search_config import ToolSearchConfig, load_tool_search_config_from_dict
 
 load_dotenv()
@@ -162,6 +163,10 @@ class AppConfig(BaseModel):
     skill_evolution: SkillEvolutionConfig = Field(default_factory=SkillEvolutionConfig, description="Agent-managed skill evolution configuration")
     extensions: ExtensionsConfig = Field(default_factory=ExtensionsConfig, description="Extensions configuration (MCP servers and skills state)")
     tool_output: ToolOutputConfig = Field(default_factory=ToolOutputConfig, description="Tool output budget protection configuration")
+    tool_result_sanitization: ToolResultSanitizationConfig = Field(
+        default_factory=ToolResultSanitizationConfig,
+        description="Untrusted remote tool-result content configuration",
+    )
     tool_search: ToolSearchConfig = Field(default_factory=ToolSearchConfig, description="Tool search / deferred loading configuration")
     title: TitleConfig = Field(default_factory=TitleConfig, description="Automatic title generation configuration")
     summarization: SummarizationConfig = Field(default_factory=SummarizationConfig, description="Conversation summarization configuration")

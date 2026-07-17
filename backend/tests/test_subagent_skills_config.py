@@ -109,6 +109,7 @@ class TestCustomSubagentConfig:
         assert config.model == "inherit"
         assert config.max_turns == 50
         assert config.timeout_seconds == 900
+        assert config.strict_skill_resolution is False
 
     def test_full_configuration(self):
         config = CustomSubagentConfig(
@@ -120,12 +121,14 @@ class TestCustomSubagentConfig:
             model="qwen3:32b",
             max_turns=80,
             timeout_seconds=600,
+            strict_skill_resolution=True,
         )
         assert config.tools == ["bash", "read_file", "write_file"]
         assert config.skills == ["data-analysis", "visualization"]
         assert config.model == "qwen3:32b"
         assert config.max_turns == 80
         assert config.timeout_seconds == 600
+        assert config.strict_skill_resolution is True
 
     def test_skills_empty_list_no_skills(self):
         config = CustomSubagentConfig(

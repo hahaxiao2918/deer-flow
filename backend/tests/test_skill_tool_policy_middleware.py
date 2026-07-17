@@ -43,7 +43,19 @@ def custom_skill_tool(x: str) -> str:
     return x
 
 
-ALL_TOOLS = [web_search, bash, read_file, review_skill_package, custom_skill_tool]
+@as_tool
+def tool_search(x: str) -> str:
+    """Discover deferred tool schemas."""
+    return x
+
+
+@as_tool
+def patent_data_patent_search(x: str) -> str:
+    """Search patents."""
+    return x
+
+
+ALL_TOOLS = [web_search, bash, read_file, review_skill_package, custom_skill_tool, tool_search, patent_data_patent_search]
 
 
 def _make_skill(name: str, *, allowed_tools: list[str] | None = None, enabled: bool = True) -> Skill:
@@ -129,7 +141,36 @@ def test_slash_activation_restricts_to_allowed_plus_builtins():
         runtime_context={_SLASH_SECRET_SOURCE_KEY: {"path": _skill_path("reviewer")}},
     )
     out = mw._filter_tools(req)
-    assert set(_names(out.overridden)) == {"review_skill_package", "read_file"}
+    assert set(_names(out.overridden)) == {"review_skill_package", "read_file", "tool_search"}
+
+
+def test_tool_search_remains_available_but_promoted_disallowed_schema_is_hidden():
+    reviewer = _make_skill("reviewer", allowed_tools=["review_skill_package"])
+    mw = _make_middleware([reviewer])
+    req = _ModelReq(
+        ALL_TOOLS,
+        runtime_context={_SLASH_SECRET_SOURCE_KEY: {"path": _skill_path("reviewer")}},
+    )
+
+    out = mw._filter_tools(req)
+
+    assert "tool_search" in _names(out.overridden)
+    assert "patent-data_patent_search" not in _names(out.overridden)
+
+
+def test_promoted_disallowed_schema_is_rejected_at_execution_time():
+    reviewer = _make_skill("reviewer", allowed_tools=["review_skill_package"])
+    mw = _make_middleware([reviewer])
+    req = _ToolReq(
+        "patent-data_patent_search",
+        runtime_context={_SLASH_SECRET_SOURCE_KEY: {"path": _skill_path("reviewer")}},
+    )
+
+    result = mw._blocked_tool_message(req)
+
+    assert result is not None
+    assert result.status == "error"
+    assert "patent-data_patent_search" in result.content
 
 
 def test_skill_context_restricts_to_allowed_plus_builtins():
@@ -140,7 +181,7 @@ def test_skill_context_restricts_to_allowed_plus_builtins():
         state={"skill_context": [{"name": "data-skill", "path": _skill_path("data-skill"), "description": "d", "loaded_at": 1}]},
     )
     out = mw._filter_tools(req)
-    assert set(_names(out.overridden)) == {"bash", "custom_skill_tool", "read_file", "review_skill_package"}
+    assert set(_names(out.overridden)) == {"bash", "custom_skill_tool", "read_file", "review_skill_package", "tool_search"}
 
 
 def test_multiple_active_skills_union_allowed_tools():
@@ -157,7 +198,7 @@ def test_multiple_active_skills_union_allowed_tools():
         },
     )
     out = mw._filter_tools(req)
-    assert set(_names(out.overridden)) == {"bash", "custom_skill_tool", "read_file", "review_skill_package"}
+    assert set(_names(out.overridden)) == {"bash", "custom_skill_tool", "read_file", "review_skill_package", "tool_search"}
 
 
 def test_disabled_skill_in_context_is_ignored():
@@ -257,7 +298,7 @@ def test_wrap_model_call_passes_filtered_tools():
 
     result = mw.wrap_model_call(req, handler)
     passed = result.result[0]
-    assert set(_names(passed.overridden)) == {"review_skill_package", "read_file"}
+    assert set(_names(passed.overridden)) == {"review_skill_package", "read_file", "tool_search"}
 
 
 @pytest.mark.anyio
@@ -274,7 +315,7 @@ async def test_awrap_model_call_offloads_filtering():
 
     result = await mw.awrap_model_call(req, handler)
     passed = result.result[0]
-    assert set(_names(passed.overridden)) == {"review_skill_package", "read_file"}
+    assert set(_names(passed.overridden)) == {"review_skill_package", "read_file", "tool_search"}
 
 
 def test_wrap_tool_call_blocks_disallowed_tool():

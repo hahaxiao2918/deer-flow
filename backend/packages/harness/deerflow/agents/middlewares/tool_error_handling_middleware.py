@@ -178,7 +178,9 @@ def _build_runtime_middlewares(
     outer_wrappers: list[AgentMiddleware] = [
         InputSanitizationMiddleware(),
         ToolOutputBudgetMiddleware.from_app_config(app_config),
-        ToolResultSanitizationMiddleware(),
+        ToolResultSanitizationMiddleware(
+            untrusted_tool_prefixes=app_config.tool_result_sanitization.untrusted_tool_prefixes,
+        ),
     ]
 
     # Layer 2 — before_agent hooks that read/annotate thread-scoped data.

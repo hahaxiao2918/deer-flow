@@ -5,6 +5,7 @@ export interface Agent {
   tool_groups: string[] | null;
   skills: string[] | null;
   subagents: string[] | null;
+  strict_skill_resolution: boolean;
   soul?: string | null;
 }
 
@@ -15,6 +16,7 @@ export interface CreateAgentRequest {
   tool_groups?: string[] | null;
   skills?: string[] | null;
   subagents?: string[] | null;
+  strict_skill_resolution?: boolean;
   soul?: string;
 }
 
@@ -24,5 +26,6 @@ export interface UpdateAgentRequest {
   tool_groups?: string[] | null;
   skills?: string[] | null;
   subagents?: string[] | null;
+  strict_skill_resolution?: boolean | null;
   soul?: string | null;
 }

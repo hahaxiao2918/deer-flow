@@ -202,6 +202,16 @@ class TestKnownScopeBoundary:
         assert result is msg
         assert "<system-reminder>" in result.content
 
+    def test_configured_patent_data_prefix_is_sanitized(self):
+        mw = ToolResultSanitizationMiddleware(untrusted_tool_prefixes=["patent-data_"])
+        msg = _msg(_MALICIOUS_PAGE, name="patent-data_patent_get_passages")
+
+        result = mw.wrap_tool_call(_request("patent-data_patent_get_passages"), lambda _: msg)
+
+        assert result is not msg
+        assert "&lt;system-reminder&gt;" in result.content
+        assert "<system-reminder>" not in result.content
+
 
 class TestAsyncPath:
     def test_awrap_tool_call_sanitizes_remote_result(self):

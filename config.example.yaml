@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 24
+config_version: 25
 
 # ============================================================================
 # Logging
@@ -877,6 +877,11 @@ tool_search:
   # number of matched schemas promoted per model call. Valid range: 1..5.
   auto_promote_top_k: 3
 
+# Tool results matching these name prefixes are treated as untrusted remote
+# text and have forged framework tags/boundaries neutralized before model use.
+tool_result_sanitization:
+  untrusted_tool_prefixes: []
+
 # ============================================================================
 # Tool Output Budget Protection
 # ============================================================================
@@ -1184,6 +1189,7 @@ subagents:
       tools: null
       disallowed_tools: ["task"]
       skills: ["applicant-tech-patent-retrieval"]
+      strict_skill_resolution: true
       model: inherit
       max_turns: 80
       timeout_seconds: 900
@@ -1193,6 +1199,7 @@ subagents:
       tools: null
       disallowed_tools: ["task"]
       skills: ["evidence-based-labeling"]
+      strict_skill_resolution: true
       model: inherit
       max_turns: 80
       timeout_seconds: 900
@@ -1202,6 +1209,7 @@ subagents:
       tools: null
       disallowed_tools: ["task"]
       skills: ["technology-insight-analysis"]
+      strict_skill_resolution: true
       model: inherit
       max_turns: 80
       timeout_seconds: 900
@@ -1211,6 +1219,7 @@ subagents:
       tools: null
       disallowed_tools: ["task"]
       skills: ["tech-evolution-analysis"]
+      strict_skill_resolution: true
       model: inherit
       max_turns: 80
       timeout_seconds: 900
@@ -1220,6 +1229,7 @@ subagents:
       tools: null
       disallowed_tools: ["task"]
       skills: ["black-swan-tech-radar"]
+      strict_skill_resolution: true
       model: inherit
       max_turns: 80
       timeout_seconds: 900

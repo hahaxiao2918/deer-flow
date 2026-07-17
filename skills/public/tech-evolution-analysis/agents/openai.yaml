@@ -1,0 +1,4 @@
+interface:
+  display_name: "Patent Document Trajectory"
+  short_description: "Analyze application/publication document changes over time."
+  default_prompt: "Use $tech-evolution-analysis to produce an evidence-linked patent document trajectory, not a commercialization history."

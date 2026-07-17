@@ -469,7 +469,11 @@ The `allowed-tools` frontmatter field restricts which tools the model may call *
 1. **Explicit slash activation**: the user starts a turn with `/skill-name task`. `SkillActivationMiddleware` records the activated skill's canonical container path on the runtime context.
 2. **In-context loading**: the model reads the skill's `SKILL.md` during the thread, and `DurableContextMiddleware` captures the reference in `ThreadState.skill_context`.
 
-`SkillToolPolicyMiddleware` (registered in `lead_agent/agent.py::build_middlewares` and in `build_subagent_runtime_middlewares`) computes the union of `allowed-tools` across all active skills on every model call and filters `request.tools` to that union plus the framework builtins `read_file` and `review_skill_package`. If no active skill declares `allowed-tools`, the full tool list is preserved. This replaces the older compile-time behavior that restricted the agent whenever any *enabled* skill declared `allowed-tools`.
+`SkillToolPolicyMiddleware` (registered in `lead_agent/agent.py::build_middlewares` and in `build_subagent_runtime_middlewares`) computes the union of `allowed-tools` across all active skills on every model call and filters `request.tools` to that union plus the framework builtins `read_file`, `review_skill_package`, and `tool_search`. The discovery tool must remain available with deferred MCP schemas; any promoted real tool still faces the same policy at model binding and execution. If no active skill declares `allowed-tools`, the full tool list is preserved.
+
+`strict_skill_resolution` defaults to `false` on custom lead agents and custom subagents for compatibility. When `true`, every explicitly configured Skill must resolve as enabled and parsable or construction fails deterministically. Use strict mode for governed specialist profiles; never silently downgrade them into ordinary agents.
+
+`tool_result_sanitization.untrusted_tool_prefixes` extends the built-in remote-tool sanitization allowlist. Matching tool results receive the same framework-tag and forged-boundary neutralization as web results; production patent profiles should include `patent-data_`.
 
 Subagents use the same runtime middleware. They still load configured skill content into their system prompt, but the `allowed-tools` restriction is only applied when a skill is actually active in the current turn (slash activation or captured in `skill_context`), matching the lead-agent semantics.
 

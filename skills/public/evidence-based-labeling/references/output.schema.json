@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deerflow.local/contracts/patent-research/v2/label-decisions.json",
+  "title": "LabelDecisionSet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "artifact_type", "corpus_id", "evidence_records", "decisions", "conflicts", "search_gap_requests"],
+  "properties": {
+    "contract_version": {"const": "patent-research.v2"},
+    "artifact_type": {"const": "LabelDecisionSet"},
+    "corpus_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "evidence_records": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+    "decisions": {"type": "array", "items": {"type": "object", "required": ["pn", "dimension", "value", "state", "confidence", "evidence_ids", "rationale"], "properties": {"pn": {"type": "string"}, "dimension": {"type": "string"}, "value": {}, "state": {"enum": ["supported", "not_supported", "unknown", "mixed", "not_applicable"]}, "confidence": {"enum": ["high", "medium", "low"]}, "evidence_ids": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}, "rationale": {"type": "string"}}, "additionalProperties": false}},
+    "conflicts": {"type": "array", "items": {"type": "object"}},
+    "search_gap_requests": {"type": "array", "items": {"type": "object"}}
+  },
+  "$defs": {"evidence": {"type": "object", "additionalProperties": false, "required": ["evidence_id", "corpus_id", "pn", "field", "locator", "text_hash", "truncated"], "properties": {"evidence_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "corpus_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "pn": {"type": "string"}, "field": {"enum": ["abstract", "claims", "description"]}, "locator": {"type": "string"}, "text_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "truncated": {"type": "boolean"}}}}
+}

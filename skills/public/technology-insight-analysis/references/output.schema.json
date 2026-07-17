@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deerflow.local/contracts/patent-research/v2/route-map.json",
+  "title": "RouteMap",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "artifact_type", "corpus_id", "cutoff", "routes", "insights", "limitations", "search_gap_requests"],
+  "properties": {
+    "contract_version": {"const": "patent-research.v2"}, "artifact_type": {"const": "RouteMap"},
+    "corpus_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "cutoff": {"type": "string"},
+    "routes": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["route_id", "name", "problem", "components", "mechanisms", "claimed_outcomes", "member_pns", "evidence_ids", "counter_evidence_ids"], "properties": {"route_id": {"type": "string"}, "name": {"type": "string"}, "problem": {"type": "string"}, "components": {"type": "array", "items": {"type": "string"}}, "mechanisms": {"type": "array", "items": {"type": "string"}}, "claimed_outcomes": {"type": "array", "items": {"type": "string"}}, "member_pns": {"type": "array", "items": {"type": "string"}}, "evidence_ids": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}, "counter_evidence_ids": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}}}},
+    "insights": {"type": "array", "items": {"type": "object", "required": ["statement", "strength", "evidence_ids"], "properties": {"statement": {"type": "string"}, "strength": {"enum": ["observed", "interpreted", "hypothesis"]}, "evidence_ids": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": true}},
+    "limitations": {"type": "array", "items": {"type": "string"}}, "search_gap_requests": {"type": "array", "items": {"type": "object"}}
+  }
+}

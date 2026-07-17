@@ -13,7 +13,7 @@ class NamedTool(Protocol):
 # Framework built-ins that remain available even when an active skill declares
 # allowed-tools. They support controlled framework workflows rather than
 # extending the reviewed/activated skill's own tool authority.
-ALWAYS_AVAILABLE_BUILTIN_TOOL_NAMES = frozenset({"read_file", "review_skill_package"})
+ALWAYS_AVAILABLE_BUILTIN_TOOL_NAMES = frozenset({"read_file", "review_skill_package", "tool_search"})
 
 
 def allowed_tool_names_for_skills(skills: list[Skill]) -> set[str] | None:

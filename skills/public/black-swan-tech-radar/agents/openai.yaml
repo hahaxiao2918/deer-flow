@@ -1,0 +1,4 @@
+interface:
+  display_name: "Patent Weak-Signal Radar"
+  short_description: "Register falsifiable patent weak-signal candidates."
+  default_prompt: "Use $black-swan-tech-radar to create a cautious WeakSignalRegister with counter-evidence and monitoring triggers."

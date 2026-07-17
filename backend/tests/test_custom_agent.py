@@ -82,6 +82,7 @@ class TestAgentConfig:
         assert cfg.model is None
         assert cfg.tool_groups is None
         assert cfg.subagents is None
+        assert cfg.strict_skill_resolution is False
 
     def test_full_config(self):
         from deerflow.config.agents_config import AgentConfig
@@ -92,11 +93,13 @@ class TestAgentConfig:
             model="deepseek-v3",
             tool_groups=["file:read", "bash"],
             subagents=["general-purpose", "reviewer"],
+            strict_skill_resolution=True,
         )
         assert cfg.name == "code-reviewer"
         assert cfg.model == "deepseek-v3"
         assert cfg.tool_groups == ["file:read", "bash"]
         assert cfg.subagents == ["general-purpose", "reviewer"]
+        assert cfg.strict_skill_resolution is True
 
     def test_subagents_explicit_empty_list_is_preserved(self):
         from deerflow.config.agents_config import AgentConfig

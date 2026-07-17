@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deerflow.local/contracts/patent-research/v2/retrieval-manifest.json",
+  "title": "RetrievalManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "artifact_type", "corpus_id", "scope", "cutoff", "query_runs", "ordered_pns", "batches", "coverage", "search_gap_requests"],
+  "properties": {
+    "contract_version": {"const": "patent-research.v2"},
+    "artifact_type": {"const": "RetrievalManifest"},
+    "corpus_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "scope": {"type": "object", "required": ["applicants", "technology"], "properties": {"applicants": {"type": "array", "items": {"type": "object", "required": ["name", "status"], "properties": {"name": {"type": "string"}, "status": {"enum": ["confirmed", "candidate", "rejected"]}}, "additionalProperties": true}}, "technology": {"type": "string"}, "jurisdictions": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": true},
+    "cutoff": {"type": "string"},
+    "query_runs": {"type": "array", "items": {"type": "object", "required": ["query_id", "query_text", "syntax_version", "limit", "offset", "returned", "charged_cny"], "properties": {"query_id": {"type": "string"}, "query_text": {"type": "string"}, "syntax_version": {"type": "string"}, "limit": {"type": "integer", "minimum": 1}, "offset": {"type": "integer", "minimum": 0}, "returned": {"type": "integer", "minimum": 0}, "charged_cny": {"type": "number", "minimum": 0}}, "additionalProperties": true}},
+    "ordered_pns": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "batches": {"type": "array", "items": {"type": "object", "required": ["batch_id", "requested", "returned", "missing", "processed", "charged_cny"], "properties": {"batch_id": {"type": "string"}, "requested": {"type": "array", "maxItems": 100, "items": {"type": "string"}}, "returned": {"type": "array", "items": {"type": "string"}}, "missing": {"type": "array", "items": {"type": "string"}}, "processed": {"type": "array", "items": {"type": "string"}}, "charged_cny": {"type": "number", "minimum": 0}}, "additionalProperties": true}},
+    "coverage": {"type": "object"},
+    "search_gap_requests": {"type": "array", "items": {"$ref": "#/$defs/searchGap"}}
+  },
+  "$defs": {"searchGap": {"type": "object", "required": ["missing_proposition", "reason", "priority"], "properties": {"missing_proposition": {"type": "string"}, "reason": {"type": "string"}, "priority": {"enum": ["low", "medium", "high"]}}, "additionalProperties": true}}
+}

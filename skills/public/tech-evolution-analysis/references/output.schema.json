@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deerflow.local/contracts/patent-research/v2/timeline-analysis.json",
+  "title": "TimelineAnalysis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "artifact_type", "report_label", "corpus_id", "date_basis", "cutoff", "slices", "changes", "biases", "search_gap_requests"],
+  "properties": {
+    "contract_version": {"const": "patent-research.v2"}, "artifact_type": {"const": "TimelineAnalysis"}, "report_label": {"const": "专利公开文献轨迹"},
+    "corpus_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "date_basis": {"enum": ["application_date", "publication_date"]}, "cutoff": {"type": "string"},
+    "slices": {"type": "array", "items": {"type": "object", "required": ["slice_id", "start", "end", "document_pns", "route_ids", "evidence_ids"], "properties": {"slice_id": {"type": "string"}, "start": {"type": "string"}, "end": {"type": "string"}, "document_pns": {"type": "array", "items": {"type": "string"}}, "route_ids": {"type": "array", "items": {"type": "string"}}, "evidence_ids": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}}, "additionalProperties": true}},
+    "changes": {"type": "array", "items": {"type": "object", "required": ["statement", "strength", "from_slice", "to_slice", "evidence_ids", "counter_evidence_ids"], "properties": {"statement": {"type": "string"}, "strength": {"enum": ["observed", "interpreted", "uncertain"]}, "from_slice": {"type": "string"}, "to_slice": {"type": "string"}, "evidence_ids": {"type": "array", "items": {"type": "string"}}, "counter_evidence_ids": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": true}},
+    "biases": {"type": "array", "items": {"type": "string"}}, "search_gap_requests": {"type": "array", "items": {"type": "object"}}
+  }
+}
