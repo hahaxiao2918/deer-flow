@@ -1,0 +1,23 @@
+name: patent-research
+description: 专利检索、证据标引、技术洞察、演进分析与弱信号监测
+skills:
+  - deep-research
+  - data-analysis
+  - chart-visualization
+  - systematic-literature-review
+  - academic-paper-review
+  - consulting-analysis
+  - ppt-generation
+  - applicant-tech-patent-retrieval
+  - evidence-based-labeling
+  - technology-insight-analysis
+  - tech-evolution-analysis
+  - black-swan-tech-radar
+subagents:
+  - general-purpose
+  - bash
+  - patent-retriever
+  - evidence-labeler
+  - technology-insight-analyst
+  - tech-evolution-analyst
+  - black-swan-radar

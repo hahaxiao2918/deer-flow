@@ -451,6 +451,91 @@ class TestAgentConstruction:
         assert messages[1].content == "Do the task"
 
     @pytest.mark.anyio
+    async def test_build_initial_state_uses_skill_index_and_describe_tool_when_deferred(
+        self,
+        classes,
+        base_config,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path,
+    ):
+        """Deferred subagents disclose names only and bind describe_skill."""
+        SubagentExecutor = classes["SubagentExecutor"]
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        skill_file = skill_dir / "SKILL.md"
+        skill_file.write_text("SECRET FULL SKILL BODY", encoding="utf-8")
+        skill = Skill(
+            name="my-skill",
+            description="Deferred skill",
+            license=None,
+            skill_dir=skill_dir,
+            skill_file=skill_file,
+            relative_path=Path("my-skill"),
+            category="custom",
+            allowed_tools=("read_file",),
+            enabled=True,
+        )
+        monkeypatch.setattr(
+            sys.modules["deerflow.skills.storage"],
+            "get_or_new_skill_storage",
+            lambda *, app_config=None: SimpleNamespace(load_skills=lambda *, enabled_only: [skill]),
+        )
+        app_config = SimpleNamespace(
+            tool_search=SimpleNamespace(enabled=False),
+            skills=SimpleNamespace(deferred_discovery=True, container_path="/mnt/skills"),
+        )
+        executor = SubagentExecutor(config=base_config, tools=[], app_config=app_config, parent_model="test-model", thread_id="test-thread")
+
+        state, final_tools, _deferred_setup = await executor._build_initial_state("Do the task")
+
+        system_content = state["messages"][0].content
+        assert "<skill_index>" in system_content
+        assert "my-skill" in system_content
+        assert "SECRET FULL SKILL BODY" not in system_content
+        assert "describe_skill" in [tool.name for tool in final_tools]
+
+    @pytest.mark.anyio
+    async def test_build_initial_state_keeps_eager_skill_loading_when_deferred_disabled(
+        self,
+        classes,
+        base_config,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path,
+    ):
+        SubagentExecutor = classes["SubagentExecutor"]
+        skill_dir = tmp_path / "legacy-skill"
+        skill_dir.mkdir()
+        skill_file = skill_dir / "SKILL.md"
+        skill_file.write_text("LEGACY FULL SKILL BODY", encoding="utf-8")
+        skill = Skill(
+            name="legacy-skill",
+            description="Legacy skill",
+            license=None,
+            skill_dir=skill_dir,
+            skill_file=skill_file,
+            relative_path=Path("legacy-skill"),
+            category="custom",
+            enabled=True,
+        )
+        monkeypatch.setattr(
+            sys.modules["deerflow.skills.storage"],
+            "get_or_new_skill_storage",
+            lambda *, app_config=None: SimpleNamespace(load_skills=lambda *, enabled_only: [skill]),
+        )
+        app_config = SimpleNamespace(
+            tool_search=SimpleNamespace(enabled=False),
+            skills=SimpleNamespace(deferred_discovery=False, container_path="/mnt/skills"),
+        )
+        executor = SubagentExecutor(config=base_config, tools=[], app_config=app_config, parent_model="test-model", thread_id="test-thread")
+
+        state, final_tools, _deferred_setup = await executor._build_initial_state("Do the task")
+
+        system_content = state["messages"][0].content
+        assert "LEGACY FULL SKILL BODY" in system_content
+        assert "<skill_index>" not in system_content
+        assert "describe_skill" not in [tool.name for tool in final_tools]
+
+    @pytest.mark.anyio
     async def test_build_initial_state_no_skills_only_system_prompt(
         self,
         classes,

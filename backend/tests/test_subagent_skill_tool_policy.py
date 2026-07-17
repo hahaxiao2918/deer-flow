@@ -99,13 +99,34 @@ def _make_skill(name: str, allowed_tools: list[str] | None = None, enabled: bool
     )
 
 
+def _runtime_app_config():
+    from deerflow.config.app_config import AppConfig
+    from deerflow.config.sandbox_config import SandboxConfig
+
+    return AppConfig(sandbox=SandboxConfig(use="deerflow.sandbox.local:LocalSandboxProvider"))
+
+
 def test_subagent_runtime_middlewares_include_skill_tool_policy():
     """build_subagent_runtime_middlewares must include SkillToolPolicyMiddleware."""
     from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
     from deerflow.agents.middlewares.tool_error_handling_middleware import build_subagent_runtime_middlewares
 
-    middlewares = build_subagent_runtime_middlewares()
+    middlewares = build_subagent_runtime_middlewares(app_config=_runtime_app_config())
     assert any(isinstance(m, SkillToolPolicyMiddleware) for m in middlewares)
+
+
+def test_subagent_skill_runtime_middleware_order_is_activation_then_durable_then_policy():
+    from deerflow.agents.middlewares.durable_context_middleware import DurableContextMiddleware
+    from deerflow.agents.middlewares.skill_activation_middleware import SkillActivationMiddleware
+    from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
+    from deerflow.agents.middlewares.tool_error_handling_middleware import build_subagent_runtime_middlewares
+
+    middlewares = build_subagent_runtime_middlewares(app_config=_runtime_app_config())
+    activation_idx = next(i for i, middleware in enumerate(middlewares) if isinstance(middleware, SkillActivationMiddleware))
+    durable_idx = next(i for i, middleware in enumerate(middlewares) if isinstance(middleware, DurableContextMiddleware))
+    policy_idx = next(i for i, middleware in enumerate(middlewares) if isinstance(middleware, SkillToolPolicyMiddleware))
+
+    assert activation_idx < durable_idx < policy_idx
 
 
 # ---------------------------------------------------------------------------

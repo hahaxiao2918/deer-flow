@@ -66,6 +66,18 @@
     "image-generation": { "enabled": false },
     "music-generation": { "enabled": false },
     "podcast-generation": { "enabled": false },
-    "video-generation": { "enabled": false }
+    "video-generation": { "enabled": false },
+    "deep-research": { "enabled": false },
+    "data-analysis": { "enabled": false },
+    "chart-visualization": { "enabled": false },
+    "systematic-literature-review": { "enabled": false },
+    "academic-paper-review": { "enabled": false },
+    "consulting-analysis": { "enabled": false },
+    "ppt-generation": { "enabled": false },
+    "evidence-based-labeling": { "enabled": false },
+    "applicant-tech-patent-retrieval": { "enabled": false },
+    "technology-insight-analysis": { "enabled": false },
+    "tech-evolution-analysis": { "enabled": false },
+    "black-swan-tech-radar": { "enabled": false }
   }
 }

@@ -203,6 +203,46 @@ def test_apply_prompt_template_threads_explicit_app_config_to_subagents_without_
     assert "**bash**" not in prompt
 
 
+def test_apply_prompt_template_only_discloses_effective_subagent_whitelist(monkeypatch):
+    explicit_config = SimpleNamespace(
+        sandbox=SimpleNamespace(
+            use="deerflow.sandbox.local:LocalSandboxProvider",
+            allow_host_bash=True,
+            mounts=[],
+        ),
+        subagents=SubagentsAppConfig(
+            custom_agents={
+                "patent-retriever": CustomSubagentConfig(
+                    description="Patent retrieval specialist",
+                    system_prompt="Retrieve patents.",
+                ),
+                "evidence-labeler": CustomSubagentConfig(
+                    description="Evidence labeling specialist",
+                    system_prompt="Label evidence.",
+                ),
+            }
+        ),
+        skills=SimpleNamespace(container_path="/mnt/skills", use="local", get_skills_path=lambda: Path("/tmp/skills")),
+        skill_evolution=SimpleNamespace(enabled=False),
+        tool_search=SimpleNamespace(enabled=False),
+        memory=SimpleNamespace(enabled=False, injection_enabled=True, max_injection_tokens=2000),
+        acp_agents={},
+    )
+    monkeypatch.setattr(prompt_module, "get_or_new_skill_storage", lambda app_config=None: SimpleNamespace(load_skills=lambda enabled_only=True: []))
+    monkeypatch.setattr(prompt_module, "get_agent_soul", lambda agent_name=None: "")
+
+    prompt = prompt_module.apply_prompt_template(
+        subagent_enabled=True,
+        available_subagents={"general-purpose", "patent-retriever"},
+        app_config=explicit_config,
+    )
+
+    assert "**general-purpose**" in prompt
+    assert "**patent-retriever**" in prompt
+    assert "**evidence-labeler**" not in prompt
+    assert "**bash**" not in prompt
+
+
 def test_apply_prompt_template_includes_subagent_total_limit(monkeypatch):
     explicit_config = SimpleNamespace(
         sandbox=SimpleNamespace(

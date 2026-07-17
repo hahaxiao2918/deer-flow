@@ -168,6 +168,11 @@ class AgentConfig(BaseModel):
     # - [] (explicit empty list): disable all skills
     # - ["skill1", "skill2"]: load only the specified skills
     skills: list[str] | None = None
+    # subagents uses the same three-state contract as skills:
+    # - None (or omitted): all registered subagents
+    # - []: no subagents (and therefore no task tool)
+    # - ["general-purpose", ...]: explicit delegation whitelist
+    subagents: list[str] | None = None
     # Optional binding to GitHub repositories so this agent can respond to
     # webhook events from the gateway dispatcher. None means "no GitHub
     # integration", which is the case for every existing agent.
@@ -182,7 +187,7 @@ class AgentConfig(BaseModel):
 # drop hand-authored configuration. ``name`` is included because the
 # updaters always re-emit it from the directory name (it must never come
 # from the request body).
-MANAGED_AGENT_CONFIG_FIELDS: frozenset[str] = frozenset({"name", "description", "model", "tool_groups", "skills"})
+MANAGED_AGENT_CONFIG_FIELDS: frozenset[str] = frozenset({"name", "description", "model", "tool_groups", "skills", "subagents"})
 
 
 def preserve_non_managed_fields(existing_cfg: AgentConfig) -> dict[str, object]:

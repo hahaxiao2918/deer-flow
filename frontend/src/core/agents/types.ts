@@ -4,6 +4,7 @@ export interface Agent {
   model: string | null;
   tool_groups: string[] | null;
   skills: string[] | null;
+  subagents: string[] | null;
   soul?: string | null;
 }
 
@@ -13,6 +14,7 @@ export interface CreateAgentRequest {
   model?: string | null;
   tool_groups?: string[] | null;
   skills?: string[] | null;
+  subagents?: string[] | null;
   soul?: string;
 }
 
@@ -21,5 +23,6 @@ export interface UpdateAgentRequest {
   model?: string | null;
   tool_groups?: string[] | null;
   skills?: string[] | null;
+  subagents?: string[] | null;
   soul?: string | null;
 }

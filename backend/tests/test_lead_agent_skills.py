@@ -270,6 +270,63 @@ def test_make_lead_agent_empty_skills_passed_correctly(monkeypatch):
     assert captured_skills[-1] == {"skill1"}
 
 
+def test_default_agent_capability_filters_use_config_without_changing_custom_agent_semantics():
+    from deerflow.agents.lead_agent import agent as lead_agent_module
+    from deerflow.config.default_agent_config import DefaultAgentConfig
+
+    app_config = SimpleNamespace(
+        default_agent=DefaultAgentConfig(
+            skills=["deep-research"],
+            subagents=["general-purpose"],
+            tool_groups=["research"],
+        )
+    )
+
+    assert lead_agent_module._available_skill_names(None, False, app_config=app_config) == {"deep-research"}
+    assert lead_agent_module._available_subagent_names(None, False, app_config=app_config) == {"general-purpose"}
+    assert lead_agent_module._effective_tool_groups(None, False, app_config=app_config) == ["research"]
+
+    custom = AgentConfig(name="custom", skills=None, subagents=None, tool_groups=None)
+    assert lead_agent_module._available_skill_names(custom, False, app_config=app_config) is None
+    assert lead_agent_module._available_subagent_names(custom, False, app_config=app_config) is None
+    assert lead_agent_module._effective_tool_groups(custom, False, app_config=app_config) is None
+
+
+def test_default_agent_explicit_empty_subagents_disables_task_tool_at_build_time(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from deerflow.agents.lead_agent import agent as lead_agent_module
+    from deerflow.config.default_agent_config import DefaultAgentConfig
+
+    captured = {}
+    monkeypatch.setattr(lead_agent_module, "_resolve_model_name", lambda x=None, **kwargs: "default-model")
+    monkeypatch.setattr(lead_agent_module, "create_chat_model", lambda **kwargs: "model")
+    monkeypatch.setattr(lead_agent_module, "build_middlewares", lambda *args, **kwargs: [])
+    monkeypatch.setattr(lead_agent_module, "create_agent", lambda **kwargs: kwargs)
+    monkeypatch.setattr(lead_agent_module, "_load_enabled_skills_for_tool_policy", lambda available_skills, *, app_config, user_id=None: [])
+    monkeypatch.setattr(lead_agent_module, "apply_prompt_template", lambda **kwargs: captured.setdefault("prompt", kwargs) or "mock_prompt")
+
+    def fake_get_available_tools(**kwargs):
+        captured["tools"] = kwargs
+        return [NamedTool("task")] if kwargs["subagent_enabled"] else []
+
+    monkeypatch.setattr("deerflow.tools.get_available_tools", fake_get_available_tools)
+    app_config = MagicMock()
+    app_config.default_agent = DefaultAgentConfig(subagents=[])
+    app_config.get_model_config.return_value = SimpleNamespace(supports_thinking=False, supports_vision=False)
+    app_config.skills.deferred_discovery = False
+    app_config.tool_search.enabled = False
+
+    result = lead_agent_module._make_lead_agent(
+        {"configurable": {"subagent_enabled": True}},
+        app_config=app_config,
+    )
+
+    assert captured["tools"]["subagent_enabled"] is False
+    assert captured["prompt"]["subagent_enabled"] is False
+    assert "task" not in [tool.name for tool in result["tools"]]
+
+
 def test_make_lead_agent_preserves_all_tools_at_compile_time(monkeypatch):
     """allowed-tools is now enforced at runtime by SkillToolPolicyMiddleware,
     so compile-time tool assembly must keep every tool available."""

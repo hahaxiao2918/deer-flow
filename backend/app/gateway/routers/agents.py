@@ -28,6 +28,7 @@ class AgentResponse(BaseModel):
     model: str | None = Field(default=None, description="Optional model override")
     tool_groups: list[str] | None = Field(default=None, description="Optional tool group whitelist")
     skills: list[str] | None = Field(default=None, description="Optional skill whitelist (None=all, []=none)")
+    subagents: list[str] | None = Field(default=None, description="Optional subagent whitelist (None=all, []=none)")
     soul: str | None = Field(default=None, description="SOUL.md content")
 
 
@@ -45,6 +46,7 @@ class AgentCreateRequest(BaseModel):
     model: str | None = Field(default=None, description="Optional model override")
     tool_groups: list[str] | None = Field(default=None, description="Optional tool group whitelist")
     skills: list[str] | None = Field(default=None, description="Optional skill whitelist (None=all enabled, []=none)")
+    subagents: list[str] | None = Field(default=None, description="Optional subagent whitelist (None=all registered, []=none)")
     soul: str = Field(default="", description="SOUL.md content — agent personality and behavioral guardrails")
 
 
@@ -55,6 +57,7 @@ class AgentUpdateRequest(BaseModel):
     model: str | None = Field(default=None, description="Updated model override")
     tool_groups: list[str] | None = Field(default=None, description="Updated tool group whitelist")
     skills: list[str] | None = Field(default=None, description="Updated skill whitelist (None=all, []=none)")
+    subagents: list[str] | None = Field(default=None, description="Updated subagent whitelist (None=all, []=none)")
     soul: str | None = Field(default=None, description="Updated SOUL.md content")
 
 
@@ -100,6 +103,7 @@ def _agent_config_to_response(agent_cfg: AgentConfig, include_soul: bool = False
         model=agent_cfg.model,
         tool_groups=agent_cfg.tool_groups,
         skills=agent_cfg.skills,
+        subagents=agent_cfg.subagents,
         soul=soul,
     )
 
@@ -239,6 +243,8 @@ async def create_agent_endpoint(request: AgentCreateRequest) -> AgentResponse:
                 config_data["tool_groups"] = request.tool_groups
             if request.skills is not None:
                 config_data["skills"] = request.skills
+            if request.subagents is not None:
+                config_data["subagents"] = request.subagents
 
             config_file = agent_dir / "config.yaml"
             with open(config_file, "w", encoding="utf-8") as f:
@@ -312,7 +318,7 @@ async def update_agent(name: str, request: AgentUpdateRequest) -> AgentResponse:
         # Use model_fields_set to distinguish "field omitted" from "explicitly set to null".
         # This is critical for skills where None means "inherit all" (not "don't change").
         fields_set = request.model_fields_set
-        config_changed = bool(fields_set & {"description", "model", "tool_groups", "skills"})
+        config_changed = bool(fields_set & {"description", "model", "tool_groups", "skills", "subagents"})
 
         if config_changed:
             updated: dict = {
@@ -334,6 +340,14 @@ async def update_agent(name: str, request: AgentUpdateRequest) -> AgentResponse:
                 new_skills = agent_cfg.skills
             if new_skills is not None:
                 updated["skills"] = new_skills
+
+            # subagents: None = all registered, [] = no task tool, explicit list = whitelist
+            if "subagents" in fields_set:
+                new_subagents = request.subagents
+            else:
+                new_subagents = agent_cfg.subagents
+            if new_subagents is not None:
+                updated["subagents"] = new_subagents
 
             # Carry forward every top-level AgentConfig field this route does
             # not manage (currently ``github:``, plus any future field added

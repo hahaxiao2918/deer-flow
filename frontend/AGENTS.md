@@ -63,6 +63,8 @@ The frontend is a stateful chat application. Users create **threads** (conversat
 
 ### Data Flow
 
+Custom-agent API types in `core/agents/types.ts` include `subagents: string[] | null` alongside `skills` and `tool_groups`. Preserve all three states in create/update payloads: `null` inherits all registered subagents, `[]` disables delegation, and a list is the server-enforced whitelist.
+
 1. Optional composer helpers such as `core/input-polish` can rewrite the local draft before submission, and `core/voice-input` can transcribe browser microphone input into that same local draft; confirmed user input then flows to thread hooks (`core/threads/hooks.ts`) → LangGraph SDK streaming
 2. Stream events update thread state (messages, artifacts, todos, goal)
 3. Stop actions call the LangGraph SDK stream stop path; `core/threads/hooks.ts` invalidates current-thread, token-usage, and sidebar/search caches immediately and schedules one follow-up refetch because SDK stop may finish via abort + fire-and-forget cancel before backend title finalization commits

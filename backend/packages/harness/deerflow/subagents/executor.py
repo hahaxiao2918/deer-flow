@@ -636,14 +636,27 @@ class SubagentExecutor:
         # Lazy import: see the TYPE_CHECKING note at the top of this module -
         # importing tool_search runs tools/builtins/__init__, which would
         # re-enter this package during its own initialization.
+        from deerflow.skills.describe import build_skill_search_setup, get_skill_index_prompt_section
         from deerflow.tools.builtins.tool_search import assemble_deferred_tools, get_deferred_tools_prompt_section, get_mcp_routing_hints_prompt_section
 
         # Load skills as conversation items (Codex pattern).  Their allowed-tools
         # policy is applied at runtime by SkillToolPolicyMiddleware, not here.
         skills = await self._load_skills()
-        enabled = (self.app_config or get_app_config()).tool_search.enabled
+        resolved_app_config = self.app_config or get_app_config()
+        enabled = resolved_app_config.tool_search.enabled
         final_tools, deferred_setup = assemble_deferred_tools(self._base_tools, enabled=enabled)
-        skill_messages = await self._load_skill_messages(skills)
+
+        skills_config = getattr(resolved_app_config, "skills", None)
+        deferred_skill_discovery = bool(getattr(skills_config, "deferred_discovery", False))
+        container_base_path = getattr(skills_config, "container_path", "/mnt/skills")
+        skill_setup = build_skill_search_setup(
+            skills,
+            enabled=deferred_skill_discovery,
+            container_base_path=container_base_path,
+        )
+        if skill_setup.describe_skill_tool is not None:
+            final_tools.append(skill_setup.describe_skill_tool)
+        skill_messages = [] if deferred_skill_discovery else await self._load_skill_messages(skills)
 
         # Combine system_prompt and skills into a single SystemMessage.
         # Some LLM APIs reject multiple SystemMessages with
@@ -653,6 +666,12 @@ class SubagentExecutor:
             system_parts.append(self.config.system_prompt)
         for skill_msg in skill_messages:
             system_parts.append(skill_msg.content)
+        skill_index_section = get_skill_index_prompt_section(
+            skill_names=skill_setup.skill_names,
+            container_base_path=container_base_path,
+        )
+        if skill_index_section:
+            system_parts.append(skill_index_section)
         # Name the deferred MCP tools in the prompt; their schemas stay withheld
         # until tool_search promotes them. Empty set -> "" -> appends nothing.
         deferred_section = get_deferred_tools_prompt_section(deferred_names=deferred_setup.deferred_names)

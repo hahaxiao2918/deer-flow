@@ -1176,6 +1176,55 @@ sandbox:
 # Configure timeouts for subagent execution
 # Subagents are background workers delegated tasks by the lead agent
 
+subagents:
+  custom_agents:
+    patent-retriever:
+      description: "检索式构建、专利召回、扩展检索与结果归一"
+      system_prompt: "你是专利检索子代理。使用唯一披露的专利检索 Skill 完成检索策略、召回与归一化，并保留可核验证据。"
+      tools: null
+      disallowed_tools: ["task"]
+      skills: ["applicant-tech-patent-retrieval"]
+      model: inherit
+      max_turns: 80
+      timeout_seconds: 900
+    evidence-labeler:
+      description: "证据分级、多标签判断和冲突登记"
+      system_prompt: "你是证据标引子代理。使用唯一披露的证据标引 Skill 输出可追溯标签、证据等级与冲突记录。"
+      tools: null
+      disallowed_tools: ["task"]
+      skills: ["evidence-based-labeling"]
+      model: inherit
+      max_turns: 80
+      timeout_seconds: 900
+    technology-insight-analyst:
+      description: "技术结构、申请人和竞争路线洞察"
+      system_prompt: "你是技术洞察子代理。使用唯一披露的技术洞察 Skill 分析技术结构、申请人和竞争路线。"
+      tools: null
+      disallowed_tools: ["task"]
+      skills: ["technology-insight-analysis"]
+      model: inherit
+      max_turns: 80
+      timeout_seconds: 900
+    tech-evolution-analyst:
+      description: "时间切片、路线变化和技术演进判断"
+      system_prompt: "你是技术演进子代理。使用唯一披露的技术演进 Skill 完成时间切片、路线变化与演进判断。"
+      tools: null
+      disallowed_tools: ["task"]
+      skills: ["tech-evolution-analysis"]
+      model: inherit
+      max_turns: 80
+      timeout_seconds: 900
+    black-swan-radar:
+      description: "弱信号、反证、证伪条件和监测触发器"
+      system_prompt: "你是黑天鹅技术雷达子代理。使用唯一披露的雷达 Skill 识别弱信号、反证、证伪条件与监测触发器。"
+      tools: null
+      disallowed_tools: ["task"]
+      skills: ["black-swan-tech-radar"]
+      model: inherit
+      max_turns: 80
+      timeout_seconds: 900
+
+# Optional tuning for built-in and custom subagents:
 # subagents:
 #   # Default timeout (seconds) for built-in subagents (default: 1800 = 30 min).
 #   # Custom agents use their own timeout_seconds (default 900) unless overridden.
@@ -1480,6 +1529,23 @@ memory:
 # Keep this disabled unless the gateway is behind a trusted authenticated admin boundary.
 agents_api:
   enabled: false
+
+# Optional capability profile for the unchanged built-in lead-agent entry.
+# Omit this block to preserve upstream behavior. Each list uses three states:
+# null = all registered/enabled, [] = none, explicit values = whitelist.
+default_agent:
+  skills:
+    - deep-research
+    - data-analysis
+    - chart-visualization
+    - systematic-literature-review
+    - academic-paper-review
+    - consulting-analysis
+    - ppt-generation
+  subagents:
+    - general-purpose
+    - bash
+  tool_groups: null
 
 # ============================================================================
 # Skill Self-Evolution Configuration

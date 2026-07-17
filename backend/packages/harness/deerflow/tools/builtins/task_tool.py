@@ -272,6 +272,18 @@ async def task_tool(
     cache_token_usage = _token_usage_cache_enabled(runtime_app_config)
     available_subagent_names = get_available_subagent_names(app_config=runtime_app_config) if runtime_app_config is not None else get_available_subagent_names()
 
+    runtime_metadata = runtime.config.get("metadata", {}) if runtime is not None else {}
+    parent_subagent_allowlist = runtime_metadata.get("available_subagents")
+    if parent_subagent_allowlist is not None:
+        allowed_names = [name for name in available_subagent_names if name in set(parent_subagent_allowlist)]
+        if subagent_type not in allowed_names:
+            available = ", ".join(allowed_names)
+            return _task_result_command(
+                tool_call_id=tool_call_id,
+                status="failed",
+                error=f"Subagent type '{subagent_type}' is not allowed for this agent. Available: {available}",
+            )
+
     # Get subagent configuration
     config = get_subagent_config(subagent_type, app_config=runtime_app_config) if runtime_app_config is not None else get_subagent_config(subagent_type)
     if config is None:

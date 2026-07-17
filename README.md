@@ -626,6 +626,10 @@ A standard Agent Skill is a structured capability module — a Markdown file tha
 
 Skills are loaded progressively — only when the task needs them, not all at once. This keeps the context window lean and makes DeerFlow work well even with token-sensitive models.
 
+DeerFlow can expose different capability profiles without forking the official `lead_agent` graph. The optional `config.yaml -> default_agent` block filters the built-in entry's `skills`, `subagents`, and `tool_groups`; each field uses `null` = all, `[]` = none, and an explicit list = whitelist. Custom-agent `config.yaml` files support the same `subagents` field. Prompt disclosure and the `task` tool share the resulting server-side allowlist, so a hidden subagent cannot be selected by forging a client request.
+
+When `skills.deferred_discovery: true`, lead agents and subagents begin with a name-only `<skill_index>`, use `describe_skill` for metadata, and load the full `SKILL.md` only through `read_file` or explicit `/skill-name` activation. The checked-in [patent-research profile](docs/examples/patent-research-agent/config.yaml) combines seven common Skills with five patent Skills and delegates each patent workflow to a single-Skill specialist. Enable its twelve Skill entries in `extensions_config.json`, set `agents_api.enabled: true`, and install the profile under the target user's agent directory before exposing it in the Agents page.
+
 Users can explicitly activate an enabled skill for a single turn by starting the request with `/skill-name`, for example `/data-analysis analyze uploads/foo.csv`. DeerFlow loads that skill's `SKILL.md` as hidden current-turn context while leaving the base prompt limited to skill metadata. Slash activation respects disabled skills, custom-agent skill whitelists, and existing channel commands such as `/new` and `/help`.
 
 When you install `.skill` archives through the Gateway, DeerFlow accepts standard optional frontmatter metadata such as `version`, `author`, and `compatibility` instead of rejecting otherwise valid external skills.

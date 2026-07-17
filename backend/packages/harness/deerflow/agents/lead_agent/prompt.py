@@ -304,6 +304,7 @@ def _build_subagent_section(
     max_total: int = DEFAULT_MAX_TOTAL_SUBAGENTS_PER_RUN,
     *,
     app_config: AppConfig | None = None,
+    available_subagents: set[str] | None = None,
 ) -> str:
     """Build the subagent system prompt section with dynamic subagent limits.
 
@@ -317,6 +318,8 @@ def _build_subagent_section(
     n = clamp_subagent_concurrency(max_concurrent)
     total = clamp_total_subagents_per_run(max_total)
     available_names = get_available_subagent_names(app_config=app_config) if app_config is not None else get_available_subagent_names()
+    if available_subagents is not None:
+        available_names = [name for name in available_names if name in available_subagents]
     bash_available = "bash" in available_names
 
     # Dynamically build subagent type descriptions from registry (aligned with Codex's
@@ -973,6 +976,7 @@ def apply_prompt_template(
     mcp_routing_hints_section: str = "",
     user_id: str | None = None,
     skill_names: frozenset[str] | None = None,
+    available_subagents: set[str] | None = None,
 ) -> str:
     # Include subagent section only if enabled (from runtime parameter)
     n = clamp_subagent_concurrency(max_concurrent_subagents)
@@ -981,7 +985,7 @@ def apply_prompt_template(
         subagents_config = getattr(app_config, "subagents", None) if app_config is not None else None
         total = getattr(subagents_config, "max_total_per_run", DEFAULT_MAX_TOTAL_SUBAGENTS_PER_RUN)
     total = clamp_total_subagents_per_run(total)
-    subagent_section = _build_subagent_section(n, total, app_config=app_config) if subagent_enabled else ""
+    subagent_section = _build_subagent_section(n, total, app_config=app_config, available_subagents=available_subagents) if subagent_enabled else ""
 
     # Add subagent reminder to critical_reminders if enabled
     subagent_reminder = (

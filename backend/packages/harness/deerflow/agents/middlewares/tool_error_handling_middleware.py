@@ -381,6 +381,20 @@ def build_subagent_runtime_middlewares(
 
         middlewares.append(SafetyFinishReasonMiddleware.from_config(safety_config))
 
+    # Slash activation is the first stage of the subagent skill runtime. It
+    # injects the explicitly selected SKILL.md once, before durable context
+    # records file-based activations and before the tool policy applies the
+    # active skill's allowed-tools contract.
+    from deerflow.agents.middlewares.skill_activation_middleware import SkillActivationMiddleware
+
+    middlewares.append(
+        SkillActivationMiddleware(
+            available_skills=available_skills,
+            app_config=app_config,
+            user_id=user_id,
+        )
+    )
+
     # DurableContextMiddleware (#4039) — summarization stores compacted history in the
     # ``summary_text`` state channel instead of writing a summary message back
     # into ``messages``. Mirror the lead chain so subagents project that summary

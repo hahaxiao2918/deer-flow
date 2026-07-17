@@ -259,6 +259,25 @@ def test_task_tool_returns_error_for_unknown_subagent(monkeypatch):
     assert message.additional_kwargs[SUBAGENT_ERROR_KEY] == "Unknown subagent type 'general-purpose'. Available: general-purpose"
 
 
+def test_task_tool_rejects_registered_subagent_outside_parent_runtime_allowlist(monkeypatch):
+    runtime = _make_runtime()
+    runtime.config["metadata"]["available_subagents"] = ["general-purpose"]
+    monkeypatch.setattr(task_tool_module, "get_available_subagent_names", lambda: ["general-purpose", "patent-retriever"])
+    monkeypatch.setattr(task_tool_module, "get_subagent_config", lambda _: _make_subagent_config("patent-retriever"))
+
+    result = _run_task_tool(
+        runtime=runtime,
+        description="forged route",
+        prompt="retrieve patents",
+        subagent_type="patent-retriever",
+        tool_call_id="tc-forged-subagent",
+    )
+
+    message = _task_tool_message(result)
+    assert message.content == "Task failed. Error: Subagent type 'patent-retriever' is not allowed for this agent. Available: general-purpose"
+    assert message.additional_kwargs[SUBAGENT_STATUS_KEY] == "failed"
+
+
 def test_task_tool_forwards_channel_user_id_to_executor(monkeypatch):
     """The IM-channel sender identity must survive delegation: in group chats
     one thread serves many senders, so a subagent's bash commands need the

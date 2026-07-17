@@ -81,6 +81,7 @@ class TestAgentConfig:
         assert cfg.description == ""
         assert cfg.model is None
         assert cfg.tool_groups is None
+        assert cfg.subagents is None
 
     def test_full_config(self):
         from deerflow.config.agents_config import AgentConfig
@@ -90,10 +91,19 @@ class TestAgentConfig:
             description="Specialized for code review",
             model="deepseek-v3",
             tool_groups=["file:read", "bash"],
+            subagents=["general-purpose", "reviewer"],
         )
         assert cfg.name == "code-reviewer"
         assert cfg.model == "deepseek-v3"
         assert cfg.tool_groups == ["file:read", "bash"]
+        assert cfg.subagents == ["general-purpose", "reviewer"]
+
+    def test_subagents_explicit_empty_list_is_preserved(self):
+        from deerflow.config.agents_config import AgentConfig
+
+        cfg = AgentConfig(name="solo-agent", subagents=[])
+
+        assert cfg.subagents == []
 
     def test_config_from_dict(self):
         from deerflow.config.agents_config import AgentConfig
@@ -583,6 +593,22 @@ class TestAgentsAPI:
         assert data["description"] == "Reviews code"
         assert data["soul"] == "You are a code reviewer."
 
+    def test_create_agent_with_subagent_whitelist(self, agent_client):
+        payload = {
+            "name": "patent-research",
+            "subagents": ["general-purpose", "patent-retriever"],
+            "soul": "Patent research agent.",
+        }
+
+        response = agent_client.post("/api/agents", json=payload)
+
+        assert response.status_code == 201
+        assert response.json()["subagents"] == ["general-purpose", "patent-retriever"]
+
+        tmp_path: Path = agent_client._tmp_path  # type: ignore[attr-defined]
+        config_file = tmp_path / "users" / "test-user-autouse" / "agents" / "patent-research" / "config.yaml"
+        assert yaml.safe_load(config_file.read_text(encoding="utf-8"))["subagents"] == ["general-purpose", "patent-retriever"]
+
     def test_create_agent_invalid_name(self, agent_client):
         payload = {"name": "Code Reviewer!", "soul": "test"}
         response = agent_client.post("/api/agents", json=payload)
@@ -641,6 +667,20 @@ class TestAgentsAPI:
         response = agent_client.put("/api/agents/desc-agent", json={"description": "new desc"})
         assert response.status_code == 200
         assert response.json()["description"] == "new desc"
+
+    def test_update_agent_subagents_preserves_three_state_semantics(self, agent_client):
+        agent_client.post(
+            "/api/agents",
+            json={"name": "route-agent", "subagents": ["general-purpose"], "soul": "p"},
+        )
+
+        empty_response = agent_client.put("/api/agents/route-agent", json={"subagents": []})
+        assert empty_response.status_code == 200
+        assert empty_response.json()["subagents"] == []
+
+        inherit_response = agent_client.put("/api/agents/route-agent", json={"subagents": None})
+        assert inherit_response.status_code == 200
+        assert inherit_response.json()["subagents"] is None
 
     def test_update_agent_preserves_hand_authored_github_block(self, agent_client):
         """A hand-authored ``github:`` block on disk must survive PATCH.

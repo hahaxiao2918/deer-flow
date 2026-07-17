@@ -409,12 +409,36 @@ def build_middlewares(
     return middlewares
 
 
-def _available_skill_names(agent_config, is_bootstrap: bool) -> set[str] | None:
+def _configured_capability_list(agent_config, is_bootstrap: bool, *, app_config: AppConfig, field: str) -> list[str] | None:
+    """Resolve a three-state capability list for a lead-agent build.
+
+    Custom-agent config takes precedence.  The default profile is consulted
+    only when no custom agent is selected, preserving historical custom-agent
+    inheritance. Bootstrap remains isolated from the default profile.
+    """
+    if is_bootstrap:
+        return None
+    source = agent_config if agent_config is not None else getattr(app_config, "default_agent", None)
+    value = getattr(source, field, None) if source is not None else None
+    # Some tests and embedded callers supply loose mock config objects. Treat
+    # non-list sentinel/mock values as the backward-compatible unspecified state.
+    return value if value is None or isinstance(value, list) else None
+
+
+def _available_skill_names(agent_config, is_bootstrap: bool, *, app_config: AppConfig) -> set[str] | None:
     if is_bootstrap:
         return set(_BOOTSTRAP_SKILL_NAMES)
-    if agent_config and agent_config.skills is not None:
-        return set(agent_config.skills)
-    return None
+    configured = _configured_capability_list(agent_config, is_bootstrap, app_config=app_config, field="skills")
+    return set(configured) if configured is not None else None
+
+
+def _available_subagent_names(agent_config, is_bootstrap: bool, *, app_config: AppConfig) -> set[str] | None:
+    configured = _configured_capability_list(agent_config, is_bootstrap, app_config=app_config, field="subagents")
+    return set(configured) if configured is not None else None
+
+
+def _effective_tool_groups(agent_config, is_bootstrap: bool, *, app_config: AppConfig) -> list[str] | None:
+    return _configured_capability_list(agent_config, is_bootstrap, app_config=app_config, field="tool_groups")
 
 
 def _load_enabled_skills_for_tool_policy(available_skills: set[str] | None, *, app_config: AppConfig, user_id: str | None = None) -> list[Skill]:
@@ -467,7 +491,13 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     agent_name = validate_agent_name(cfg.get("agent_name"))
 
     agent_config = load_agent_config(agent_name) if not is_bootstrap else None
-    available_skills = _available_skill_names(agent_config, is_bootstrap)
+    available_skills = _available_skill_names(agent_config, is_bootstrap, app_config=resolved_app_config)
+    available_subagents = _available_subagent_names(agent_config, is_bootstrap, app_config=resolved_app_config)
+    effective_tool_groups = _effective_tool_groups(agent_config, is_bootstrap, app_config=resolved_app_config)
+    # An explicit empty allowlist removes both prompt disclosure and the task
+    # tool, even when the client requests subagent mode.
+    if available_subagents == set():
+        subagent_enabled = False
     # Custom agent model from agent config (if any), or None to let _resolve_model_name pick the default
     agent_model_name = agent_config.model if agent_config and agent_config.model else None
 
@@ -506,8 +536,9 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
             "reasoning_effort": reasoning_effort,
             "is_plan_mode": is_plan_mode,
             "subagent_enabled": subagent_enabled,
-            "tool_groups": agent_config.tool_groups if agent_config else None,
+            "tool_groups": effective_tool_groups,
             "available_skills": sorted(available_skills) if available_skills is not None else None,
+            "available_subagents": sorted(available_subagents) if available_subagents is not None else None,
         }
     )
 
@@ -607,7 +638,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
     is_webhook_channel = channel_name in _WEBHOOK_CHANNELS
     extra_tools = [update_agent] if agent_name and not is_webhook_channel else []
     # Default lead agent (unchanged behavior)
-    raw_tools = get_available_tools(model_name=model_name, groups=agent_config.tool_groups if agent_config else None, subagent_enabled=subagent_enabled, app_config=resolved_app_config)
+    raw_tools = get_available_tools(model_name=model_name, groups=effective_tool_groups, subagent_enabled=subagent_enabled, app_config=resolved_app_config)
     tools_for_deferral = raw_tools + extra_tools
     if non_interactive:
         tools_for_deferral = [tool for tool in tools_for_deferral if tool.name not in _NON_INTERACTIVE_DISABLED_TOOL_NAMES]
@@ -630,6 +661,7 @@ def _make_lead_agent(config: RunnableConfig, *, app_config: AppConfig):
             model_name=model_name,
             agent_name=agent_name,
             available_skills=available_skills,
+            available_subagents=available_subagents,
             app_config=resolved_app_config,
             deferred_setup=setup,
             mcp_routing_middleware=mcp_routing_middleware,

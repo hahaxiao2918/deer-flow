@@ -96,13 +96,14 @@ def update_agent(
     soul: OptionalText = None,
     description: OptionalText = None,
     skills: OptionalStringList = None,
+    subagents: OptionalStringList = None,
     tool_groups: OptionalStringList = None,
     model: OptionalText = None,
 ) -> Command:
     """Persist updates to the current custom agent's SOUL.md and config.yaml.
 
     Use this when the user asks to refine the agent's identity, description,
-    skill whitelist, tool-group whitelist, or default model. Only the fields
+    skill whitelist, subagent whitelist, tool-group whitelist, or default model. Only the fields
     you explicitly pass are updated; omitted fields keep their existing values.
 
     Pass ``soul`` as the FULL replacement SOUL.md content — there is no patch
@@ -117,6 +118,7 @@ def update_agent(
         soul: Optional full replacement SOUL.md content.
         description: Optional new one-line description.
         skills: Optional skill whitelist. ``[]`` = no skills, omit = unchanged.
+        subagents: Optional subagent whitelist. ``[]`` = no delegation, omit = unchanged.
         tool_groups: Optional tool-group whitelist. ``[]`` = empty, omit = unchanged.
         model: Optional model override (must match a configured model name).
 
@@ -142,8 +144,8 @@ def update_agent(
     if channel_name in _UNTRUSTED_CHANNELS:
         return _err(f"update_agent is disabled on the {channel_name!r} channel. Self-mutation requests must come from an operator-trusted surface (chat UI or the HTTP API), not a webhook fan-out.")
 
-    if soul is None and description is None and skills is None and tool_groups is None and model is None:
-        return _err('No fields provided. Pass at least one of: soul, description, skills, tool_groups, model. Omit unchanged fields instead of passing null-like strings such as "null", "none", or "undefined".')
+    if soul is None and description is None and skills is None and subagents is None and tool_groups is None and model is None:
+        return _err('No fields provided. Pass at least one of: soul, description, skills, subagents, tool_groups, model. Omit unchanged fields instead of passing null-like strings such as "null", "none", or "undefined".')
 
     try:
         agent_name = validate_agent_name(agent_name_raw)
@@ -211,6 +213,12 @@ def update_agent(
     if skills is not None and skills != existing_cfg.skills:
         updated_fields.append("skills")
 
+    new_subagents = subagents if subagents is not None else existing_cfg.subagents
+    if new_subagents is not None:
+        config_data["subagents"] = new_subagents
+    if subagents is not None and subagents != existing_cfg.subagents:
+        updated_fields.append("subagents")
+
     # Preserve every top-level AgentConfig field that this tool does not
     # expose as an argument (currently ``github:``, plus any future field
     # added to :class:`AgentConfig`). The same helper is used by the HTTP
@@ -222,7 +230,7 @@ def update_agent(
     for key, value in preserved.items():
         config_data.setdefault(key, value)
 
-    config_changed = bool({"description", "model", "tool_groups", "skills"} & set(updated_fields))
+    config_changed = bool({"description", "model", "tool_groups", "skills", "subagents"} & set(updated_fields))
 
     # Stage every file we intend to rewrite into a temp sibling. Only after
     # *all* temp files exist do we rename them into place — so a failure on
