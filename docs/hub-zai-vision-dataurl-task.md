@@ -53,9 +53,18 @@ Deerflow 里丢图片提问时,agent 调 `zai-mcp-server` 的 `analyze_image` /
 
 ## 完成记录
 
-- **starl-38 部署**:2026-07-19 已完成。zai-sidecar 重建、nginx reload、`verify_all` 13/13 OK。
-- **提交**:starl-38 `/home/starl/api-mcp-hub` commit `e0c6947`。
-- **验证**:data URL 已被 `analyze_image` 接受,不再报 `Image file not found`;因 zai-sidecar 容器所在 `hub-internal` 网络无外部出站,DNS 解析 `open.bigmodel.cn` 失败,属与本次补丁无关的基础设施现状。
+- **starl-38 部署**:2026-07-19 已完成。
+  - zai-sidecar 重建、nginx reload、`verify_all` 13/13 OK。
+  - DeerFlow gateway 已 cherry-pick 部署 MCP 参数自动转换补丁,将 `/mnt/user-data/` 下的本地图片/视频路径在调用远程(HTTP/SSE)MCP 工具前转成 data URL。
+- **提交**:
+  - hub 侧:starl-38 `/home/starl/api-mcp-hub` commit `e0c6947`。
+  - DeerFlow 后端:lxdd `codex/shanghai-electric` commit `caedd2cd1`,并已 push 到 origin;starl-38 `codex/deerflow-patent-data-mcp` commit `e526d20f`(cherry-pick)。
+- **验证**:
+  - 单元测试 18 项全部通过;现有 MCP 测试 69 项全部通过。
+  - data URL 已被 `analyze_image` 接受,不再报 `Image file not found`。
+- **剩余阻塞(基础设施,非本补丁可解)**:
+  - zai-sidecar 容器所在 `hub-internal` Docker 网络为 `Internal: true`,无法解析 `open.bigmodel.cn`(`EAI_AGAIN`),因此 data URL 进入后仍无法真正调用 GLM 视觉 API。
+  - 要让端到端完全跑通,需给 zai-sidecar 配置出站网络/代理(如接入 `web-network` 或走 `egress-gateway`)。
 
 
 - 客户端(Deerflow/DifyDSL/任何 MCP 客户端)**零改动、零新增直连**,
