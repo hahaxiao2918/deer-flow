@@ -3657,7 +3657,7 @@ packages:
     resolution: {integrity: sha512-P8/mMxVLU7o4+55+1TCnQrPmgjPKnwkzkXOK1asnR9Jg2lna4tEY5qBJjMmAaOBDDZWtlRjBXjLa0w53G/uBLA==}
 
   h3@1.15.11:
-    resolution: {integrity: sha512-L3THSe2MPeBwgIZVSH5zLdBBU90TOxarvhK9d04IDY2AmVS8j2LIWtwsGOU3lu2I5jCN7FNvVfY2+XyF+mg==}
+    resolution: {integrity: sha512-L3THSe2MPeBwgIZVSH5zLdBBU90TOxarvhK9d04IDY2AmVS8j2Jz2LIWtwsGOU3lu2I5jCN7FNvVfY2+XyF+mg==}
 
   h3@1.15.6:
     resolution: {integrity: sha512-oi15ESLW5LRthZ+qPCi5GNasY/gvynSKUQxgiovrY63bPAtG59wtM+LSrlcwvOHAXzGrXVLnI97brbkdPF9WoQ==}
@@ -9476,6 +9476,7 @@ snapshots:
       defu: 6.1.7
       destr: 2.0.5
       iron-webcrypto: 1.2.1
+      node-mock-http: 1.0.4
       radix3: 1.1.2
       ufo: 1.6.4
       uncrypto: 0.1.3
@@ -10798,7 +10799,7 @@ snapshots:
     dependencies:
       '@nuxt/devtools-kit': 3.1.1(vite@7.3.1(@types/node@20.19.33)(jiti@2.6.1)(lightningcss@1.30.2)(yaml@2.8.3))
       '@nuxt/kit': 4.3.1
-      h3: 1.15.11
+      h3: 1.15.6
       nuxt-site-config-kit: 3.2.19(vue@3.5.28(typescript@5.9.3))
       pathe: 2.0.3
       pkg-types: 2.3.0
@@ -11992,7 +11993,7 @@ snapshots:
       anymatch: 3.1.3
       chokidar: 5.0.0
       destr: 2.0.5
-      h3: 1.15.6
+      h3: 1.15.11
       lru-cache: 11.5.0
       node-fetch-native: 1.6.7
       ofetch: 1.5.1
