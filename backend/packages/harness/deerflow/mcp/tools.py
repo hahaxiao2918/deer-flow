@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
+import mimetypes
+import os
 import re
 from collections.abc import Iterable, Mapping
 from datetime import timedelta
@@ -27,7 +30,72 @@ from deerflow.tools.types import Runtime
 
 logger = logging.getLogger(__name__)
 
-# Subdirectory under the thread's workspace used as the temp dir for stdio MCP
+# Maximum size of a local image/video file that we inline as a data URL when
+# calling a remote (HTTP/SSE) MCP server. 4 MiB of original file becomes ~5.3 MiB
+# of base64, which leaves plenty of headroom under the 25 MiB nginx/supergateway
+# body limit while avoiding memory pressure from accidentally huge payloads.
+_MAX_INLINE_MEDIA_BYTES = 4 * 1024 * 1024
+
+# Prefixes we are willing to inline as data URLs. Keep this conservative:
+# images and videos are the media types that remote vision MCP tools expect.
+_MEDIA_MIME_PREFIXES = ("image/", "video/")
+
+
+# Prefix we treat as the gateway sandbox user-data root. Made module-level so
+# tests can point it at a temporary directory without touching the filesystem.
+_USER_DATA_PREFIX = "/mnt/user-data/"
+
+
+def _is_local_media_path(value: Any) -> bool:
+    """Return True if value looks like a local image/video file path."""
+    if not isinstance(value, str):
+        return False
+    path = value.strip()
+    if not path.startswith(_USER_DATA_PREFIX):
+        return False
+    if not os.path.isfile(path):
+        return False
+    mime, _ = mimetypes.guess_type(path)
+    return mime is not None and mime.startswith(_MEDIA_MIME_PREFIXES)
+
+
+def _convert_local_media_to_data_url(path: str) -> str:
+    """Read a local media file and return it as a base64 data URL."""
+    mime, _ = mimetypes.guess_type(path)
+    with open(path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("ascii")
+    return f"data:{mime};base64,{b64}"
+
+
+def _maybe_inline_local_media_argument(value: Any) -> Any:
+    """Recursively convert local media paths to data URLs where applicable."""
+    if isinstance(value, dict):
+        return {k: _maybe_inline_local_media_argument(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_maybe_inline_local_media_argument(v) for v in value]
+    if not _is_local_media_path(value):
+        return value
+    path = value.strip()
+    size = os.path.getsize(path)
+    if size > _MAX_INLINE_MEDIA_BYTES:
+        logger.warning(
+            "Local media file too large to inline as data URL for remote MCP tool: %s (%s bytes)",
+            path,
+            size,
+        )
+        return value
+    try:
+        return _convert_local_media_to_data_url(path)
+    except OSError:
+        logger.exception("Failed to inline local media for remote MCP tool: %s", path)
+        return value
+
+
+def _maybe_inline_local_media_arguments(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Convert any local media paths in MCP tool arguments to data URLs."""
+    return {k: _maybe_inline_local_media_argument(v) for k, v in arguments.items()}
+
+
 # subprocesses. Pinning the process temp dir here (alongside its cwd) makes
 # tools that write to ``os.tmpdir()`` / ``tempfile.gettempdir()`` land inside
 # the mounted user-data tree, where their output is resolvable by the
@@ -452,6 +520,11 @@ def _make_session_pool_tool(
         # SSE/HTTP servers have no local cwd to pin, so skip the filesystem work
         # entirely for them (avoids needless dir creation and recursive walks).
         is_stdio = session_connection.get("transport", "stdio") == "stdio"
+        if not is_stdio:
+            # Remote (HTTP/SSE) MCP servers cannot access the gateway sandbox
+            # filesystem. Inline any local image/video paths as data URLs so the
+            # server receives portable payloads (e.g. zai-mcp-server vision tools).
+            arguments = await asyncio.to_thread(_maybe_inline_local_media_arguments, arguments)
         source_base_dir: Path | None = None
         process_cwd: Path | None = None
         before_files: _FILE_SNAPSHOT | None = None
