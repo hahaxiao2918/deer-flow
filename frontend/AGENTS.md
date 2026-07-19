@@ -131,8 +131,10 @@ authentication behavior, including local login, registration, SSO provider
 buttons, setup handling, and authenticated redirects.
 
 - The branded login shell is `src/app/(auth)/login/page.tsx`.
-- The product title is `知识情报智能体` and the Shanghai Electric mark is shown
-  at the upper left.
+- The product identity is `SynForge·思铸`. The login page uses its regular
+  Shanghai Electric visual by default, with an optional hidden visual variant.
+- The workspace header displays `SynForge` when expanded and `思铸` when
+  collapsed; browser titles use the `SynForge·思铸` brand suffix.
 - Brand raster assets belong in `public/images/branding/` and should use
   `next/image` when rendered in components.
 - `src/app/layout.tsx` declares the Shanghai Electric symbol as the browser

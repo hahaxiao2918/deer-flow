@@ -1,55 +1,18 @@
-# 🦌 [About DeerFlow 2.0](https://github.com/bytedance/deer-flow)
+# 关于 SynForge·思铸
 
-> **From Open Source, Back to Open Source**
+> **一个面向复杂工作的超级 Agent**
 
-**DeerFlow** (**D**eep **E**xploration and **E**fficient **R**esearch **Flow**) is a community-driven SuperAgent harness that researches, codes, and creates.
-With the help of sandboxes, memories, tools and skills, it handles
-different levels of tasks that could take minutes to hours.
+SynForge·思铸是一套面向企业复杂工作的智能体平台。它通过多智能体协作、长期记忆、沙箱与可扩展 Skills，帮助团队完成研究、分析、内容生成和工作流自动化。
 
----
+## 核心能力
 
-## 🌟 GitHub Repository
+* **Skills 与工具**：通过内置和自定义技能扩展能力。
+* **多智能体协作**：将复杂任务分解并交给合适的智能体处理。
+* **沙箱与文件系统**：在隔离环境中安全执行代码、处理文件。
+* **上下文与长期记忆**：让任务连续、协作更贴合实际需求。
 
-Explore DeerFlow on GitHub: [github.com/bytedance/deer-flow](https://github.com/bytedance/deer-flow)
+## 开源致谢
 
-## 🌐 Official Website
+SynForge·思铸基于开源项目 [DeerFlow](https://github.com/bytedance/deer-flow) 构建，并遵循其 **MIT License**。
 
-Visit the official website of DeerFlow: [deerflow.tech](https://deerflow.tech/)
-
-## 📧 Support
-
-If you have any questions or need help, please contact us at [support@deerflow.tech](mailto:support@deerflow.tech).
-
----
-
-## 📜 License
-
-DeerFlow is proudly open source and distributed under the **MIT License**.
-
----
-
-## 🙌 Acknowledgments
-
-We extend our heartfelt gratitude to the open source projects and contributors who have made DeerFlow a reality. We truly stand on the shoulders of giants.
-
-### Core Frameworks
-
-- **[LangChain](https://github.com/langchain-ai/langchain)**: A phenomenal framework that powers our LLM interactions and chains.
-- **[LangGraph](https://github.com/langchain-ai/langgraph)**: Enabling sophisticated multi-agent orchestration.
-- **[Next.js](https://nextjs.org/)**: A cutting-edge framework for building web applications.
-
-### UI Libraries
-
-- **[Shadcn](https://ui.shadcn.com/)**: Minimalistic components that power our UI.
-- **[SToneX](https://github.com/stonexer)**: For his invaluable contribution to token-by-token visual effects.
-
-These outstanding projects form the backbone of DeerFlow and exemplify the transformative power of open source collaboration.
-
-### Special Thanks
-
-Finally, we want to express our heartfelt gratitude to the core authors of DeerFlow 1.0 and 2.0:
-
-- **[Daniel Walnut](https://github.com/hetaoBackend/)**
-- **[Henry Li](https://github.com/magiccube/)**
-
-Without their vision, passion and dedication, `DeerFlow` would not be what it is today.
+感谢 DeerFlow、[LangChain](https://github.com/langchain-ai/langchain)、[LangGraph](https://github.com/langchain-ai/langgraph)、[Next.js](https://nextjs.org/) 及所有开源贡献者。

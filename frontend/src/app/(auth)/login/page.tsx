@@ -49,12 +49,20 @@ function validateNextParam(next: string | null): string | null {
   return next;
 }
 
+type LoginBackground = "standard" | "hidden";
+
+const LOGIN_BACKGROUND_IMAGES: Record<LoginBackground, string> = {
+  standard: "/images/branding/synforge-login-background-standard-v3.png",
+  hidden: "/images/branding/synforge-login-background.png",
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
   const { t } = useI18n();
 
+  const [background, setBackground] = useState<LoginBackground>("standard");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
@@ -89,6 +97,10 @@ export default function LoginPage() {
     status: setupStatus,
   });
   const systemNeedsAdminSetup = setupStatus?.needs_setup === true;
+
+  useEffect(() => {
+    setBackground(Math.random() < 0.01 ? "hidden" : "standard");
+  }, []);
 
   // Redirect if already authenticated (client-side, post-login)
   useEffect(() => {
@@ -194,25 +206,50 @@ export default function LoginPage() {
 
   return (
     <div
-      className="relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto bg-cover bg-center bg-no-repeat p-4"
+      className="relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto p-4"
       style={{
-        backgroundImage:
-          "url('/images/branding/knowledge-agent-background.png')",
+        backgroundColor: "#eaf4ff",
+        backgroundImage: `url('${LOGIN_BACKGROUND_IMAGES[background]}'), linear-gradient(to bottom, #d7e9ff, #f2f7ff, #dceeff)`,
+        backgroundPosition:
+          background === "standard" ? "left top, center" : "left center, center",
+        backgroundRepeat: "no-repeat, no-repeat",
+        backgroundSize: "cover, 100% 100%",
       }}
     >
-      <Image
-        src="/images/branding/shanghai-electric-mark.png"
-        alt="上海电气"
-        width={160}
-        height={44}
-        priority
-        className="absolute top-6 left-6 h-auto w-32 sm:top-8 sm:left-8 sm:w-40"
-      />
-      <div className="border-border/40 bg-background/85 w-full max-w-md space-y-6 rounded-3xl border p-8 shadow-xl backdrop-blur-sm">
+      {background === "hidden" && (
+        <Image
+          src="/images/branding/shanghai-electric-mark.png"
+          alt="上海电气"
+          width={160}
+          height={44}
+          priority
+          style={{ height: "auto" }}
+          className="absolute top-12 left-6 z-10 h-auto w-32 sm:top-16 sm:left-8 sm:w-40"
+        />
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm sm:top-6 sm:right-6"
+        onClick={() => {
+          setBackground((current) =>
+            current === "standard" ? "hidden" : "standard",
+          );
+        }}
+      >
+        切换背景（测试）
+      </Button>
+      <div className="border-border/40 bg-background/85 w-full max-w-md space-y-6 rounded-3xl border p-8 shadow-xl backdrop-blur-sm md:translate-x-full">
         <div className="text-center">
-          <h1 className="text-foreground font-serif text-3xl">
-            知识情报智能体
-          </h1>
+          <Image
+            src="/images/branding/synforge-brand-lockup-v3.png"
+            alt="SynForge·思铸：战略情报知产超级智能体管理终端"
+            width={1780}
+            height={560}
+            priority
+            className="mx-auto h-auto w-full max-w-80"
+          />
           <p className="text-muted-foreground mt-2">
             {isLogin ? t.login.signInTitle : t.login.createAccountTitle}
           </p>
