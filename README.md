@@ -356,6 +356,7 @@ See the [Sandbox Configuration Guide](backend/docs/CONFIGURATION.md#sandbox) to 
 
 DeerFlow supports configurable MCP servers and skills to extend its capabilities.
 For HTTP/SSE MCP servers, OAuth token flows are supported (`client_credentials`, `refresh_token`).
+When an HTTP/SSE MCP tool receives an image or video from a thread's `/mnt/user-data/` mount, DeerFlow sends a short-lived in-memory `data:` URL instead of exposing a local path. Remote media inputs are limited to 4 MiB; larger files must be reduced before use.
 For stdio MCP servers, per-tool call timeouts can be configured with `tool_call_timeout`.
 MCP routing hints can also prefer a specific MCP tool for matching requests without forbidding other tools. When `tool_search` defers MCP schemas, matching routing metadata can auto-promote up to `tool_search.auto_promote_top_k` deferred schemas before the model call.
 See the [MCP Server Guide](backend/docs/MCP_SERVER.md) for detailed instructions.
@@ -730,6 +731,8 @@ Each task gets its own execution environment with a full filesystem view — ski
 After each run, DeerFlow records a workspace change summary for the run-owned `workspace` and `outputs` directories. The Web UI shows a compact "files changed" badge on the assistant turn; opening it reveals created, modified, and deleted files with text diffs when safe to display. Uploads are excluded because they are user inputs, not agent-generated changes. Large, binary, or sensitive-looking files are shown as metadata only.
 
 With `AioSandboxProvider`, shell execution runs inside isolated containers. With `LocalSandboxProvider`, file tools still map to per-thread directories on the host, but host `bash` is disabled by default because it is not a secure isolation boundary. Re-enable host bash only for fully trusted local workflows. Host bash commands have a wall-clock timeout, and long-lived processes should be started in the background with output redirected to a workspace log.
+
+In Docker deployments, `make up` automatically adds the Docker-out-of-Docker socket overlay when pure `AioSandboxProvider` mode is selected. That socket grants the Gateway host-root-equivalent Docker control; use provisioner mode when that trust boundary is unacceptable.
 
 This is the difference between a chatbot with tool access and an agent with an actual execution environment.
 
