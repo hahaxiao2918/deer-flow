@@ -9,9 +9,16 @@ from deerflow.config import get_app_config
 def _get_exa_client(tool_name: str = "web_search") -> Exa:
     config = get_app_config().get_tool_config(tool_name)
     api_key = None
-    if config is not None and "api_key" in config.model_extra:
-        api_key = config.model_extra.get("api_key")
-    return Exa(api_key=api_key)
+    base_url = None
+    if config is not None:
+        if "api_key" in config.model_extra:
+            api_key = config.model_extra.get("api_key")
+        if "base_url" in config.model_extra:
+            base_url = config.model_extra.get("base_url")
+    kwargs = {"api_key": api_key}
+    if base_url:
+        kwargs["base_url"] = base_url
+    return Exa(**kwargs)
 
 
 @tool("web_search", parse_docstring=True)
