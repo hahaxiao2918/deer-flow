@@ -5,14 +5,17 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from langchain_core.tools import ToolException
 
 from deerflow.mcp import tools as tools_module
 from deerflow.mcp.tools import (
     _convert_local_media_to_data_url,
     _is_local_media_path,
+    _make_remote_media_tool,
     _make_session_pool_tool,
     _maybe_inline_local_media_argument,
     _maybe_inline_local_media_arguments,
+    _resolve_local_media_path,
 )
 
 
@@ -87,6 +90,27 @@ class TestIsLocalMediaPath:
         outside = "/elsewhere/uploads/image.png"
         assert _is_local_media_path(outside) is False
 
+    def test_resolves_virtual_path_inside_current_thread(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        user_data = tmp_path / "users" / "user-1" / "threads" / "thread-1" / "user-data"
+        image = user_data / "uploads" / "image.png"
+        image.parent.mkdir(parents=True)
+        image.write_bytes(b"png")
+
+        paths = MagicMock()
+        paths.sandbox_user_data_dir.return_value = user_data
+        monkeypatch.setattr(tools_module, "get_paths", lambda: paths)
+
+        assert _resolve_local_media_path("/mnt/user-data/uploads/image.png", thread_id="thread-1", user_id="user-1") == image
+
+    def test_rejects_virtual_path_escaping_current_thread(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        user_data = tmp_path / "user-data"
+        user_data.mkdir()
+        paths = MagicMock()
+        paths.sandbox_user_data_dir.return_value = user_data
+        monkeypatch.setattr(tools_module, "get_paths", lambda: paths)
+
+        assert _resolve_local_media_path("/mnt/user-data/../outside.png", thread_id="thread-1", user_id="user-1") is None
+
 
 class TestConvertLocalMediaToDataUrl:
     def test_produces_correct_data_url(self, tiny_png: str):
@@ -118,6 +142,10 @@ class TestMaybeInlineLocalMediaArgument:
 
     def test_leaves_oversized_image_unchanged(self, oversized_png: str):
         assert _maybe_inline_local_media_argument(oversized_png) == oversized_png
+
+    def test_rejects_oversized_image_when_remote_call_requires_inlining(self, oversized_png: str):
+        with pytest.raises(ToolException, match="maximum 4194304 bytes"):
+            _maybe_inline_local_media_argument(oversized_png, reject_oversized=True)
 
     def test_recursively_converts_nested_arguments(self, tiny_png: str):
         args = {
@@ -154,6 +182,20 @@ class _FakeTool:
         return await self.coroutine(**args)
 
 
+class _OriginalRemoteTool:
+    """Minimal HTTP MCP-like tool for asserting wrapper call arguments."""
+
+    name = "zai-mcp-server_analyze_image"
+    description = "analyze an image"
+    args_schema = None
+    response_format = "content_and_artifact"
+    metadata = {"deerflow_mcp": True}
+
+    def __init__(self):
+        self.coroutine = AsyncMock(return_value=([{"type": "text", "text": "ok"}], None))
+        self.ainvoke = AsyncMock(return_value=[{"type": "text", "text": "ok"}])
+
+
 @pytest.mark.asyncio
 async def test_make_session_pool_tool_inlines_media_for_http_transport(tiny_png: str):
     """Remote HTTP MCP calls have local image paths inlined before call_tool."""
@@ -180,6 +222,33 @@ async def test_make_session_pool_tool_inlines_media_for_http_transport(tiny_png:
     assert call_name == "analyze_image"
     assert call_args["image_source"].startswith("data:image/png;base64,")
     assert call_args["prompt"] == "describe"
+
+
+@pytest.mark.asyncio
+async def test_remote_media_tool_inlines_media_without_http_session_pool(tiny_png: str):
+    """The production HTTP/SSE wrapper forwards a data URL to the original tool."""
+    original = _OriginalRemoteTool()
+    with patch("deerflow.mcp.tools.StructuredTool", _FakeTool):
+        wrapped = _make_remote_media_tool(original)
+        result = await wrapped.ainvoke({"image_source": tiny_png, "prompt": "describe"})
+
+    assert result == ([{"type": "text", "text": "ok"}], None)
+    original.ainvoke.assert_not_awaited()
+    original.coroutine.assert_awaited_once()
+    call_args = original.coroutine.call_args.kwargs
+    assert call_args["image_source"].startswith("data:image/png;base64,")
+    assert call_args["prompt"] == "describe"
+
+
+@pytest.mark.asyncio
+async def test_remote_media_tool_rejects_oversized_media_before_call(oversized_png: str):
+    original = _OriginalRemoteTool()
+    with patch("deerflow.mcp.tools.StructuredTool", _FakeTool):
+        wrapped = _make_remote_media_tool(original)
+        with pytest.raises(ToolException, match="maximum 4194304 bytes"):
+            await wrapped.ainvoke({"image_source": oversized_png, "prompt": "describe"})
+
+    original.coroutine.assert_not_awaited()
 
 
 @pytest.mark.asyncio

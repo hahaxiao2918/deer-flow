@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
-from langchain_core.tools import BaseTool, StructuredTool
+from langchain_core.tools import BaseTool, StructuredTool, ToolException
 from langgraph.config import get_config
 
 from deerflow.config.extensions_config import ExtensionsConfig, resolve_effective_mcp_routing
@@ -46,14 +46,41 @@ _MEDIA_MIME_PREFIXES = ("image/", "video/")
 _USER_DATA_PREFIX = "/mnt/user-data/"
 
 
-def _is_local_media_path(value: Any) -> bool:
+def _resolve_local_media_path(value: Any, *, thread_id: str | None = None, user_id: str | None = None) -> Path | None:
+    """Resolve a virtual user-data path to a gateway-local regular file.
+
+    Agent tool calls use ``/mnt/user-data`` paths, but an HTTP MCP call runs in
+    the gateway container rather than the per-thread sandbox.  Resolve those
+    paths through the current thread's user-data root so we never trust an
+    arbitrary host path supplied in a tool argument.
+    """
+    if not isinstance(value, str):
+        return None
+    raw_path = value.strip()
+    if not raw_path.startswith(_USER_DATA_PREFIX):
+        return None
+
+    direct_path = Path(raw_path)
+    if direct_path.is_file():
+        return direct_path
+    if not thread_id:
+        return None
+
+    try:
+        root = get_paths().sandbox_user_data_dir(thread_id, user_id=user_id).resolve()
+        candidate = (root / raw_path.removeprefix(_USER_DATA_PREFIX)).resolve()
+        candidate.relative_to(root)
+    except (OSError, ValueError):
+        return None
+    return candidate if candidate.is_file() else None
+
+
+def _is_local_media_path(value: Any, *, thread_id: str | None = None, user_id: str | None = None) -> bool:
     """Return True if value looks like a local image/video file path."""
     if not isinstance(value, str):
         return False
-    path = value.strip()
-    if not path.startswith(_USER_DATA_PREFIX):
-        return False
-    if not os.path.isfile(path):
+    path = _resolve_local_media_path(value, thread_id=thread_id, user_id=user_id)
+    if path is None:
         return False
     mime, _ = mimetypes.guess_type(path)
     return mime is not None and mime.startswith(_MEDIA_MIME_PREFIXES)
@@ -67,22 +94,31 @@ def _convert_local_media_to_data_url(path: str) -> str:
     return f"data:{mime};base64,{b64}"
 
 
-def _maybe_inline_local_media_argument(value: Any) -> Any:
+def _maybe_inline_local_media_argument(
+    value: Any,
+    *,
+    thread_id: str | None = None,
+    user_id: str | None = None,
+    reject_oversized: bool = False,
+) -> Any:
     """Recursively convert local media paths to data URLs where applicable."""
     if isinstance(value, dict):
-        return {k: _maybe_inline_local_media_argument(v) for k, v in value.items()}
+        return {k: _maybe_inline_local_media_argument(v, thread_id=thread_id, user_id=user_id, reject_oversized=reject_oversized) for k, v in value.items()}
     if isinstance(value, list):
-        return [_maybe_inline_local_media_argument(v) for v in value]
-    if not _is_local_media_path(value):
+        return [_maybe_inline_local_media_argument(v, thread_id=thread_id, user_id=user_id, reject_oversized=reject_oversized) for v in value]
+    path = _resolve_local_media_path(value, thread_id=thread_id, user_id=user_id)
+    if path is None or not _is_local_media_path(value, thread_id=thread_id, user_id=user_id):
         return value
-    path = value.strip()
     size = os.path.getsize(path)
     if size > _MAX_INLINE_MEDIA_BYTES:
+        message = f"Remote MCP media input is too large to inline ({size} bytes; maximum {_MAX_INLINE_MEDIA_BYTES} bytes). Use an image or video no larger than 4 MiB."
         logger.warning(
             "Local media file too large to inline as data URL for remote MCP tool: %s (%s bytes)",
             path,
             size,
         )
+        if reject_oversized:
+            raise ToolException(message)
         return value
     try:
         return _convert_local_media_to_data_url(path)
@@ -91,9 +127,15 @@ def _maybe_inline_local_media_argument(value: Any) -> Any:
         return value
 
 
-def _maybe_inline_local_media_arguments(arguments: dict[str, Any]) -> dict[str, Any]:
+def _maybe_inline_local_media_arguments(
+    arguments: dict[str, Any],
+    *,
+    thread_id: str | None = None,
+    user_id: str | None = None,
+    reject_oversized: bool = False,
+) -> dict[str, Any]:
     """Convert any local media paths in MCP tool arguments to data URLs."""
-    return {k: _maybe_inline_local_media_argument(v) for k, v in arguments.items()}
+    return {k: _maybe_inline_local_media_argument(v, thread_id=thread_id, user_id=user_id, reject_oversized=reject_oversized) for k, v in arguments.items()}
 
 
 # subprocesses. Pinning the process temp dir here (alongside its cwd) makes
@@ -628,6 +670,47 @@ def _make_session_pool_tool(
     )
 
 
+def _make_remote_media_tool(tool: BaseTool) -> BaseTool:
+    """Wrap an HTTP/SSE MCP tool without pooling its transport session.
+
+    HTTP/SSE tools intentionally cannot use the stdio session pool: their
+    internal anyio task groups must be cleaned up by the task that created
+    them.  They still need a small gateway-side adapter because their remote
+    server cannot see DeerFlow's thread-local ``/mnt/user-data`` mount.
+    """
+
+    async def call_with_inlined_media(
+        runtime: Runtime | None = None,
+        **arguments: Any,
+    ) -> Any:
+        thread_id = _extract_thread_id(runtime)
+        user_id = resolve_runtime_user_id(runtime)
+        inlined_arguments = await asyncio.to_thread(
+            _maybe_inline_local_media_arguments,
+            arguments,
+            thread_id=thread_id,
+            user_id=user_id,
+            reject_oversized=True,
+        )
+        coroutine = getattr(tool, "coroutine", None)
+        if coroutine is None:
+            # MCP adapter tools are async StructuredTools, but retain a safe
+            # fallback for a custom tool implementation. Its response format
+            # is content-only because ``ainvoke`` has already consumed any
+            # content-and-artifact tuple.
+            return await tool.ainvoke(inlined_arguments)
+        return await coroutine(**inlined_arguments)
+
+    return StructuredTool(
+        name=tool.name,
+        description=tool.description,
+        args_schema=tool.args_schema,
+        coroutine=call_with_inlined_media,
+        response_format=getattr(tool, "response_format", "content"),
+        metadata=tool.metadata,
+    )
+
+
 async def get_mcp_tools() -> list[BaseTool]:
     """Get all tools from enabled MCP servers.
 
@@ -753,7 +836,9 @@ async def get_mcp_tools() -> list[BaseTool]:
                             source_name,
                             transport,
                         )
-                    wrapped_tools.append(tool)
+                    # Do not pool HTTP/SSE sessions, but do make thread-local
+                    # image/video paths portable for remote MCP servers.
+                    wrapped_tools.append(_make_remote_media_tool(tool) if transport in ("http", "sse") else tool)
 
         # Patch tools to support sync invocation, as deerflow client streams synchronously
         for tool in wrapped_tools:
