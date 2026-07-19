@@ -120,8 +120,11 @@ Rule of thumb: **root `make` = the full application**; **`backend/Makefile` and 
 - Backend work → **[backend/AGENTS.md](backend/AGENTS.md)**
 - Frontend work → **[frontend/AGENTS.md](frontend/AGENTS.md)**
 - Setup & install → **[Install.md](Install.md)**, **[CONTRIBUTING.md](CONTRIBUTING.md)**
-- Project overview & usage → **[README.md](README.md)** (translations: `README_zh.md`,
-  `README_ja.md`, `README_fr.md`, `README_ru.md`)
+- Project overview & usage → **[README.md](README.md)** (Shanghai Electric distribution).
+  The upstream bytedance/deer-flow original README and its translations (`README_zh.md`,
+  `README_ja.md`, `README_fr.md`, `README_ru.md`) are archived under
+  [`.readme-archive/`](.readme-archive/ARCHIVE_NOTE.md) — AI-agent reference only, not
+  user-facing docs.
 - Security policy → **[SECURITY.md](SECURITY.md)**
 - Changes → **[CHANGELOG.md](CHANGELOG.md)**
 - Cutting a release → **[RELEASING.md](RELEASING.md)**
