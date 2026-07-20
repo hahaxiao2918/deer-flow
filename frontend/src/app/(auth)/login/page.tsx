@@ -227,19 +227,6 @@ export default function LoginPage() {
           className="absolute top-12 left-6 z-10 h-auto w-32 sm:top-16 sm:left-8 sm:w-40"
         />
       )}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm sm:top-6 sm:right-6"
-        onClick={() => {
-          setBackground((current) =>
-            current === "standard" ? "hidden" : "standard",
-          );
-        }}
-      >
-        切换背景（测试）
-      </Button>
       <div className="border-border/40 bg-background/85 w-full max-w-md space-y-6 rounded-3xl border p-8 shadow-xl backdrop-blur-sm md:translate-x-full">
         <div className="text-center">
           <Image
