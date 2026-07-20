@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/images/branding/synforge-brand-lockup-v3.png" alt="SynForge" width="420">
+</p>
+
 # DeerFlow 上海电气分发版（SynForge）
 
 基于 [bytedance/deer-flow](https://github.com/bytedance/deer-flow) 二次开发的上海电气内部分发版：一套 LangGraph 架构的 AI super-agent 系统（沙箱执行、持久记忆、子代理委派、可扩展工具），主线使用方式是 **Web UI**（浏览器打开统一入口即可，首次进入走 `/setup` 向导）。
@@ -32,7 +36,9 @@
 
 - `skills/public/` 下五个技能：`applicant-tech-patent-retrieval`、`evidence-based-labeling`、`technology-insight-analysis`、`tech-evolution-analysis`、`black-swan-tech-radar`。
 - 运行时契约 `contracts/patent_skill_runtime/`（v2 schema + manifest + 架构文档）。
-- 专利数据 MCP（`extensions_config.json` 中 `patent-data`，默认禁用）：成本管控（专用 token + 项目预算映射）、共享代理网络暴露、授权头解析、部署预检。启用前必须配置专用 token 与预算映射。
+- 专利数据 MCP（`extensions_config.json → mcpServers.patent-data`）：成本管控（专用 token + 项目预算映射，未配置 client/项目的请求在计费前拒绝）、共享代理网络暴露、授权头解析、部署预检。
+
+使用、配置、产物契约与方法学红线的完整说明见 [docs/patent-suite.md](docs/patent-suite.md)。
 
 ### 技能系统与质量审核
 
@@ -123,6 +129,7 @@ DeerFlow 上游是字节跳动开源的 LangGraph super-agent 框架：后端"�
 
 - [AGENTS.md](AGENTS.md) — 仓库导览与跨模块约定（开发侧事实源）；模块深度：[backend/AGENTS.md](backend/AGENTS.md)、[frontend/AGENTS.md](frontend/AGENTS.md)
 - [docs/production-deployment.md](docs/production-deployment.md) — 生产部署手册（运维交接事实源）
+- [docs/patent-suite.md](docs/patent-suite.md) — 专利分析套件使用手册（启用、Web UI 用法、产物契约、成本纪律）
 - 上游原版 README 及多语种翻译 → `.readme-archive/`（仅供 AI agent 参考）
 - [SECURITY.md](SECURITY.md) — 安全策略（沿用上游）
 
