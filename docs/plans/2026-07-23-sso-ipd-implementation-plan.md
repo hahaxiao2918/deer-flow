@@ -1,6 +1,6 @@
 # 数字底座(IPD) SSO 三方登录 · 实施计划
 
-> **状态：pending approval**（omc-plan direct mode 产出，等待项目负责人批准开工）
+> **状态：阶段 1-6 已实现并提交（commit `eb4c3b7b0`，分支 `codex/sso-login`）。全量 backend 回归 8999 passed / 53 skipped / 1 预存 422（与本改动无关）。阶段 7（联调发布）待 IT P0 blocker（B1-B5 + B8）。**
 > **分支：`codex/sso-login`**（从 prod `668e2eedc` 重建，基线 `aa82e7676`）。SSO 工作只在此分支，不合 prod、不 push，直到联调通过。
 > **主输入：** [`2026-07-22-digital-foundation-sso-todo.md`](2026-07-22-digital-foundation-sso-todo.md)（冻结 todo，权威）。本计划是其阶段 B/C/D 的可执行展开。
 > **日期：** 2026-07-23

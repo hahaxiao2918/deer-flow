@@ -269,6 +269,6 @@
 - 已完成：需求访谈结论、原始文档与截图取证、DeerFlow 现状调查、upstream 鉴权差异调查、本地主线收敛（`a2acd3d51`）、upstream 合入 prod（`9cd1ddfab`）与回归、官方对接文档 v1 核对、与 IT 的对接清单整理（第 6 节）、第 5.4.1 节实现修正。
 - 阶段 A（主线与 upstream 前置）实际已完成；本文件此前未回填，现补记。
 - 入口模式确定为用例二；`client_id`/`client_secret` 已由 IT 分配。
-- 未开始：任何 SSO 代码、配置、迁移、页面或部署修改。
-- 待办：补齐第 6.3 节 P0 项（B1–B5）后进入阶段 B 设计冻结与阶段 C 实现。
+- 阶段 B/C 已实现（commit `eb4c3b7b0`，分支 `codex/sso-login`）：配置 schema、`oauth2.py` adapter、换会话端点 + 自建 CSRF nonce、前端 `/loginsso` 双行为、provisioning 红线测试、SSO.md/config.example/production-deployment 文档；37 个新单测，全量回归 8999 passed / 53 skipped / 1 预存 422（无关）。
+- 待办：阶段 D 联调发布——补齐第 6.3 节 P0 项（B1–B5）+ B8 测试账号后，回填 config 占位、真实联调、部署。
 - 解冻条件：项目负责人明确说“开工”。
