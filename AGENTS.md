@@ -157,9 +157,13 @@ three-branch flow:
   and push `main` to `origin`/`gitea`, then merge `main` into
   `codex/prod-canonical` (never piecemeal cherry-pick; merge, never rebase),
   retain local customizations while resolving conflicts, run the full
-  regression (`cd backend && make test` and `cd frontend && pnpm check`) and do
-  not push until it is green — upstream routinely changes shared classes (agent
-  middleware, mcp, skill policy) that local code depends on — then commit, push
+  regression (`cd backend && make test`; `cd frontend && pnpm install && pnpm
+  check`) and do not push until it is green — `pnpm check` (lint + tsc) does NOT
+  catch stale `node_modules` or unresolvable CSS/package imports, so `pnpm
+  install` must run after any merge that touches `frontend/package.json` (and
+  `make test`'s `uv run` auto-syncs backend deps) — upstream routinely changes
+  shared classes (agent middleware, mcp, skill policy) that local code depends
+  on — then commit, push
   `codex/prod-canonical` to `origin`, and rebuild the local Docker stack from
   the repository root with `./scripts/deploy.sh`.
   Never replace this checkout with a fresh upstream clone or use
