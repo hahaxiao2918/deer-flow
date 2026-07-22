@@ -7,7 +7,6 @@ import yaml
 from deerflow.skills.parser import parse_skill_file
 from deerflow.skills.types import SkillCategory
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_ROOT = REPO_ROOT / "skills" / "public"
 CONTRACT_ROOT = REPO_ROOT / "contracts" / "patent_skill_runtime"
