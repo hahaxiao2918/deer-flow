@@ -9,7 +9,7 @@ import time
 import urllib.parse
 from ipaddress import ip_address, ip_network
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from starlette.responses import RedirectResponse
@@ -20,6 +20,14 @@ from app.gateway.auth import (
 )
 from app.gateway.auth.config import get_auth_config
 from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse
+from app.gateway.auth.oauth2 import OAuth2Error, OAuth2Service
+from app.gateway.auth.oauth2_state import (
+    OAuth2StatePayload,
+    delete_oauth2_state_cookie,
+    generate_oauth2_nonce,
+    get_oauth2_state_cookie,
+    set_oauth2_state_cookie,
+)
 from app.gateway.auth.oidc import OIDCError, OIDCService
 from app.gateway.auth.oidc_state import (
     OIDCStatePayload,
@@ -641,7 +649,7 @@ async def list_auth_providers():
             {
                 "id": provider_id,
                 "display_name": provider_cfg.display_name,
-                "type": "oidc",
+                "type": provider_cfg.provider_type,
             }
         )
     return {"providers": providers}
@@ -866,3 +874,214 @@ def validate_next_param(next_param: str | None) -> str | None:
     if ":" in next_param:
         return None
     return next_param
+
+
+# ── OAuth2 (non-OIDC, e.g. 数字底座/IPD) Endpoints ──────────────────────
+#
+# Flow (use-case 2): browser -> /oauth2/{provider}/start (sets nonce cookie,
+# 302 to IPD authorize) -> IPD login -> IPD 302 to front-end /loginsso?code=...
+# -> front-end 302 to /oauth2/callback/{provider}?code=...&tenant-id=...
+# -> verify nonce cookie, exchange code, provision, set session, 302 to
+# /auth/callback.
+#
+# IPD's own `state` is NOT trusted (empty/0/1 in practice); CSRF relies on the
+# DeerFlow nonce cookie set at /start. See oauth2_state.py.
+
+
+def _get_oauth2_service() -> OAuth2Service:
+    """Get (or create) the singleton OAuth2 service instance."""
+    if not hasattr(_get_oauth2_service, "_instance"):
+        _get_oauth2_service._instance = OAuth2Service()  # type: ignore[attr-defined]
+    return _get_oauth2_service._instance  # type: ignore[attr-defined]
+
+
+async def close_oauth2_service() -> None:
+    """Close the singleton OAuth2 service's HTTP client (shutdown)."""
+    service = getattr(_get_oauth2_service, "_instance", None)
+    if service is not None:
+        await service.close()
+        delattr(_get_oauth2_service, "_instance")
+
+
+def _resolve_oauth2_redirect_uri(request: Request, provider_config: OIDCProviderConfig) -> str:
+    """Resolve the redirect_uri for an oauth2 provider.
+
+    Unlike OIDC, IPD registers a FRONT-END interception route (``/loginsso``)
+    as the callback — the browser lands there with ``code`` and the front-end
+    forwards to the back-end ``/oauth2/callback``. So this redirect_uri points
+    at the front-end, not a back-end route.
+    """
+    if provider_config.redirect_uri:
+        return provider_config.redirect_uri
+    origin = _request_origin(request)
+    if not origin:
+        origin = f"{request.url.scheme}://{request.headers.get('host', 'localhost:3000')}"
+    return f"{origin}/loginsso"
+
+
+def _oauth2_error_redirect(frontend_base_url: str | None, error_code: str, request: Request, provider: str) -> RedirectResponse:
+    """Build an error redirect that also clears the oauth2 nonce cookie."""
+    redirect = _build_error_redirect(frontend_base_url, error_code)
+    resp = RedirectResponse(url=redirect, status_code=status.HTTP_302_FOUND)
+    delete_oauth2_state_cookie(resp, request, provider)
+    return resp
+
+
+@router.get("/oauth2/{provider}/start")
+async def oauth2_login_start(
+    request: Request,
+    provider: str,
+    next: str | None = None,  # noqa: A002 (shadowing built-in is intentional — this is the query param name)
+    remember_me: bool = True,
+):
+    """Initiate a non-OIDC OAuth2 login (数字底座/IPD).
+
+    Generates a DeerFlow nonce cookie and redirects to the provider's
+    authorization endpoint. The provider's ``state`` is not trusted; CSRF
+    relies on this cookie being present at callback time.
+    """
+    from deerflow.config.app_config import get_app_config
+
+    app_config = get_app_config()
+    oidc_config = app_config.auth.oidc
+
+    if not oidc_config.enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO authentication is not enabled")
+
+    if not _OIDC_PROVIDER_KEY_RE.match(provider):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid provider ID")
+
+    provider_config = oidc_config.providers.get(provider)
+    if not provider_config:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown SSO provider: {provider}")
+
+    if provider_config.provider_type != "oauth2":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Provider {provider} is not an oauth2 provider; use /oauth/{provider} instead",
+        )
+
+    redirect_path = validate_next_param(next) or "/workspace"
+    redirect_uri = _resolve_oauth2_redirect_uri(request, provider_config)
+    nonce = generate_oauth2_nonce()
+
+    service = _get_oauth2_service()
+    auth_url = service.build_authorization_url(
+        provider_config=provider_config,
+        client_id=provider_config.client_id,
+        redirect_uri=redirect_uri,
+        state=nonce,
+        scopes=provider_config.scopes or None,
+    )
+
+    state_payload = OAuth2StatePayload(
+        provider=provider,
+        nonce=nonce,
+        next_path=redirect_path,
+        remember_me=remember_me,
+    )
+    redirect_response = RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
+    set_oauth2_state_cookie(redirect_response, request, state_payload)
+    return redirect_response
+
+
+@router.get("/oauth2/{provider}/callback")
+async def oauth2_callback(
+    request: Request,
+    provider: str,
+    code: str | None = None,
+    tenant_id: int | None = Query(default=None, alias="tenant-id"),
+    organize_id: int | None = Query(default=None, alias="organize-id"),
+):
+    """Non-OIDC OAuth2 callback (数字底座/IPD).
+
+    The front-end ``/loginsso`` page receives ``code``/``tenant-id``/
+    ``organize-id`` from IPD and forwards here. Verifies the DeerFlow nonce
+    cookie, exchanges the code, provisions the user, and sets the session.
+    """
+    from deerflow.config.app_config import get_app_config
+
+    app_config = get_app_config()
+    oidc_config = app_config.auth.oidc
+
+    if not oidc_config.enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO authentication is not enabled")
+
+    if not _OIDC_PROVIDER_KEY_RE.match(provider):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid provider ID")
+
+    provider_config = oidc_config.providers.get(provider)
+    if not provider_config:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown SSO provider: {provider}")
+
+    if provider_config.provider_type != "oauth2":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Provider {provider} is not an oauth2 provider",
+        )
+
+    if not code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing code parameter")
+
+    # ── Verify DeerFlow nonce cookie (CSRF) ───────────────────────────
+    # ASSUMPTION: the nonce cookie is required. This covers use-case 2 (the
+    # primary flow where /start sets it). IPD's own `state` query param is NOT
+    # trusted (empty/0/1 in practice). Use-case 1 (direct portal click with no
+    # prior /start) would lack the cookie — pending B1/entry-mode confirmation.
+    state_payload = get_oauth2_state_cookie(request, provider)
+    if not state_payload:
+        logger.warning("OAuth2 callback for %s missing nonce cookie (no prior /start or expired)", provider)
+        return _oauth2_error_redirect(oidc_config.frontend_base_url, "sso_failed", request, provider)
+
+    # ── Resolve + whitelist tenant/organize ───────────────────────────
+    tenant_id = tenant_id if tenant_id is not None else provider_config.default_tenant_id
+    organize_id = organize_id if organize_id is not None else provider_config.default_organize_id
+    tenant_ok = tenant_id is not None and (not provider_config.allowed_tenant_ids or tenant_id in provider_config.allowed_tenant_ids)
+    organize_ok = organize_id is not None and (not provider_config.allowed_organize_ids or organize_id in provider_config.allowed_organize_ids)
+    if not (tenant_ok and organize_ok):
+        logger.warning("OAuth2 callback for %s rejected: tenant_id=%s organize_id=%s", provider, tenant_id, organize_id)
+        return _oauth2_error_redirect(oidc_config.frontend_base_url, "sso_failed", request, provider)
+
+    # ── Exchange + fetch userinfo ─────────────────────────────────────
+    redirect_uri = _resolve_oauth2_redirect_uri(request, provider_config)
+    service = _get_oauth2_service()
+    try:
+        identity = await service.authenticate_callback(
+            provider_id=provider,
+            provider_config=provider_config,
+            code=code,
+            redirect_uri=redirect_uri,
+            state="",  # IPD state is not trusted
+            tenant_id=tenant_id,  # type: ignore[arg-type]
+            organize_id=organize_id,  # type: ignore[arg-type]
+        )
+    except OAuth2Error as exc:
+        logger.error("OAuth2 callback authentication failed for %s: %s", provider, exc)
+        return _oauth2_error_redirect(oidc_config.frontend_base_url, "sso_failed", request, provider)
+
+    # ── Provision / link user ─────────────────────────────────────────
+    try:
+        result = await get_or_provision_oidc_user(provider, provider_config, identity, get_local_provider())
+    except HTTPException as exc:
+        error_map = {
+            status.HTTP_403_FORBIDDEN: "sso_not_allowed",
+            status.HTTP_409_CONFLICT: "sso_account_exists",
+        }
+        error_code = error_map.get(exc.status_code, "sso_failed")
+        logger.warning("OAuth2 user provisioning failed for %s (%s): %s", identity.email, provider, exc.detail)
+        return _oauth2_error_redirect(oidc_config.frontend_base_url, error_code, request, provider)
+
+    user = result["user"]
+
+    # ── Issue DeerFlow session ────────────────────────────────────────
+    token = create_access_token(str(user.id), token_version=user.token_version)
+
+    redirect_target = state_payload.next_path or "/workspace"
+    frontend_base = oidc_config.frontend_base_url or ""
+    callback_redirect = f"{frontend_base}/auth/callback?next={urllib.parse.quote(redirect_target)}"
+
+    redirect_response = RedirectResponse(url=callback_redirect, status_code=status.HTTP_302_FOUND)
+    _set_session_cookie(redirect_response, token, request, remember_me=state_payload.remember_me)
+    _set_csrf_cookie(redirect_response, request)
+    delete_oauth2_state_cookie(redirect_response, request, provider)
+    return redirect_response

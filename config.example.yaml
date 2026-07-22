@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 29
+config_version: 30
 
 # ============================================================================
 # Logging
@@ -2233,3 +2233,39 @@ authorization:
 #         # Security features (enabled by default):
 #         pkce_enabled: true               # PKCE (S256) for authorization code flow
 #         nonce_enabled: true              # Nonce validation in ID tokens
+#
+#       # ── Custom OAuth2 provider (non-OIDC, e.g. 上海电气"数字底座"/IPD) ──
+#       # Use-case 2 entry: the front-end /loginsso route intercepts IPD's
+#       # authorization code and forwards it to
+#       # /api/v1/auth/oauth2/{provider}/callback. See
+#       # docs/plans/2026-07-22-digital-foundation-sso-todo.md and
+#       # backend/docs/SSO.md. Values marked <TODO> / B1-B7 are placeholders
+#       # pending IT confirmation; client_secret MUST come from an env var.
+#       shanghai-electric-ipd:
+#         display_name: 数字底座
+#         provider_type: oauth2            # non-OIDC custom OAuth2 (IPD)
+#         client_id: $IPD_CLIENT_ID
+#         client_secret: $IPD_CLIENT_SECRET
+#         # Front-end interception route registered with IPD as the callback
+#         # (IPD redirects the browser here with code/state/tenant-id/organize-id):
+#         redirect_uri: https://ipd.nebula-starlink.shanghai-electric.com/loginsso
+#         authorization_endpoint: <TODO B1: IPD 登录发起 URL>
+#         token_endpoint: <TODO B2: https://portal.../admin-api/system/oauth2/token>
+#         userinfo_endpoint: <TODO B3: https://portal.../admin-api/system/oauth2/user/get>
+#         # IPD cannot assert email verification — must be false for this provider:
+#         require_verified_email: false
+#         auto_create_users: true
+#         admin_emails: []                 # roleCodes are NEVER mapped to admin
+#         # tenant-id / organize-id normally arrive on the callback URL;
+#         # these defaults are used only when the callback omits them:
+#         default_tenant_id: 1             # TODO B4
+#         default_organize_id: 100         # TODO B5
+#         # allowed_tenant_ids: [1]        # whitelist (TODO B4)
+#         # allowed_organize_ids: [100]    # whitelist (TODO B5)
+#         # ASSUMPTION (pending B6): subject = userinfo.id, globally unique:
+#         subject_field: id
+#         namespace_with_tenant: false
+#         # ASSUMPTION (pending B7): synthesize an email when IPD returns none.
+#         # NOTE: use a REAL domain — reserved TLDs (.local/.test/.invalid) are
+#         # rejected by the email validator. "{id}" expands to the subject.
+#         email_synthesis_pattern: "{id}@ipd.shanghai-electric.com"

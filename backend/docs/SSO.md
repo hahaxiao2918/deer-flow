@@ -278,3 +278,60 @@ The frontend handles the post-SSO flow at `/auth/callback`:
 - **Reject alg=none** — ID tokens with algorithm "none" are always rejected
 - **No email auto-linking** — SSO accounts are always separate from email/password accounts. An email collision with an existing local account blocks the SSO login (409) rather than merging the two.
 - **Verified email requirement** — SSO users must have verified emails by default
+
+## Custom OAuth2 Provider (non-OIDC, e.g. 数字底座/IPD)
+
+DeerFlow also supports custom OAuth2 authorization-code providers that do
+**not** implement OIDC — no discovery, issuer, JWKS, ID token, or nonce. The
+canonical example is the Shanghai Electric "数字底座" (IPD) platform.
+
+### How it differs from OIDC
+
+- No discovery document: `authorization_endpoint` / `token_endpoint` /
+  `userinfo_endpoint` are configured explicitly (`provider_type: oauth2`).
+- Token exchange sends `grant_type/client_id/client_secret/code/redirect_uri/
+  state` **all in the query string**, with `tenant-id` in a header.
+- UserInfo is the **sole** identity source (no ID token); fetched with
+  `Authorization: Bearer`, `tenant-id` + `organize-id` headers, `carryRole=true`.
+- `state` is provider-generated and **not** trusted; CSRF relies on a
+  DeerFlow-issued nonce cookie.
+- The callback is a **front-end interception route** (`/loginsso`): IPD
+  redirects the browser there with `code`, and the front-end forwards to
+  `/api/v1/auth/oauth2/{provider}/callback`.
+
+### Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/auth/oauth2/{provider}/start` | Initiates SSO: sets nonce cookie, 302 to IPD authorize URL |
+| `GET /api/v1/auth/oauth2/{provider}/callback` | Receives `code`/`tenant-id`/`organize-id`, exchanges, provisions, sets session |
+
+The front-end `/loginsso` route (`frontend/src/app/loginsso/page.tsx`) decides
+which to call based on whether `code` is present (use-case 2 three-state logic).
+
+### Configuration
+
+See `config.example.yaml` → `auth.oidc.providers.shanghai-electric-ipd`
+(`provider_type: oauth2`). Key points:
+
+- `require_verified_email: false` — IPD cannot assert email verification.
+- `roleCodes` from UserInfo are **never** mapped to a DeerFlow admin role;
+  only the explicit `admin_emails` list can grant admin.
+- `subject_field` (default `id`) + `namespace_with_tenant` control the stable
+  external identity key. Both are ASSUMPTIONs pending IT confirmation (B6).
+- `email_synthesis_pattern` synthesizes an email when IPD returns none. Use a
+  **real domain** — reserved TLDs (`.local`/`.test`/`.invalid`) are rejected
+  by the email validator (e.g. `"{id}@ipd.shanghai-electric.com"`).
+
+### Security notes
+
+- The DeerFlow nonce cookie (`df_oauth2_state_{provider}`, signed, 10-min TTL)
+  is the CSRF defense; set at `/start`, verified + consumed at `/callback`.
+- `client_secret` travels in the token-endpoint query string (IPD convention);
+  it is masked in all logs and must be served only over HTTPS.
+- Open-redirect, tenant/organize whitelist, and email-collision (409) defenses
+  are identical to the OIDC path.
+
+See `docs/plans/2026-07-22-digital-foundation-sso-todo.md` for the full
+requirements/blocker list and `docs/plans/2026-07-23-sso-ipd-implementation-plan.md`
+for the implementation plan.
