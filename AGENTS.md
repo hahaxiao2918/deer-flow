@@ -135,9 +135,9 @@ These apply repo-wide; module guides own the module-specific detail.
 
 ## Shanghai Electric Distribution and Upstream Sync
 
-This checkout is the Shanghai Electric distribution of DeerFlow. The shared
-long-lived customization branch is `codex/shanghai-electric`; preserve its
-commits when incorporating upstream changes.
+This checkout is the Shanghai Electric distribution of DeerFlow. The single
+long-lived customization and production branch is `codex/prod-canonical`;
+preserve its enterprise commits when incorporating upstream changes.
 
 - **Remotes** — `origin` is the writable Fork (`hahaxiao2918/deer-flow`).
   `upstream` is the read-only `bytedance/deer-flow` source. Never change remote
@@ -147,7 +147,7 @@ commits when incorporating upstream changes.
 - **Update workflow** — when the user asks to update, synchronize upstream, or
   continue maintenance, the agent owns the full workflow without asking the
   user to run commands: fetch `upstream`, merge `upstream/main` into
-  `codex/shanghai-electric`, retain local customizations while resolving
+  `codex/prod-canonical`, retain local customizations while resolving
   conflicts, run relevant checks, commit, push to `origin`, and rebuild the
   local Docker stack from the repository root with `./scripts/deploy.sh`.
   Never replace this checkout with a fresh upstream clone or use

@@ -110,8 +110,7 @@ make dev         # 本地开发：Gateway(18001) + Frontend(13000) + Nginx(12026
 
 | 项 | 值 |
 | --- | --- |
-| 生产规范分支 | `codex/prod-canonical`（生产只从该分支构建） |
-| 长期定制分支 | `codex/shanghai-electric` |
+| 唯一生产与长期定制分支 | `codex/prod-canonical`（同步上游、维护企业定制和生产构建均使用该分支） |
 | `origin` | `github.com/hahaxiao2918/deer-flow`（可写 fork） |
 | `upstream` | `github.com/bytedance/deer-flow`（只读，push 已禁用） |
 | `gitea` | `ssh://git@10.84.91.38:7023/hahaxiao/deer-flow.git`（starl-38 本机镜像，部署主通道） |

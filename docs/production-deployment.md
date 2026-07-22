@@ -56,8 +56,7 @@ cd ~/deerflow
 
 ## 3. 分支与远程仓库
 
-- **生产规范分支：`codex/prod-canonical`** —— 生产部署只从该分支构建。
-- 共享长期定制分支：`codex/shanghai-electric`（品牌与定制提交在此维护，合入规范分支后发布）。
+- **唯一生产与长期定制分支：`codex/prod-canonical`** —— 上游同步、品牌与企业定制维护、生产部署都只使用该分支。
 - `origin` = `github.com/hahaxiao2918/deer-flow`（可写 fork）。
 - `upstream` = `github.com/bytedance/deer-flow`（只读，push 已禁用）。
 - 服务器上的仓库另配置有 `gitea` 远程（见下节），这是日常部署的实际拉取来源。
@@ -231,7 +230,7 @@ docker logs deer-flow-gateway 2>&1 | tail -50
 
 ## 11. 上海电气品牌定制
 
-以下定制必须保留（维护在 `codex/shanghai-electric`，经规范分支发布）：
+以下定制必须保留（直接维护并发布于 `codex/prod-canonical`）：
 
 - **登录页**：`frontend/src/app/(auth)/login/page.tsx`
 - **品牌素材**：`frontend/public/images/branding/`
