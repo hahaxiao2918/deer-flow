@@ -906,10 +906,11 @@ async def test_http_transport_tools_not_pooled():
     # Tool discovery is lazy: no pooled sessions are created until a wrapped tool is invoked.
     assert list(pool._entries.keys()) == []
 
-    # Verify the HTTP tool was NOT wrapped with the pool (it's the original tool).
+    # Verify the HTTP tool was NOT pooled: http/sse tools are wrapped by
+    # inline-media (_make_remote_media_tool) instead of the session pool.
     http_tools = [t for t in tools if t.name == "myserver_search"]
     assert len(http_tools) == 1
-    assert http_tools[0].coroutine is http_tool.coroutine
+    assert http_tools[0].coroutine.__name__ == "call_with_inlined_media"
 
     # Verify the stdio tool WAS wrapped with the pool.
     stdio_tools = [t for t in tools if t.name == "playwright_navigate"]
@@ -964,7 +965,8 @@ async def test_non_stdio_tool_call_timeout_warns_that_it_is_ignored(caplog):
 
         tools = await get_mcp_tools()
 
-    assert tools == [http_tool]
+    assert len(tools) == 1
+    assert tools[0].name == http_tool.name
     assert any(record.levelno == logging.WARNING and "remote" in record.getMessage() and "tool_call_timeout" in record.getMessage() and "stdio" in record.getMessage() for record in caplog.records)
 
 

@@ -37,6 +37,7 @@ def test_local_skill_storage_excludes_evals_fixtures():
     root = Path(__file__).parent / ".tmp-test-fixtures"
     try:
         root.mkdir(exist_ok=True)
+        _write_skill_md(root / "public" / "skill-reviewer" / "SKILL.md")
         _write_skill_md(root / "public" / "skill-reviewer" / "evals" / "fixtures" / "prompt-injection" / "SKILL.md")
         _write_skill_md(root / "public" / "skill-reviewer" / "evals" / "fixtures" / "publish-candidate" / "SKILL.md")
         _write_skill_md(root / "public" / "real-skill" / "SKILL.md")
@@ -47,8 +48,9 @@ def test_local_skill_storage_excludes_evals_fixtures():
 
         assert "prompt-injection" not in names
         assert "publish-candidate" not in names
+        assert "skill-reviewer" in names
         assert "real-skill" in names
-        assert len(files) == 1
+        assert len(files) == 2
     finally:
         # Best-effort cleanup
         import shutil
@@ -61,6 +63,7 @@ def test_user_scoped_storage_excludes_evals_fixtures():
     host_root = Path(__file__).parent / ".tmp-test-user-fixtures"
     try:
         host_root.mkdir(exist_ok=True)
+        _write_skill_md(host_root / "public" / "skill-reviewer" / "SKILL.md")
         _write_skill_md(host_root / "public" / "skill-reviewer" / "evals" / "fixtures" / "prompt-injection" / "SKILL.md")
         _write_skill_md(host_root / "public" / "real-skill" / "SKILL.md")
 
@@ -72,8 +75,9 @@ def test_user_scoped_storage_excludes_evals_fixtures():
         names = {p.parent.name for _, _, p in files}
 
         assert "prompt-injection" not in names
+        assert "skill-reviewer" in names
         assert "real-skill" in names
-        assert len(files) == 1
+        assert len(files) == 2
     finally:
         import shutil
 
@@ -162,9 +166,9 @@ def test_runtime_skill_tool_policy_no_active_skills_allows_all_tools():
     all_tools = [Tool("bash"), Tool("web_search"), Tool("review_skill_package")]
     p1, p2 = _patch_storage([_make_skill("skill-reviewer", allowed_tools=["review_skill_package"])])
     with p1, p2:
-        mw = SkillToolPolicyMiddleware()
+        mw = SkillToolPolicyMiddleware(slash_source_owner_token="test-token")
         req = _ModelReq(all_tools)
-        out = mw._filter_tools(req)
+        out = mw._filter_model_request(req)
     assert out is req
     assert req.overridden is None
 
@@ -180,7 +184,7 @@ def test_runtime_skill_tool_policy_active_skill_restricts_tools():
     all_tools = [Tool("bash"), Tool("web_search"), Tool("read_file"), Tool("review_skill_package")]
     p1, p2 = _patch_storage([_make_skill("skill-reviewer", allowed_tools=["review_skill_package"])])
     with p1, p2:
-        mw = SkillToolPolicyMiddleware()
+        mw = SkillToolPolicyMiddleware(slash_source_owner_token="test-token")
         req = _ModelReq(
             all_tools,
             state={
@@ -194,6 +198,6 @@ def test_runtime_skill_tool_policy_active_skill_restricts_tools():
                 ]
             },
         )
-        out = mw._filter_tools(req)
+        out = mw._filter_model_request(req)
     assert out.overridden is not None
     assert {t.name for t in out.overridden} == {"read_file", "review_skill_package"}

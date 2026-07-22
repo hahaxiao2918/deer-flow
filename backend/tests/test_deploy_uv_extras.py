@@ -103,6 +103,7 @@ def test_deploy_build_auto_detects_postgres_extra_when_other_extras_are_enabled(
         encoding="utf-8",
     )
     (worktree / "extensions_config.json").write_text('{"mcpServers":{},"skills":{}}\n', encoding="utf-8")
+    (worktree / ".env").write_text("", encoding="utf-8")
 
     capture = tmp_path / "uv_extras.txt"
     bin_dir = tmp_path / "bin"
@@ -202,6 +203,7 @@ def test_deploy_build_auto_detects_postgres_extra_with_python_fallback(tmp_path)
         encoding="utf-8",
     )
     docker.chmod(0o755)
+    (worktree / ".env").write_text("", encoding="utf-8")
     python3 = bin_dir / "python3"
     python3.write_text("#!/usr/bin/env sh\nexit 1\n", encoding="utf-8")
     python3.chmod(0o755)
