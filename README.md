@@ -24,7 +24,7 @@
 
 ## 分发版特性
 
-以下为相对上游的增量（截至 2026-07-20，`codex/prod-canonical` 领先 `upstream/main` 30 余个提交）。
+以下为上海电气分发版在上游 DeerFlow 基础上的长期增量；`codex/prod-canonical` 是唯一同步、定制和生产分支。
 
 ### 品牌与登录（SynForge）
 
@@ -59,6 +59,8 @@
 ### 认证与多用户行为
 
 - auth-disabled 模式下跳过 thread `owner_check`，artifact 解析支持跨 user bucket 回退。
+- 浏览器认证使用 HttpOnly session cookie，并统一 remember-me 与 CSRF cookie 生命周期；部署可通过 `auth.local.allow_registration: false` 关闭普通访客自注册，同时保留首次管理员初始化和既有管理员登录。
+- upstream 的可信 principal、可插拔 AuthorizationProvider 与内置 RBAC 基础设施已经进入代码基线；启用授权策略前仍需按部署需求完成配置和回归。
 - 注意：`DEER_FLOW_AUTH_DISABLED=1` 等 dev-only 参数**上生产前必须移除**，完整清单见 [docs/production-deployment.md](docs/production-deployment.md)。
 
 ### 前端增强与 IM 频道
