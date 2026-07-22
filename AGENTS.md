@@ -146,14 +146,26 @@ preserve its enterprise commits when incorporating upstream changes.
   `origin`.
 - **Update workflow** — when the user asks to update, synchronize upstream, or
   continue maintenance, the agent owns the full workflow without asking the
-  user to run commands: fetch `upstream`, merge `upstream/main` into
-  `codex/prod-canonical`, retain local customizations while resolving
-  conflicts, run relevant checks, commit, push to `origin`, and rebuild the
-  local Docker stack from the repository root with `./scripts/deploy.sh`.
+  user to run commands: fetch `upstream`, merge the full `upstream/main` into
+  `codex/prod-canonical` (never piecemeal cherry-pick; merge, never rebase),
+  retain local customizations while resolving conflicts, run the full
+  regression (`cd backend && make test` and `cd frontend && pnpm check`) and do
+  not push until it is green — upstream routinely changes shared classes (agent
+  middleware, mcp, skill policy) that local code depends on — then commit, push
+  to `origin`, and rebuild the local Docker stack from the repository root with
+  `./scripts/deploy.sh`.
   Never replace this checkout with a fresh upstream clone or use
   `reset --hard` to update it. Ask the user only when a new credential,
   permission, external approval, or a genuinely product-defining conflict is
   required; report all other outcomes after completing the work.
+- **Branch discipline** — `codex/prod-canonical` is the single canonical trunk
+  and is what the deploy host runs; keep `origin`, `gitea`, and the deploy host
+  on the same canonical SHA. Develop each discrete feature (e.g. SSO) on a short
+  branch off canonical and merge it back only after the full regression passes —
+  never push half-finished work to canonical. `codex/shanghai-electric` is
+  retired and survives only at archive tag
+  `archive/shanghai-electric-pre-convergence-20260722`; it is not a development,
+  sync, or release target.
 - **Branding ownership** — the root route redirects to `/login`. The branded
   login experience is owned by `frontend/src/app/(auth)/login/page.tsx`; brand
   images live under `frontend/public/images/branding/`. Do not restore the
