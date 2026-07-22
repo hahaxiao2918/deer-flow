@@ -161,9 +161,13 @@ three-branch flow:
   check`) and do not push until it is green — `pnpm check` (lint + tsc) does NOT
   catch stale `node_modules` or unresolvable CSS/package imports, so `pnpm
   install` must run after any merge that touches `frontend/package.json` (and
-  `make test`'s `uv run` auto-syncs backend deps) — upstream routinely changes
-  shared classes (agent middleware, mcp, skill policy) that local code depends
-  on — then commit, push
+  `make test`'s `uv run` auto-syncs backend deps). Also restart the local dev
+  gateway (`make stop && make dev`) after a merge that changes harness code
+  (`packages/harness/`) — `uvicorn --reload` watches only `backend/app/`, not the
+  editable harness package, so agent/middleware/skill changes are NOT hot-reloaded
+  and a stale gateway will keep running pre-merge code — upstream routinely
+  changes shared classes (agent middleware, mcp, skill policy) that local code
+  depends on — then commit, push
   `codex/prod-canonical` to `origin`, and rebuild the local Docker stack from
   the repository root with `./scripts/deploy.sh`.
   Never replace this checkout with a fresh upstream clone or use
