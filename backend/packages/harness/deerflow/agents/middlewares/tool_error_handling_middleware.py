@@ -1,6 +1,7 @@
 """Tool error handling middleware and shared runtime middleware builders."""
 
 import logging
+import secrets
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, override
 
@@ -451,11 +452,18 @@ def build_subagent_runtime_middlewares(
     # active, matching the semantics introduced for the lead agent in #72d9b21.
     from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
 
+    # Mirror the lead agent (lead_agent/agent.py): SkillToolPolicyMiddleware
+    # requires a per-build ``slash_source_owner_token`` to authenticate
+    # slash-driven skill tool calls within this agent's own dispatch. Generate a
+    # fresh token here so the upstream-introduced required kwarg is satisfied for
+    # subagents (the lead path at build_middlewares does the same).
+    slash_source_owner_token = secrets.token_urlsafe(24)
     middlewares.append(
         SkillToolPolicyMiddleware(
             available_skills=available_skills,
             app_config=app_config,
             user_id=user_id,
+            slash_source_owner_token=slash_source_owner_token,
         )
     )
 
