@@ -135,9 +135,16 @@ These apply repo-wide; module guides own the module-specific detail.
 
 ## Shanghai Electric Distribution and Upstream Sync
 
-This checkout is the Shanghai Electric distribution of DeerFlow. The single
-long-lived customization and production branch is `codex/prod-canonical`;
-preserve its enterprise commits when incorporating upstream changes.
+This checkout is the Shanghai Electric distribution of DeerFlow. It uses a
+three-branch flow:
+
+- `main` — pristine upstream mirror; tracks `upstream/main` and receives ONLY
+  official upstream updates (no 二开 lands here). `git diff main..codex/prod-canonical`
+  is the pure customization delta.
+- `codex/prod-canonical` (the "prod" branch) — the long-lived customization and
+  production trunk; this is what the deploy host (starl-38) runs.
+- feature branches — short-lived, branched off `codex/prod-canonical`, merged
+  back only after the full regression passes.
 
 - **Remotes** — `origin` is the writable Fork (`hahaxiao2918/deer-flow`).
   `upstream` is the read-only `bytedance/deer-flow` source. Never change remote
@@ -146,24 +153,26 @@ preserve its enterprise commits when incorporating upstream changes.
   `origin`.
 - **Update workflow** — when the user asks to update, synchronize upstream, or
   continue maintenance, the agent owns the full workflow without asking the
-  user to run commands: fetch `upstream`, merge the full `upstream/main` into
+  user to run commands: fetch `upstream`, fast-forward `main` to `upstream/main`
+  and push `main` to `origin`/`gitea`, then merge `main` into
   `codex/prod-canonical` (never piecemeal cherry-pick; merge, never rebase),
   retain local customizations while resolving conflicts, run the full
   regression (`cd backend && make test` and `cd frontend && pnpm check`) and do
   not push until it is green — upstream routinely changes shared classes (agent
   middleware, mcp, skill policy) that local code depends on — then commit, push
-  to `origin`, and rebuild the local Docker stack from the repository root with
-  `./scripts/deploy.sh`.
+  `codex/prod-canonical` to `origin`, and rebuild the local Docker stack from
+  the repository root with `./scripts/deploy.sh`.
   Never replace this checkout with a fresh upstream clone or use
   `reset --hard` to update it. Ask the user only when a new credential,
   permission, external approval, or a genuinely product-defining conflict is
   required; report all other outcomes after completing the work.
-- **Branch discipline** — `codex/prod-canonical` is the single canonical trunk
-  and is what the deploy host runs; keep `origin`, `gitea`, and the deploy host
-  on the same canonical SHA. Develop each discrete feature (e.g. SSO) on a short
-  branch off canonical and merge it back only after the full regression passes —
-  never push half-finished work to canonical. `codex/shanghai-electric` is
-  retired and survives only at archive tag
+- **Branch discipline** — `codex/prod-canonical` (prod) is the deployment and
+  integration trunk; keep `origin`, `gitea`, and the deploy host on the same
+  prod SHA. `main` stays a pristine upstream mirror (upstream-only). Develop
+  each discrete feature (e.g. SSO) on a short branch off `codex/prod-canonical`
+  and merge it back only after the full regression passes — never push
+  half-finished work to prod, and never land 二开 on `main`.
+  `codex/shanghai-electric` is retired and survives only at archive tag
   `archive/shanghai-electric-pre-convergence-20260722`; it is not a development,
   sync, or release target.
 - **Branding ownership** — the root route redirects to `/login`. The branded
