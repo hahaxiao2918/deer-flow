@@ -10,6 +10,10 @@
     "runtime_discovered": false
   },
   "skills": {
+    "patent-query-composition": {
+      "version": "2.0.0",
+      "sha256": "65900cba5f6c8a8b983df4720b111870fdda5199cbf6612eda838a5954af33fb"
+    },
     "applicant-tech-patent-retrieval": {
       "version": "2.0.0",
       "sha256": "177f13d6620daa209cbb84b783d6be622704f5df7b39e9094f7b576db3bec2b5"
@@ -35,6 +39,6 @@
     "primary_skill_per_user_intent": true,
     "reuse_upstream_artifacts": true,
     "general_subagent_delegation": false,
-    "reason": "Deerflow currently preloads all enabled skills into general-purpose subagents without activating their allowed-tools policy."
+    "reason": "The original blocker (subagents applying all enabled skills' allowed-tools at build time) was fixed in b7679504a (runtime SkillToolPolicyMiddleware) and upstream 65afc9b1d/#4098 (allowed-tools apply only to active skills). The flag remains false pending run-scoped primary-skill state (the skill_context cross-turn union), not the preload behaviour."
   }
 }

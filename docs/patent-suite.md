@@ -1,11 +1,12 @@
 # 专利分析套件使用手册（patent-research.v2）
 
-上海电气分发版内置的专利分析能力，由三部分组成：**五个分析技能**（`skills/public/`）、**v2 运行时契约**（`contracts/patent_skill_runtime/`）、**专利数据 MCP sidecar**（`patent-data`，成本管控的数据网关）。本文面向使用与运维，方法学与契约细节以 [RUNTIME_ARCHITECTURE_V2.md](patent-skill-runtime/RUNTIME_ARCHITECTURE_V2.md) 为准。
+上海电气分发版内置的专利分析能力，由三部分组成：**六个分析技能**（`skills/public/`）、**v2 运行时契约**（`contracts/patent_skill_runtime/`）、**专利数据 MCP sidecar**（`patent-data`，成本管控的数据网关）。本文面向使用与运维，方法学与契约细节以 [RUNTIME_ARCHITECTURE_V2.md](patent-skill-runtime/RUNTIME_ARCHITECTURE_V2.md) 为准。
 
 ## 组成
 
 | 组件 | 位置 | 说明 |
 | --- | --- | --- |
+| 检索式编制 | `skills/public/patent-query-composition` | 检索式编制阶段，把研究意图编成可运行的智慧芽检索式，产出 `QueryPlan` |
 | 申请人技术检索 | `skills/public/applicant-tech-patent-retrieval` | 语料构建阶段，产出 `CorpusManifest` |
 | 证据标注 | `skills/public/evidence-based-labeling` | 逐件文献的纳入/相关性/路线标注 |
 | 技术洞察分析 | `skills/public/technology-insight-analysis` | 技术机理与路线对比（`RouteMap`） |
@@ -28,6 +29,7 @@
 
 | 你要的交付物 | 主技能 |
 | --- | --- |
+| 可运行的专利检索式（智慧芽 query_text） | `patent-query-composition` |
 | 候选清单、可审计语料 | `applicant-tech-patent-retrieval` |
 | 逐件纳入/相关性/路线标注 | `evidence-based-labeling` |
 | 技术机理与路线对比 | `technology-insight-analysis` |
@@ -38,7 +40,7 @@
 
 ## 产物契约（v2.0.0）
 
-流水线：`ResearchBrief → CorpusManifest → EvidenceCard[] → LabelDecision[] | RouteMap | EvolutionMap | WeakSignalRegister → AnalysisClaim[] + limitations + handoff`。
+流水线：`ResearchBrief → QueryPlan → CorpusManifest → EvidenceCard[] → LabelDecision[] | RouteMap | EvolutionMap | WeakSignalRegister → AnalysisClaim[] + limitations + handoff`。
 
 - 多阶段/多轮产物存放于 `workspace/patent-analysis/<analysis_id>/`；单阶段小结果可内联返回。
 - 证据等级：`E3` 独立权利要求直接限定 / `E2` 从属权利要求或实施例直接支持 / `E1` 仅摘要背景或说明书 / `I` 模型解释 / `U` 证据缺失。置信度与证据等级相互独立——有把握的解读仍是 `I`，证据缺失记 `U` 而不是反向事实。
@@ -54,7 +56,7 @@
 
 ## 已知限制
 
-- v2 暂不进行 general-purpose 子代理委派（当前运行时的 `skill_context` 会把读过的技能跨轮激活并合并工具权限）；可靠委派等待后续运行时改造（见架构文档"Current runtime limitation"）。
+- v2 暂不进行 general-purpose 子代理委派。原有的技术阻塞（子代理在构建期套用所有已启用技能的 `allowed-tools`）已由提交 `b7679504a`（把子代理工具策略移到运行时 `SkillToolPolicyMiddleware`）与上游 `65afc9b1d`/#4098（`allowed-tools` 仅对激活技能生效）修复，子代理现与 lead 一样按激活态过滤工具。当前保留禁用的原因仅剩 `skill_context` 的跨轮激活并集语义，可靠委派等待该后续运行时改造（见架构文档"Current runtime limitation"）。
 - 数据范围：P002 检索、P012 著录、D114 批量文本；不含法律状态/同族/引文、AMiner、供应商 AI 接口。
 - 放行门禁（release gates）见架构文档第 5 节；版本沿革见 [VERSION_HISTORY.md](patent-skill-runtime/VERSION_HISTORY.md)。
 
@@ -64,4 +66,4 @@
 - 数据 sidecar：`services/deerflow-patent-data-mcp-v2/README.md`（V2 范围与运行配置）
 - 评估记录：`docs/patent-skill-runtime/V2_EVALUATION.md`
 
-最后更新：2026-07-20
+最后更新：2026-07-23

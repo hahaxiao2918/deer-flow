@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_ROOT = REPO_ROOT / "skills" / "public"
 CONTRACT_ROOT = REPO_ROOT / "contracts" / "patent_skill_runtime"
 PATENT_SKILLS = {
+    "patent-query-composition",
     "applicant-tech-patent-retrieval",
     "evidence-based-labeling",
     "technology-insight-analysis",
@@ -35,6 +36,7 @@ def test_patent_skill_descriptions_route_by_distinct_deliverables():
         frontmatter = yaml.safe_load(skill_file.read_text(encoding="utf-8").split("---", 2)[1])
         descriptions[name] = frontmatter["description"]
 
+    assert "search-query expressions" in descriptions["patent-query-composition"]
     assert "candidate list" in descriptions["applicant-tech-patent-retrieval"]
     assert "per-document" in descriptions["evidence-based-labeling"]
     assert "technical route map" in descriptions["technology-insight-analysis"]
