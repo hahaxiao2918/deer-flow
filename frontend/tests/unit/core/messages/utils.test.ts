@@ -14,6 +14,8 @@ import {
   hasContent,
   hasReasoning,
   isAssistantMessageGroupStreaming,
+  parseUploadedFiles,
+  stripInternalMarkers,
   stripUploadedFilesTag,
 } from "@/core/messages/utils";
 
@@ -305,6 +307,45 @@ describe("human message internal context stripping", () => {
     } as Message;
 
     expect(getMessageCopyData(message)).toBe("Summarize this paper");
+  });
+
+  test("strips <current_uploads> context (renamed tag) from copy data", () => {
+    // UploadsMiddleware renamed <uploaded_files> → <current_uploads>. The
+    // display/copy path must strip the new tag too, or the injected file
+    // manifest leaks into the user's message bubble as raw text.
+    const message = {
+      id: "human-with-current-uploads",
+      type: "human",
+      content:
+        "<current_uploads>\nThe following files were uploaded in this message:\n\n- paper.pdf (1.0 MB)\n  Path: /mnt/user-data/uploads/paper.pdf\n</current_uploads>\n\nSummarize this paper",
+    } as Message;
+
+    expect(getMessageCopyData(message)).toBe("Summarize this paper");
+  });
+
+  test("stripUploadedFilesTag strips the renamed <current_uploads> tag", () => {
+    const content =
+      "<current_uploads>\n- x.pdf (1 KB)\n  Path: /mnt/user-data/uploads/x.pdf\n</current_uploads>\nreal user task";
+
+    expect(stripUploadedFilesTag(content)).toBe("real user task");
+  });
+
+  test("stripInternalMarkers strips <current_uploads> for the export path", () => {
+    const content =
+      "<current_uploads>\n- x.pdf (1 KB)\n  Path: /mnt/user-data/uploads/x.pdf\n</current_uploads>\nreal user task";
+
+    expect(stripInternalMarkers(content)).toBe("real user task");
+  });
+
+  test("parseUploadedFiles parses files out of the renamed <current_uploads> tag", () => {
+    const content =
+      "<current_uploads>\nThe following files were uploaded in this message:\n\n- paper.pdf (1.0 MB)\n  Path: /mnt/user-data/uploads/paper.pdf\n</current_uploads>";
+
+    const files = parseUploadedFiles(content);
+
+    expect(files).toHaveLength(1);
+    expect(files[0]?.filename).toBe("paper.pdf");
+    expect(files[0]?.path).toBe("/mnt/user-data/uploads/paper.pdf");
   });
 
   test("strips slash skill activation context from display content", () => {
