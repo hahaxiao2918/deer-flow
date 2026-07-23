@@ -582,7 +582,10 @@ export interface FileInMessage {
  */
 export function stripUploadedFilesTag(content: string): string {
   return content
-    .replace(/<(uploaded_files|slash_skill_activation)>[\s\S]*?<\/\1>/g, "")
+    .replace(
+      /<(uploaded_files|current_uploads|slash_skill_activation)>[\s\S]*?<\/\1>/g,
+      "",
+    )
     .trim();
 }
 
@@ -592,7 +595,7 @@ export function stripUploadedFilesTag(content: string): string {
  *
  * These markers are *not* user copy — they come from:
  *
- * - ``UploadsMiddleware`` → ``<uploaded_files>``
+ * - ``UploadsMiddleware`` → ``<current_uploads>`` (legacy ``<uploaded_files>``)
  * - ``SkillActivationMiddleware`` → ``<slash_skill_activation>``
  * - ``DynamicContextMiddleware`` → ``<system-reminder>`` (carrying
  *   ``<memory>`` / ``<current_date>`` inside)
@@ -607,6 +610,7 @@ export function stripUploadedFilesTag(content: string): string {
  */
 export const INTERNAL_MARKER_TAGS = [
   "uploaded_files",
+  "current_uploads",
   "slash_skill_activation",
   "system-reminder",
   "memory",
@@ -633,8 +637,10 @@ export function stripInternalMarkers(content: string): string {
 }
 
 export function parseUploadedFiles(content: string): FileInMessage[] {
-  // Match <uploaded_files>...</uploaded_files> tag
-  const uploadedFilesRegex = /<uploaded_files>([\s\S]*?)<\/uploaded_files>/;
+  // Match <current_uploads>...</current_uploads> (current) or
+  // <uploaded_files>...</uploaded_files> (legacy) tags.
+  const uploadedFilesRegex =
+    /<(?:uploaded_files|current_uploads)>([\s\S]*?)<\/(?:uploaded_files|current_uploads)>/;
   // eslint-disable-next-line @typescript-eslint/prefer-regexp-exec
   const match = content.match(uploadedFilesRegex);
 

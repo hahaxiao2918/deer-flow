@@ -359,8 +359,14 @@ function MessageContent_({
   const files = useMemo(() => {
     const files = message.additional_kwargs?.files;
     if (!Array.isArray(files) || files.length === 0) {
-      if (rawContent.includes("<uploaded_files>")) {
-        // If the content contains the <uploaded_files> tag, we return the parsed files from the content for backward compatibility.
+      if (
+        rawContent.includes("<uploaded_files>") ||
+        rawContent.includes("<current_uploads>")
+      ) {
+        // If the content contains an uploads-context tag, return the parsed
+        // files from the content for backward compatibility (the live path
+        // prefers additional_kwargs.files; this covers persisted messages that
+        // only carry the inline <current_uploads>/<uploaded_files> block).
         return parseUploadedFiles(rawContent);
       }
       return null;
