@@ -22,13 +22,18 @@ Compose a versioned set of validated patent search-query expressions (检索式)
 
 Use status values consistently: `needs_input`, `scope_ambiguous`, `ready`, `no_results`, `partial_data`, `insufficient_evidence`, `unsupported_request`, or `completed`.
 
-## Scope intake (one consolidated ask)
+## Scope intake (one structured `ask_clarification` card)
 
-Ask ONE consolidated question covering the dimensions that materially change the query set; apply disclosed defaults for anything omitted and record them in `defaults_applied`. Only block (status `needs_input` / `scope_ambiguous`) when ambiguity would change the answer. Capture:
-- inventive subject + its core technical features (the 基本检索要素);
-- applicant / inventor (if any) — flag homonym ambiguity;
-- jurisdictions (default: broad), date window (default: open), and the intended goal — 查新 / invalidation / FTO / landscape / monitoring (see `references/search-strategy-playbook.md` for goal→strategy);
-- recall-vs-precision goal (default: recall-oriented for novelty).
+Call `ask_clarification` **once** (`clarification_type: "missing_info"`) to capture the scope dimensions that materially change the query set; apply disclosed defaults for anything omitted and record them in `defaults_applied`. Block (status `needs_input` / `scope_ambiguous`) only when a MUST-HAVE field for the chosen goal is missing and no safe default exists.
+
+- **Always capture** (in `question`): inventive subject + core technical features (基本检索要素); applicant / inventor if any (flag homonym ambiguity); the **goal** — present as `options`: `novelty / invalidation / FTO / landscape / monitoring / SEP / portfolio-quality`; jurisdictions (default: broad); date window (default: open).
+- **Goal-conditional MUST-HAVE fields** — name them in `context` so the user supplies them up front (they are outcome-determinative):
+  - **FTO** → target jurisdictions (per-country) + whether pending (审中) claims are in scope.
+  - **Invalidation** → the target patent's PN + its earliest-priority date (`E_PRIORITY_DATE`) — the prior-art date cutoff depends on it.
+  - **SEP** → standard / project (e.g. 5G) + SDO (ETSI / IEEE / ITU).
+  - **Portfolio-quality** → target applicant + quality threshold.
+- Use `options` for choice dims (e.g. recall-vs-precision: `["recall-oriented", "balanced", "precision-oriented"]`; default recall-oriented for novelty).
+- Record the answers into `query_plan.intent` (incl. `goal`); record any defaulted dimension in `defaults_applied`.
 
 ## Goal → strategy (dispatch first)
 
