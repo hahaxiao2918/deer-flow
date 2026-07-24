@@ -31,7 +31,8 @@ This skill **composes** the query expressions for whichever strategy the goal im
 - **Block-search (default)** — see SKILL.md core. Best when the invention can be decomposed into explicit elements with findable keywords + classifications.
 - **Classification-driven** — start from CPC/IPC to define the technology space (recall), then keyword-refine (precision). Best for landscapes and when keywords are ambiguous. Use `patent_search` (small limit + collapse) per classification slice.
 - **Applicant/portfolio** — `ALL_AN` / `ALL_AN:(TREE@…)` + `APD`/`PBD` + classification. Best for competitor and portfolio work. Remember `ALL_AN` is applicant-as-published (current + original + historical union), not necessarily current owner.
-- **Citation-based** — `B_CITES:<pn>` (what a patent cites), `F_CITES:<pn>` (what cites it), `BF_CITES:<pn>` (both). Best for invalidation and for expanding a known relevant seed into its neighborhood.
+- **Citation-based** — `B_CITES:<pn>` (what a patent cites), `F_CITES:<pn>` (what cites it), `BF_CITES:<pn>` (both). Add `GAND CITE_CATEGORY:X` to filter to examiner-flagged novelty-destroying refs (the best invalidation seed set); `F_CITES_ANC:<co>` / `B_CITES_ANC:<co>` map who-cites-a-company (threats) vs what-a-company-cites (technical roots) for landscape/monitoring.
+- **Seed-patent-driven expansion** — given 2-3 known-relevant seed PNs, harvest their CPC/IPC + distinctive terms into blocks, then expand via the citation neighborhood (`BF_CITES:<seedpn>`) and classification siblings. This is the signature professional recall technique (the USPTO seven-step starts here).
 - **Hybrid** — combine: e.g. classification-space ∩ keyword-blocks ∩ jurisdiction; or seed-patent classifications harvested into a block, then Boolean-refined. Intersect with `AND`, broaden with `OR`.
 
 ## Common pitfalls
@@ -40,6 +41,7 @@ This skill **composes** the query expressions for whichever strategy the goal im
 - **Missing synonyms / terminology** — expand on form + meaning + function, both CN and EN. Seed-patent language often reveals non-obvious terms.
 - **Ignoring classification** — keyword-only searches miss art drafted with different wording. Always include CPC/IPC blocks; cross-check keyword-only vs classification-inclusive counts.
 - **Keyword ambiguity / polysemy** — bind multi-word concepts with phrase `"…"` or proximity `$Wn`, and disambiguate with classification or jurisdiction.
+- **Under-using proximity / frequency** — a bare `AND` between terms loses precision; bind co-occurring concepts with `$Wn`/`$PREn` (within-n-words), `$SEN`/`$PARA` (same sentence/paragraph), or `$FREQn` (term appears >= n times — note: `$FREQn` does NOT work on `_ALL` / 机翻 fields, only on 原文 fields).
 - **Applicant-as-published ≠ current owner** — mergers/transfers change ownership; `ALL_AN` is the published-name union, not the current assignee.
 - **18-month publication lag** — recently filed applications are unpublished; note the blind spot, especially for novelty.
 - **Do not equate semantic/concept similarity with legal relevance** — (semantic isn't exposed here anyway) never assert novelty/obviousness from similarity; that is a legal judgment, not a query result.

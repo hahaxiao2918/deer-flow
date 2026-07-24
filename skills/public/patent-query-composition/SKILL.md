@@ -49,7 +49,7 @@ Per-goal rationale and worked examples: `references/search-strategy-playbook.md`
 1. **Decompose** the invention into basic search elements — technical field (前序), core inventive features (特征), and technical problem / effect. Each element becomes one **block**.
 2. **Build each block** as `(keywords OR classification)`, OR-combined inside the block:
    - Keywords — expand on three dimensions: form (singular/plural, spelling, word class), meaning (synonyms, near-synonyms, hypernyms/hyponyms), function (problem / effect / use); cover BOTH Chinese and English.
-   - Classification — prefer CPC (more granular, better for search); IPC as backup. Map the technology area to codes via `references/ipc-classification.md` or harvest them from seed patents. Use several codes per block; never rely on a single one.
+   - Classification — prefer `IPC_CPC` (union of IPC+CPC; CPC alone misses CN-only filings) or `CPC_ALL` (official+predicted, for recall); use several codes per block and never rely on a single one. Map the area via `references/ipc-classification.md` or harvest from seed patents, and extend to 功能类似 / neighbouring classes when a block is sparse.
 3. **Combine blocks** — combination tactics (CNIPA 6.3.3), decoupled from citation categories:
    - **全要素检索** (all-elements): `Block1 AND Block2 AND Block3` — highest precision.
    - **部分要素检索** (partial): `Block1 AND Block2`, `Block1 AND Block3` — recall floor when all-elements is sparse.
@@ -63,11 +63,11 @@ Per-goal rationale and worked examples: `references/search-strategy-playbook.md`
 
 | Field code | Matches |
 | --- | --- |
-| `TACD_ALL:<term>` | Title + abstract + claims + description, 原文 + 机翻 (broadest recall; default for novelty) |
+| `TACD_ALL:<term>` | Title + abstract + claims + description, 原文 + 机翻 (broadest recall; default for novelty). For precision (FTO / invalidation X-search) prefer `TAC_ALL` (drops the noisy description). |
 | `TAC_ALL` / `TA_ALL` | Title+abstract / title only (原文 + 机翻) |
 | `ALL_AN:<name>` | Applicant/assignee — union of current, original, standardized, historical |
 | `IN:<name>` | Inventor |
-| `CPC:<code>` / `IPC:<code>` / `IPC_SUB_CLASS:<code>` | Classification (CPC preferred); group range `IPC:[H01L31/0203 TO H01L31/042]` |
+| `IPC_CPC:<code>` / `CPC:<code>` / `CPC_ALL` / `IPC_SUB_CLASS:<code>` | Classification — prefer `IPC_CPC` (IPC union CPC, covers CN-only) over CPC-only; `CPC_ALL` = official+predicted; group range `IPC:[H01L31/0203 TO H01L31/042]` |
 | `AUTHORITY:(CN OR US OR EP OR WO)` | Jurisdiction |
 | `APD:[20150101 TO 20251231]` / `PBD:[...]` | Date (8-digit YYYYMMDD; year-only `APD_Y:[2018 TO *]`) |
 | `ALL_AN:(TREE@"公司全名")` | Applicant + all subsidiaries |
