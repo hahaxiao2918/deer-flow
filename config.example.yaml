@@ -2244,6 +2244,7 @@ authorization:
 #       shanghai-electric-ipd:
 #         display_name: 数字底座
 #         provider_type: oauth2            # non-OIDC custom OAuth2 (IPD)
+#         scopes: []                       # non-OIDC; do not send OIDC scopes (IPD uses its own, e.g. user.read)
 #         client_id: $IPD_CLIENT_ID
 #         client_secret: $IPD_CLIENT_SECRET
 #         # Front-end interception route registered with IPD as the callback
