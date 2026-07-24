@@ -134,10 +134,16 @@ Leave these unset for the standard `make dev` / Docker flow, where nginx serves 
 
 ## Shanghai Electric Branding
 
-This distribution starts at `/login`: `src/app/page.tsx` redirects there rather
-than rendering the upstream public landing page. Preserve the existing
-authentication behavior, including local login, registration, SSO provider
-buttons, setup handling, and authenticated redirects.
+This distribution is **SSO-first**: `src/app/page.tsx` and the unauthenticated
+`src/app/workspace/layout.tsx` guard both redirect to `/loginsso` (数字底座/IPD
+use-case 2) rather than rendering the upstream public landing page. `/loginsso`
+starts the SSO flow — it detects an existing base LTPA session (seamless
+sign-in via the Gateway ODM account-login) or bounces to the base login page.
+**Local password login is preserved** at `/login` (break-glass) and via a
+fallback link on `/loginsso`; the `/login` page's SSO buttons route by provider
+type (`oauth2` → `/api/v1/auth/oauth2/{id}/start`, OIDC → `/api/v1/auth/oauth/{id}`).
+Preserve this behavior, including local login, registration, setup handling,
+and authenticated redirects.
 
 - The branded login shell is `src/app/(auth)/login/page.tsx`.
 - The product identity is `SynForge·思铸`. The login page uses its regular

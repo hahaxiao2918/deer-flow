@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 /**
@@ -69,8 +70,15 @@ export default function LoginSsoPage() {
       <p className="text-muted-foreground">
         {failed
           ? "SSO 登录不可用，正在返回登录页…"
-          : "正在跳转到数字底座登录…"}
+          : "正在通过数字底座单点登录…"}
       </p>
+      {/* Break-glass: local password login stays reachable without going through SSO. */}
+      <Link
+        href="/login"
+        className="text-muted-foreground/70 hover:text-foreground text-xs underline-offset-4 transition-colors hover:underline"
+      >
+        使用本地账号密码登录
+      </Link>
     </div>
   );
 }
