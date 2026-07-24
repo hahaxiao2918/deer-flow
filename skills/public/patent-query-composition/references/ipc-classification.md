@@ -1,0 +1,657 @@
+# IPC Classification Reference — edition 2025.01
+
+> **On-demand reference** for the `patent-query-composition` skill. Read this when the intent names a technology area and you want to scope a query by IPC classification code. It is large on purpose — load it only when classification scoping is needed, not by default.
+>
+> **Source**: WIPO IPC **2025.01** (effective 2025-01-01), extracted from the official WIPO IPC section schemes. Some rows were recovered from PDF extraction; if a subclass title looks off or a row is missing, verify at the [WIPO IPC Publication Browser (2025.01)](https://ipcpub.wipo.int/?version=2025.01) before relying on it. Do not invent codes.
+
+## How to use IPC in a 智慧芽 query
+
+智慧芽 classification fields: `IPC:<code>`, `IPC_SECTION:<A–H>`, `IPC_CLASS:<2–3 chars>`, `IPC_SUB_CLASS:<3-char alnum>`, `IPC_GROUP`, `IPC_SUB_GROUP`, `MIPC` (主分类), `IPC_CPC` (IPC+CPC), `CPC`/`CPC_ALL`, plus group ranges `IPC:[H01L31/0203 TO H01L31/042]`.
+
+- Map a technology area to a **subclass** (the 3-char alnum code, e.g. `F02C`, `H02K`, `G06F`). That is the usual composition granularity; `IPC_SUB_CLASS:` is the cleanest field for it.
+- Then combine with text: `TACD_ALL:(燃气轮机 AND 叶片冷却) AND IPC_SUB_CLASS:F02C`.
+- Worked mappings for common power/electrical domains:
+  - 燃气轮机 / 燃气轮 → `F02C` (gas-turbine plants); 蒸汽轮机/汽轮机 → `F01D` (non-positive-displacement turbines, e.g. steam); 内燃机控制 → `F02D`.
+  - 风电 → `F03D` (wind motors); 水力 → `F03B`; 潮汐/波浪 → see `F03B`.
+  - 发电机/电动机/电机 → `H02K` (dynamo-electric machines); 电力变换/整流 → `H02M`; 电能传输分配 → `H02J`; 开关/继电器 → `H01H`.
+  - 光伏发电 → `H01L` (semiconductor devices, solar cells) + `H02S` (solar power generation); 储能电池 → `H01M` (batteries/fuel cells).
+  - 核电 → `G21` (nuclear physics/engineering: `G21C` reactors, `G21D` nuclear power plants).
+  - 锅炉/蒸汽发生 → `F22`; 燃烧装置 → `F23`; 制冷/热泵/空调 → `F25` / `F24F`; 换热器 → `F28`.
+  - 材料/合金/涂层 → `C22` (alloys), `C23` (surface coating), `C09` (coatings/adhesives).
+  - 控制/调节 → `G05B` (control systems in general); 测量/测试 → `G01`.
+
+## Hierarchy (IPC 2025.01)
+
+### Section A — HUMAN NECESSITIES
+- A01 — AGRICULTURE; FORESTRY; ANIMAL HUSBANDRY; HUNTING; TRAPPING; FISHING
+  - A01B — Soil working in agriculture or forestry
+  - A01C — Planting; Sowing; Fertilising
+  - A01D — Harvesting; Standing crops
+  - A01F — Processing or storing harvested products
+  - A01G — Horticulture; Cultivation (vegetables, flowers, rice, fruit, vines, hops, seaweed)
+  - A01H — New plants or processes for obtaining them
+  - A01J — Equipment for milking animals
+  - A01K — Animal husbandry
+  - A01L — Catching, trapping or scaring animals
+  - A01M — Controlling or destroying noxious animals or plants
+  - A01N — Preservation of bodies; Biocides
+  - A01P — Biocidal, pest repellant, pest attractant or plant growth regulatory activity
+- A21 — BAKING; EQUIPMENT FOR MAKING OR PROCESSING DOUGHS
+  - A21B — Bakers' ovens; Baking equipment
+  - A21C — Machines or equipment for making/processing doughs
+  - A21D — Processing/treating flour or dough for baking
+- A22 — BUTCHERING; MEAT TREATMENT; PROCESSING POULTRY OR FISH
+  - A22B — Slaughtering
+  - A22C — Processing/treating meat, poultry or fish
+- A23 — FOODS, FOODSTUFFS OR NON-ALCOHOLIC BEVERAGES; PREPARATION THEREOF
+  - A23B — Preserving food/foodstuffs, in general
+  - A23C — Dairy products
+  - A23D — Edible oils or fats
+  - A23F — Coffee, tea, cocoa or substitutes
+  - A23G — Cocoa; Chocolate; Confectionery
+  - A23J — Non-alcoholic beverages; Dry compositions/concentrates
+  - A23K — Feeding-stuffs for animals
+  - A23L — Foods, foodstuffs or non-alcoholic beverages
+  - A23P — Shaping/processing foodstuffs
+- A24 — TOBACCO; CIGARS; CIGARETTES; SMOKERS' REQUISITES
+  - A24B — Curing tobacco
+  - A24C — Cigars; Cigarettes; Cigarette holders
+  - A24D — Smoking devices; Smokers' requisites
+- A41 — WEARING APPAREL
+  - A41B — Shirts, underwear, baby linen, handkerchiefs
+  - A41C — Garments for wearers with special requirements
+  - A41D — Outerwear; Underwear
+  - A41F — Garments/accessories for special requirements
+  - A41G — Accessories for clothing
+- A42 — HEADWEAR
+  - A42B — Hats; Headwear
+- A43 — FOOTWEAR
+  - A43B — Footwear with fastenings or straps
+  - A43C — Fastenings/attachments for footwear
+  - A43D — Shoe-filling machines
+- A44 — HABERDASHERY; JEWELLERY
+  - A44B — Buttons, pins, buckles, hooks, eyes
+  - A44C — Jewellery; Bracelets; Personal adornments
+- A45 — HAND OR TRAVELLING ARTICLES
+  - A45B — Walking sticks, umbrellas
+  - A45C — Hand luggage; Hand-carried articles
+  - A45D — Hairdressing or shaving equipment
+  - A45F — Travelling or camping equipment
+- A46 — BRUSHWARE
+  - A46B — Brushes
+  - A46D — Brush bodies; Brush-making
+- A47 — FURNITURE; DOMESTIC ARTICLES OR APPLIANCES
+  - A47B — Tables; Desks; Office furniture
+  - A47C — Chairs; Seats; Beds
+  - A47D — Furniture specially adapted for children
+  - A47F — Furniture specially adapted for shops
+  - A47G — Household or kitchen equipment
+  - A47H — Doors, windows, shutters or roller blinds
+  - A47J — Kitchen equipment; Coffee mills; Spice mills
+  - A47K — Sanitary equipment
+  - A47L — Cleaning/washing implements
+- A61 — MEDICAL OR VETERINARY SCIENCE; HYGIENE
+  - A61B — Diagnosis; Surgery; Identification
+  - A61C — Dentistry; Oral/dental hygiene
+  - A61D — Veterinary instruments or devices
+  - A61F — Prostheses; Orthopaedic devices
+  - A61G — Transport/accommodation for patients or disabled persons
+  - A61H — Physical therapy; Respiratory therapy
+  - A61J — Containers for medical/pharmaceutical purposes
+  - A61K — Preparations for medical, dental, or toilet purposes
+  - A61L — Materials/apparatus for sterilisation
+  - A61M — Devices for introducing media into the body
+  - A61N — Electrotherapy; Magnetotherapy; Radiation/Ultrasound therapy
+- A62 — LIFE-SAVING; FIRE-FIGHTING
+  - A62B — Fire-extinguishing devices; Firefighting
+  - A62C — Fire prevention or firefighting
+  - A62D — Chemical means for fighting fires
+- A63 — SPORTS; GAMES; AMUSEMENTS
+  - A63B — Apparatus for physical training or sports
+  - A63C — Skating; Skiing; Roller skating
+  - A63D — Bowling; Billiards; Miniature golf
+  - A63F — Card, board, or casino games
+  - A63G — Roundabouts; Swings; Amusement devices
+  - A63H — Toys
+  - A63J — Equipment for circuses or arenas
+- A99 — SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+
+### Section B — PERFORMING OPERATIONS; TRANSPORTING  *(partial — see note)*
+- B01 — PHYSICAL OR CHEMICAL PROCESSES OR APPARATUS
+  - B01B — Boiling; Boiling apparatus
+  - B01D — Separation
+  - B01F — Mixing (dissolving, emulsifying, dispersing)
+  - B01J — Chemical/physical processes (catalysis; colloid chemistry)
+  - B01L — Chemical/physical laboratory equipment
+- B02 — CRUSHING, PULVERISING, OR DISINTEGRATING
+  - B02B — Crushing/disintegrating by milling
+  - B02C — Crushing, pulverising, or disintegrating in general; Milling grain
+- B03 — SEPARATION OF SOLID MATERIALS
+  - B03B — Separating solid materials
+  - B03C — Magnetic/electrostatic separation
+  - B03D — Flotation; Selective adsorption
+- B04 — CENTRIFUGAL APPARATUS OR MACHINES
+  - B04B — Centrifuges
+  - B04C — Apparatus for free/gravity sedimentation
+- B05 — SPRAYING OR ATOMISING; APPLYING FLUENT MATERIALS
+  - B05B — Spraying apparatus; Atomising apparatus
+  - B05C — Apparatus for applying liquids/fluent materials
+  - B05D — Processes for applying fluent materials
+- B21 — MECHANICAL METAL-WORKING WITHOUT ESSENTIALLY REMOVING MATERIAL
+  - B21B — Rolling of metal
+  - B21C — Manufacture of metal sheets, wire, rods, tubes, profiles
+  - B21D — Working/processing sheet metal or metal tubes/rods/profiles
+  - B21F — Working/processing metal wire
+  - B21G — Making needles, pins or nails of metal
+  - B21H — Making particular metal objects by rolling
+  - B21J — Forging; Hammering; Pressing metal; Riveting
+  - B21K — Making forged or pressed metal articles
+  - B21L — Making metal chains
+- B23 — MACHINE TOOLS; METAL-WORKING NOT OTHERWISE PROVIDED FOR
+  - B23B — Turning; Boring
+  - B23C — Milling
+  - B23D — Planing; Slotting; Shearing; Broaching; Sawing
+  - B23F — Making gears or toothed racks
+  - B23G — Thread cutting
+  - B23H — Working metal by high-concentration electric current
+  - B23K — Soldering/welding; Cutting by applying heat locally
+  - B23P — Metal-working not otherwise provided for
+  - B23Q — Details/accessories for machine tools
+- B60 — VEHICLES IN GENERAL
+  - B60B — Vehicle wheels
+  - B60C — Vehicle tyres; Tyre inflation/changing
+  - B60D — Vehicle connections
+  - B60F — Vehicles for railways or other tracks
+  - B60G — Vehicle suspension arrangements
+  - B60H — Vehicle accessories
+  - B60J — Windows, windscreens, roofs, doors for vehicles
+  - B60K — Arrangement/mounting of propulsion units or transmissions
+  - B60L — Propulsion of electrically-propelled vehicles
+  - B60M — Power supply lines for electrically-propelled vehicles
+  - B60N — Seats specially adapted for vehicles
+  - B60P — Vehicles adapted for load transportation
+  - B60Q — Vehicle lighting devices
+  - B60R — Vehicles/parts not otherwise provided for
+  - B60S — Servicing, cleaning, repairing, supporting vehicles
+  - B60T — Vehicle brake control systems
+  - B60V — Air-cushion vehicles
+  - B60W — Conjoint control of vehicle sub-units
+
+> **Section B note**: partial in this reference — subclasses for casting (B22), grinding/polishing (B24), printing (B41), writing/drawing (B43), layered products (B32), ships (B63), aircraft (B64), conveying/packaging (B65), hoisting (B66), dispensing (B67), micro/nano structure (B81/B82), etc. are not listed. For full Section B coverage, see [WIPO IPC 2025.01 — Section B](https://ipcpub.wipo.int/?version=2025.01).
+
+### Section C — CHEMISTRY; METALLURGY
+- C01 — INORGANIC CHEMISTRY
+  - C01B — Non-metallic elements; Compounds thereof
+  - C01C — Ammonia; Cyanogen; Compounds thereof
+  - C01D — Compounds of alkali metals (Li, Na, K, Rb, Cs, Fr)
+  - C01F — Compounds of Be, Mg, Al, Ca, Sr, Ba, Ra, Th, rare earths
+  - C01G — Compounds containing metals not in C01D/C01F
+- C02 — TREATMENT OF WATER, WASTE WATER, SEWAGE, OR SLUDGE
+  - C02F — Treatment of water, waste water, sewage, or sludge
+- C03 — GLASS; MINERAL OR SLAG WOOL
+  - C03B — Manufacture/shaping of glass, mineral/slag wool
+  - C03C — Chemical composition of glasses, glazes, vitreous enamels
+- C04 — CEMENTS; CONCRETE; ARTIFICIAL STONE; CERAMICS; REFRACTORIES
+  - C04B — Lime; Magnesia; Slag; Cements; Mortars, concrete, etc.
+- C05 — FERTILISERS; MANUFACTURE THEREOF
+  - C05B — Phosphatic fertilisers
+  - C05C — Nitrogenous fertilisers
+  - C05D — Inorganic fertilisers not in C05B/C05C
+  - C05F — Organic fertilisers not in C05B/C05C
+- C06 — EXPLOSIVES; MATCHES
+  - C06B — Explosive/thermic compositions
+  - C06F — Matches; Manufacture of matches
+- C07 — ORGANIC CHEMISTRY
+  - C07B — General methods of organic chemistry; Apparatus
+  - C07C — Acyclic or carbocyclic compounds
+  - C07D — Heterocyclic compounds
+  - C07F — Acyclic/carbocyclic/heterocyclic compounds containing other elements
+  - C07H — Sugars; Derivatives; Nucleosides; Nucleotides; Nucleic acids
+  - C07J — Steroids
+  - C07K — Peptides
+- C08 — ORGANIC MACROMOLECULAR COMPOUNDS; COMPOSITIONS BASED THEREON
+  - C08B — Polysaccharides; Derivatives
+  - C08C — Treatment/chemical modification of rubbers
+  - C08F — Macromolecular compounds via carbon-to-carbon unsaturated bonds
+  - C08G — Macromolecular compounds otherwise
+  - C08J — Working-up; General compounding; After-treatment
+  - C08K — Use of inorganic/non-macromolecular organic substances as compounding ingredients
+  - C08L — Compositions of macromolecular compounds
+- C09 — DYES; PAINTS; POLISHES; ADHESIVES; COMPOSITIONS
+  - C09B — Organic dyes or closely-related compounds
+  - C09C — Treatment of inorganic materials to enhance pigmentation/filling
+  - C09D — Coating compositions (paints, varnishes, lacquers)
+  - C09F — Natural resins; French polish; Drying-oils
+  - C09G — Polishing compositions
+  - C09H — Preparation of glue or gelatine
+- C10 — PETROLEUM, GAS OR COKE INDUSTRIES; FUELS; LUBRICANTS; PEAT
+  - C10B — Destructive distillation of carbonaceous materials
+  - C10C — Working-up tar, pitch, asphalt, bitumen
+  - C10F — Drying/working-up of peat
+  - C10H — Production of acetylene by wet methods
+  - C10J — Production of CO+H2 gases from solid carbonaceous fuels
+  - C10K — Purifying/modifying combustible gases containing CO
+  - C10L — Purification/modification of gases containing CO
+  - C10M — Lubricating compositions
+  - C10N — Indexing scheme associated with C10M
+- C11 — ANIMAL OR VEGETABLE OILS, FATS, WAXES; DETERGENTS; CANDLES
+  - C11B — Producing/refining/preserving fats, fatty substances or oils
+  - C11C — Fatty acids; Candles; Chemically modified fats/oils
+- C12 — BIOCHEMISTRY; MICROBIOLOGY; ENZYMOLOGY; GENETIC ENGINEERING
+  - C12C — Beer; Preparation of beer
+  - C12F — Recovery of by-products of fermented solutions
+  - C12G — Wine or wine-like beverages
+  - C12H — Pasteurisation/sterilisation/preservation of beverages
+  - C12J — Vinegar
+  - C12L — Pitching/depitching machines; Cellar tools
+  - C12M — Apparatus for enzymology or microbiology
+  - C12N — Micro-organisms or enzymes; Mutation/genetic engineering
+  - C12P — Fermentation/enzyme-using processes to synthesise compounds
+  - C12Q — Measuring/testing processes involving enzymes/micro-organisms
+  - C12R — Indexing scheme for C12C–C12Q (microorganisms)
+- C13 — SUGAR INDUSTRY
+  - C13B — Production of sucrose; Apparatus
+  - C13F — Recovery/purification of sugar juices
+  - C13J — Molasses; Granulated/melted sugar containing molasses
+  - C13K — Saccharides from natural sources or hydrolysis
+- C14 — SKINS; HIDES; PELTS OR LEATHER
+  - C14B — Mechanical treatment/processing of skins, hides, leather
+  - C14C — Treating skins/hides/leather with chemicals/enzymes/micro-organisms
+- C21 — METALLURGY OF IRON
+  - C21B — Processing of pig-iron; Manufacture of wrought-iron/steel
+  - C21C — Processing of molten ferrous alloys
+- C22 — METALLURGY; FERROUS OR NON-FERROUS ALLOYS; TREATMENT OF ALLOYS
+  - C22B — Production/refining of metals; Pretreatment of raw materials
+  - C22C — Alloys
+  - C22F — Changing physical structure of non-ferrous metals/alloys
+- C23 — COATING/SURFACE TREATMENT OF METAL; CVD/PVD
+  - C23C — Coating metallic material; Chemical surface treatment; CVD/PVD/sputtering/ion plating
+  - C23D — Enamelling/applying vitreous layer to metals
+  - C23F — Non-mechanical removal of metallic material from surfaces
+- C25 — ELECTROLYTIC OR ELECTROPHORETIC PROCESSES
+  - C25B — Electrolytic/electrophoretic production/recovery of metals, coatings, compounds
+  - C25C — Electrolytic production/recovery/refining of metals
+  - C25D — Electrolytic/electrophoretic coating of surfaces
+  - C25F — Electrolytic removal of materials from objects
+- C30 — CRYSTAL GROWTH
+  - C30B — Production/single-crystal growth
+- C40 — COMBINATORIAL TECHNOLOGY
+  - C40B — Combinatorial chemistry; Libraries; Combinatorial technology
+- C99 — SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+  - C99Z — Not otherwise provided for
+
+### Section D — TEXTILES; PAPER
+- D01 — NATURAL OR MAN-MADE THREADS OR FIBRES; SPINNING
+  - D01B — Mechanical treatment of natural fibrous material to obtain fibres
+  - D01C — Chemical/biological treatment of natural fibrous material
+  - D01D — Mechanical methods/apparatus for artificial filaments/threads/fibres
+  - D01F — Chemical features in manufacture of artificial filaments/threads/fibres
+  - D01G — Preliminary treatment of fibres for spinning
+  - D01H — Spinning or twisting
+- D02 — YARNS; MECHANICAL FINISHING OF YARNS OR FABRIC
+  - D02G — Crimping/curling fibres, filaments, yarns, threads
+  - D02H — Warping, beaming, or leasing
+  - D02J — Finishing/dressing of filaments, yarns, threads, cords, ropes
+- D03 — WEAVING
+  - D03D — Woven fabrics; Methods of weaving; Looms
+  - D03J — Auxiliary weaving apparatus; Weavers' tools
+- D04 — BRAIDING; LACE-MAKING; KNITTING; NON-WOVEN FABRICS
+  - D04B — Knitting
+  - D04C — Braiding; Manufacture of lace
+  - D04D — Trimmings; Ribbons, tapes, bands
+  - D04G — Making nets by knotting; Knotted carpets/tapestries
+  - D04H — Making textile fabrics from fibres/filament materials
+- D05 — SEWING; EMBROIDERING; TUFTING
+  - D05B — Sewing
+  - D05C — Embroidering; Tufting
+- D06 — TREATMENT OF TEXTILES; LAUNDERING; FLEXIBLE MATERIALS
+  - D06B — Treating textile materials with liquids/gases/vapours
+  - D06C — Finishing/dressing/tentering/stretching textile fabrics
+  - D06F — Laundering, drying, ironing, pressing, folding textile articles
+  - D06G — Mechanical/pressure cleaning of carpets, rugs, hides, textiles
+  - D06H — Marking/inspecting/seaming textile articles
+  - D06L — Dry-cleaning/washing/bleaching fibres, yarns, fabrics, feathers
+  - D06M — Treatment (not elsewhere in D06) of fibres, threads, yarns, fabrics
+  - D06N — Wall/floor covering materials (linoleum, oilcloth, artificial leather)
+  - D06P — Dyeing/printing textiles; Dyeing leather/furs
+  - D06Q — Decorating textiles
+- D07 — ROPES; CABLES OTHER THAN ELECTRIC
+  - D07B — Ropes or cables in general
+- D21 — PAPER-MAKING; PRODUCTION OF CELLULOSE
+  - D21B — Fibrous raw materials or their mechanical treatment
+  - D21C — Producing cellulose by mechanical treatment of fibrous raw materials
+  - D21D — Treatment of materials before the paper-making machine
+  - D21F — Paper-making machines or methods
+  - D21G — Calenders; Accessories for paper-making machines
+  - D21H — Pulp or paper, including coating/impregnation
+  - D21J — Fibreboard; Articles from cellulosic fibrous suspensions/papier-mâché
+- D99 — SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+  - D99Z — Not otherwise provided for
+
+### Section E — FIXED CONSTRUCTIONS
+- E01 — CONSTRUCTION OF ROADS, RAILWAYS, OR BRIDGES
+  - E01B — Permanent way; Permanent-way tools/machines
+  - E01C — Construction of/surfaces for roads, sports grounds
+  - E01D — Bridges
+  - E01F — Equipping roads with lighting/life-saving equipment
+  - E01H — Street/track cleaning
+- E02 — HYDRAULIC ENGINEERING; FOUNDATIONS; SOIL-SHIFTING
+  - E02B — Hydraulic engineering
+  - E02C — Ship-lifting devices/mechanisms
+  - E02D — Foundations; Excavations; Embankments; Underground/underwater structures
+  - E02F — Dredging; Soil-shifting
+- E03 — WATER SUPPLY; SEWERAGE
+  - E03B — Installations/methods for obtaining/treating/distributing water
+  - E03C — Domestic plumbing for fresh/waste water; Sinks
+  - E03D — Water-closets/urinals with flushing devices
+  - E03F — Sewers; Cesspools; Treatment of waste water/storm sewage
+- E04 — BUILDING
+  - E04B — General building constructions; Walls; Roofing
+  - E04C — Structural elements; Building materials
+  - E04D — Roof coverings; Sky-lights; Gutters
+  - E04F — Finishing work on buildings (stairs, floors)
+  - E04G — Scaffolding; Formwork; Shuttering
+  - E04H — Buildings/structures for particular purposes
+- E05 — LOCKS; KEYS; WINDOW/DOOR FITTINGS; SAFES
+  - E05B — Locks; Keys; Key-operated mechanisms
+  - E05C — Bolts/fasteners/locks for doors, windows
+  - E05D — Door/window fittings; Hinges
+  - E05F — Devices for checking/operating doors, windows
+  - E05G — Safes/strong-rooms; Bank protection devices
+- E06 — DOORS, WINDOWS, SHUTTERS; LADDERS
+  - E06B — Fixed/movable closures for openings in buildings/vehicles/fences
+  - E06C — Ladders
+- E21 — EARTH/ROCK DRILLING; MINING
+  - E21B — Earth or rock drilling
+  - E21C — Mining or quarrying
+  - E21D — Shafts; Tunnels; Galleries; Underground chambers
+  - E21F — Safety/transport/ventilation in underground mines
+- E99 — SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+  - E99Z — Not otherwise provided for
+
+### Section F — MECHANICAL ENGINEERING; LIGHTING; HEATING; WEAPONS; BLASTING
+- F01 — MACHINES OR ENGINES IN GENERAL; ENGINE PLANTS; STEAM ENGINES
+  - F01B — Machines/engines in general or of positive-displacement type
+  - F01C — Rotary-piston or oscillating-piston machines/engines
+  - F01D — Non-positive-displacement machines/engines, e.g. **steam turbines**
+  - F01K — Steam engine plants; Steam accumulators
+  - F01L — Cyclically operating valves for machines/engines
+  - F01M — Lubricating of machines/engines in general
+  - F01N — Gas-flow silencers/exhaust apparatus for machines/engines
+  - F01P — Cooling of machines/engines in general; Cooling systems
+- F02 — COMBUSTION ENGINES; HOT-GAS OR COMBUSTION-PRODUCT ENGINE PLANTS
+  - F02B — Internal-combustion piston engines
+  - F02C — **Gas-turbine plants**; Air intakes for jet-propulsion plants
+  - F02D — Controlling combustion engines
+  - F02F — Cylinders, pistons, or casings for combustion engines
+  - F02K — Jet-propulsion plants
+  - F02M — Supplying combustible mixtures to combustion engines
+  - F02N — Starting of combustion engines
+  - F02P — Ignition of combustion engines
+- F03 — LIQUID/WIND/SPRING/WEIGHT MOTORS; REACTIVE PROPULSIVE THRUST
+  - F03B — Machines/engines for liquids (hydro)
+  - F03C — Positive-displacement engines driven by liquids
+  - F03D — **Wind motors**
+  - F03G — Spring, weight, inertia, or like motors
+  - F03H — Producing reactive propulsive thrust
+- F04 — POSITIVE-DISPLACEMENT MACHINES; PUMPS FOR LIQUIDS/ELASTIC FLUIDS
+  - F04B — Positive-displacement machines for liquids
+  - F04C — Rotary/oscillating-piston positive-displacement machines
+  - F04D — Non-positive-displacement pumps
+  - F04F — Pumping by direct contact/inertia of fluid
+- F15 — FLUID-PRESSURE ACTUATORS; HYDRAULICS; PNEUMATICS
+  - F15B — Fluid-pressure actuators
+  - F15C — Fluid-circuit elements for actuating fluid-pressure devices
+  - F15D — Fluid dynamics (influencing flow of gases/liquids)
+- F16 — ENGINEERING ELEMENTS; TRANSMISSION; THERMAL INSULATION
+  - F16B — Fastening/securing machine elements/parts
+  - F16C — Shafts; Flexible shafts; Mechanical movement transmission
+  - F16D — Couplings; Clutches; Brakes
+  - F16F — Springs; Shock-absorbers; Vibration damping
+  - F16G — Belts, cables, ropes for driving; Chains; Fittings
+  - F16H — Gearing
+  - F16K — Valves; Fluid-pressure control apparatus
+  - F16L — Pipes; Joints/fittings; Pipe supports
+  - F16M — Frames/casings/beds of engines, machines, apparatus
+  - F16N — Lubricating
+  - F16P — Safety devices in general
+  - F16S — Other constructions/arrangements
+  - F16T — Steam traps/draining-off liquids
+- F17 — STORING/DISTRIBUTING GASES OR LIQUIDS
+  - F17B — Pressed/liquefied-gas storage
+  - F17C — Vessels for compressed/liquefied/solidified gases
+  - F17D — Pipe-line systems; Pipe-lines
+- F21 — LIGHTING
+  - F21H — Incandescent mantles/bodies heated by combustion
+  - F21K — Non-electric light sources using luminescence
+  - F21L — Portable/transportable lighting devices
+  - F21S — Non-electric lighting devices/systems
+  - F21V — Details of lighting devices/systems
+  - F21W — Indexing scheme associated with F21V
+- F22 — STEAM GENERATION
+  - F22B — Methods of steam generation; **Steam boilers**
+  - F22D — Preheating; Feed-water heating; Auxiliary boiling
+  - F22G — Superheating of steam
+- F23 — COMBUSTION APPARATUS; COMBUSTION PROCESSES
+  - F23B — Combustion using solid fuel
+  - F23C — Combustion using non-solid fuel
+  - F23D — Burners (mixing fuel + combustion air)
+  - F23G — Cremation furnaces; Consuming waste/low-grade fuels
+  - F23H — Grates; Cleaning grates/ash pits
+  - F23J — Removal/treatment of combustion products/residues
+  - F23K — Feeding fuel to combustion apparatus
+  - F23L — Supplying air/non-combustible fluids to combustion apparatus
+  - F23M — Casings/linings/walls/doors for combustion chambers
+  - F23N — Regulating/controlling combustion
+  - F23Q — Ignition; Extinguishing devices
+  - F23R — Generating high-pressure/high-velocity combustion products
+- F24 — HEATING; RANGES; VENTILATING
+  - F24B — Solid-fuel domestic stoves
+  - F24C — Domestic stoves/ranges using other fuel
+  - F24F — **Air-conditioning; Humidification; Ventilation**
+  - F24H — Fluid heaters (water/air) with heat-generating means
+  - F24J — Production/use of heat not otherwise provided for
+  - F24S — **Solar heat collectors**
+  - F24T — Geothermal collectors/systems
+  - F24V — Collection/production/use of heat not otherwise provided for
+- F25 — REFRIGERATION; HEAT PUMPS; ICE
+  - F25B — **Refrigeration machines/plants; Heat pump systems**
+  - F25C — Producing/working/handling ice
+  - F25D — Cold-storage chambers; Refrigerators/freezers
+  - F25J — Liquefaction/solidification/separation of gases
+  - F25P — Refrigeration apparatus not otherwise provided for
+- F26 — DRYING
+  - F26B — Drying solid materials/articles
+- F27 — FURNACES; KILNS, OVENS, RETORTS
+  - F27B — Furnaces
+  - F27D — General details/accessories of furnaces, kilns, ovens, retorts
+- F28 — HEAT EXCHANGE IN GENERAL
+  - F28B — Steam/vapour condensers
+  - F28C — Heat-exchange apparatus (not provided for elsewhere)
+  - F28D — Heat-exchange apparatus (not provided for elsewhere)
+  - F28F — Details of heat-exchange/heat-transfer apparatus
+- F41 — WEAPONS
+  - F41A — Functional features/details common to firearms
+  - F41B — Weapons projecting missiles without explosive charge
+  - F41C — Smallarms (pistols); Accessories
+  - F41F — Apparatus for launching projectiles/missiles from barrels
+  - F41G — Sighting devices; Directing fire
+  - F41H — Armour; Armoured platforms
+  - F41J — Pyrotechnic target practice; Range-finding
+- F42 — AMMUNITION; BLASTING
+  - F42B — Explosive charges; Fireworks
+  - F42C — Ammunition/projectile cartridges
+  - F42D — Blasting
+- F99 — SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+  - F99Z — Not otherwise provided for
+
+### Section G — PHYSICS
+- G01 — MEASURING; TESTING
+  - G01B — Measuring length, thickness or linear dimensions
+  - G01C — Measuring distances, levels or bearings
+  - G01D — Measuring not specially adapted for a specific variable
+  - G01F — Measuring volume/mass flow, or liquid level
+  - G01G — Weighing
+  - G01H — Measuring mechanical vibrations; Ultrasonic/sonic/infrasonic waves
+  - G01J — Measuring intensity, velocity, spectral content, polarisation, phase, pulse
+  - G01K — Measuring temperature; Measuring quantity of heat
+  - G01L — Measuring force, stress, torque, work, power, efficiency
+  - G01M — Testing static/dynamic balance of machines or structures
+  - G01N — Investigating/analysing materials
+  - G01P — Measuring linear/angular speed, acceleration, shock
+  - G01Q — Scanning-probe techniques/apparatus
+  - G01R — Measuring electric/magnetic variables
+  - G01S — Radio direction-finding; Radio navigation; Distance/velocity
+  - G01T — Measurement of nuclear/x-radiation
+  - G01V — Geophysics; Gravitational measurements; Detecting masses
+  - G01W — Meteorology
+- G02 — OPTICS
+  - G02B — Optical elements, systems, or apparatus
+  - G02C — Spectacles; Sunglasses/goggles
+  - G02F — Devices/arrangements for controlling/modulating light
+- G03 — PHOTOGRAPHY; CINEMATOGRAPHY; ANALOGOUS TECHNIQUES
+  - G03B — Photographic/cinematic apparatus/equipment
+  - G03C — Photosensitive materials/photographic processes
+  - G03D — Apparatus for processing exposed photographic materials
+  - G03F — Photomechanical production of textured/patterned surfaces
+  - G03G — Electrography; Electrophotography; Magnetography
+  - G03H — Holographic processes/apparatus
+- G04 — HOROLOGY
+  - G04B — Mechanisms for driving/indicating time
+  - G04C — Electromechanical clocks/watches
+  - G04D — Apparatus/tools for making/maintaining clocks/watches
+  - G04F — Time-interval measuring devices
+  - G04G — Electronic time-pieces
+  - G04R — Radio-controlled time-pieces
+- G05 — CONTROLLING; REGULATING
+  - G05B — **Control/regulating systems in general**
+  - G05D — Systems for controlling/regulating variables in general
+  - G05F — Systems for regulating electric/magnetic variables
+  - G05G — Control systems for analog/digital computers
+- G06 — COMPUTING; CALCULATING; COUNTING
+  - G06C — Analog computers
+  - G06D — Digital fluid-pressure computing devices
+  - G06E — Optical computing devices
+  - G06F — **Electric digital data processing**
+  - G06G — Analog computers (physical-quantity computing element)
+  - G06J — Hybrid computing arrangements
+  - G06K — Recognition/presentation of data; Record carriers
+  - G06M — Counting mechanisms; Counting objects
+  - G06N — Computing arrangements based on specific computational models (AI/ML)
+  - G06Q — Data processing for administrative/commercial purposes
+  - G06T — Image data processing/generation
+  - G06V — Recognition of patterns or commands
+- G07 — CHECKING-DEVICES
+  - G07B — Registering/indicating apparatus
+  - G07C — Time-recording registers
+  - G07D — Apparatus for checking/indicating coins
+  - G07F — Vending machines
+- G08 — SIGNALLING
+  - G08B — Signalling/calling systems; Alarm systems
+  - G08C — Transmission systems for coded/digital signals
+  - G08G — Traffic control systems
+- G09 — EDUCATING; CRYPTOGRAPHY; DISPLAY; ADVERTISING; SEALS
+  - G09B — Educational/demonstration appliances
+  - G09C — Ciphering/deciphering apparatus (cryptography)
+  - G09D — Railway time/fare tables; Perpetual calendars
+  - G09F — Displaying; Advertising; Signs; Labels
+  - G09G — Arrangements/circuits for control of indicating devices
+- G10 — MUSICAL INSTRUMENTS; ACOUSTICS
+  - G10B — Organs, harmoniums, wind instruments
+  - G10C — Pianos, harpsichords, stringed instruments
+  - G10D — Stringed/wind instruments; Accordions
+  - G10F — Automatic musical instruments
+  - G10G — Representation/recording of music in notation
+  - G10H — Producing/reproducing music or sounds
+  - G10K — Acoustics
+- G11 — INFORMATION STORAGE
+  - G11B — Information storage (relative movement carrier/transducer)
+  - G11C — Static information storage devices
+  - G11D — Non-volatile memory devices
+- G12 — INSTRUMENT DETAILS
+  - G12B — Instrument details/improvements
+- G16 — ICT SPECIALLY ADAPTED FOR SPECIFIC APPLICATIONS
+  - G16B — Bioinformatics
+  - G16C — Computational chemistry; Chemoinformatics; Computational materials
+  - G16H — Healthcare informatics
+  - G16Y — ICT specially adapted for IoT
+  - G16Z — ICT specially adapted for specific purposes
+- G21 — NUCLEAR PHYSICS; NUCLEAR ENGINEERING
+  - G21B — **Fusion reactors**
+  - G21C — **Nuclear reactors**
+  - G21D — **Nuclear power plants**
+  - G21F — Protection against harmful effects of radiation
+  - G21G — Conversion of chemical elements; Radioactive sources
+  - G21H — Obtaining energy from radioactive sources
+  - G21J — Nuclear explosives
+  - G21K — Handling particles/ionising radiation
+- G99 — SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+  - G99Z — Not otherwise provided for
+
+### Section H — ELECTRICITY
+- H01 — BASIC ELECTRIC ELEMENTS
+  - H01B — Cables; Conductors; Insulators; Selection of materials
+  - H01C — Resistors
+  - H01F — Magnets; Inductances; Transformers; Selection of materials
+  - H01G — Capacitors; Electrolytic capacitors
+  - H01H — **Electric switches; Relays; Selectors**
+  - H01J — Electric discharge tubes/discharge lamps
+  - H01K — Electric incandescent lamps
+  - H01L — **Semiconductor devices** (incl. solar cells, ICs)
+  - H01M — **Processes/means for batteries or fuel cells**
+  - H01P — Waveguides; Resonators; Lines
+  - H01Q — Aerials; Aerial applications
+  - H01R — Electrically-conductive connections; Connectors
+  - H01S — Devices using stimulated emission (lasers)
+  - H01T — Spark gaps; Overvoltage protectors
+- H02 — GENERATION, CONVERSION, OR DISTRIBUTION OF ELECTRIC POWER
+  - H02B — Boards, substations, switching arrangements
+  - H02G — Installation of electric cables/lines
+  - H02H — Emergency protective circuit arrangements
+  - H02J — **Circuit arrangements for supplying/distributing electric power**
+  - H02K — **Dynamo-electric machines** (generators, motors)
+  - H02M — **Converters/rectifiers** (AC↔DC conversion)
+  - H02N — Electric machines not otherwise provided for
+  - H02P — Control/regulation of electric motors
+  - H02S — **Generation of electric power by conversion of radiation (solar)**
+- H03 — ELECTRONIC CIRCUITRY
+  - H03B — Generation of oscillations
+  - H03C — Modulation
+  - H03D — Demodulation/transference of modulation
+  - H03F — Amplifiers
+  - H03G — Control of amplification
+  - H03H — Impedance networks; Resonant circuits
+  - H03J — Tuning resonant circuits
+  - H03K — Pulse technique
+  - H03L — Automatic control/volume adjustment
+  - H03M — Coding, decoding, code conversion
+- H04 — ELECTRIC COMMUNICATION TECHNIQUE
+  - H04B — Transmission
+  - H04H — Broadcast communication
+  - H04J — Multiplex communication
+  - H04K — Secret communication
+  - H04L — Transmission of digital information
+  - H04M — Telephonic communication
+  - H04N — Pictorial communication; Television
+  - H04Q — Selecting
+  - H04R — Loudspeakers, microphones, acoustic transducers
+  - H04S — Stereophonic systems
+  - H04W — **Wireless communication networks**
+- H05 — ELECTRIC TECHNIQUES NOT OTHERWISE PROVIDED FOR
+  - H05B — Electric lighting
+  - H05F — Static electricity; Natural electricity
+  - H05G — X-ray technique
+  - H05H — Plasma technique
+  - H05K — Printed circuits; Casings/constructional details
+- H10 — SEMICONDUCTOR DEVICES
+  - H10B — Semiconductor/electric solid-state devices
+  - H10K — Organic solid-state devices
+  - H10N — Nanoelectric solid-state devices
+- H99 — SUBJECT MATTER NOT OTHERWISE PROVIDED FOR IN THIS SECTION
+
+---
+
+## Edition & sources
+- Edition: **IPC 2025.01** (effective 2025-01-01).
+- Authoritative source / verification: [WIPO IPC Publication Browser (2025.01)](https://ipcpub.wipo.int/?version=2025.01) · [WIPO IPC master files](https://www.wipo.int/classifications/ipc/en/ITsupport/Version20250101/).
+- Data-quality note: subclasses extracted from the official WIPO 2025.01 section schemes. Section B is partial (see its note). A few classes appear without listed subclasses (rare); verify against WIPO when a code is consequential. Titles are condensed for skimmability — for the precise official title of any subclass, open it in the WIPO browser.

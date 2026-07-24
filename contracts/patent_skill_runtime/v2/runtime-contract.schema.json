@@ -8,7 +8,7 @@
     "schema_version": {"const": "2.0.0"},
     "analysis_id": {"type": "string", "minLength": 1},
     "artifact_type": {
-      "enum": ["research_brief", "corpus_manifest", "evidence_cards", "label_decisions", "route_map", "evolution_map", "weak_signal_register"]
+      "enum": ["research_brief", "query_plan", "corpus_manifest", "evidence_cards", "label_decisions", "route_map", "evolution_map", "weak_signal_register"]
     },
     "status": {"$ref": "#/$defs/status"},
     "skill_name": {"type": "string"},
@@ -46,6 +46,44 @@
         "scope": {"type": "object"},
         "defaults_applied": {"type": "array", "items": {"type": "string"}},
         "stop_rule": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    },
+    "queryPlan": {
+      "type": "object",
+      "required": ["intent", "query_set"],
+      "properties": {
+        "intent": {
+          "type": "object",
+          "properties": {
+            "concepts": {"type": "array", "items": {"type": "string"}},
+            "applicant": {"type": ["string", "null"]},
+            "inventor": {"type": ["string", "null"]},
+            "jurisdiction": {"type": ["string", "null"]},
+            "date_window": {"type": ["string", "null"]},
+            "classification": {"type": ["string", "null"]},
+            "recall_vs_precision": {"type": "string"}
+          },
+          "additionalProperties": true
+        },
+        "query_set": {"type": "array", "items": {"$ref": "#/$defs/queryExpression"}},
+        "defaults_applied": {"type": "array", "items": {"type": "string"}},
+        "validation_notes": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "queryExpression": {
+      "type": "object",
+      "required": ["query_id", "query_text", "purpose", "field_codes"],
+      "properties": {
+        "query_id": {"type": "string", "minLength": 1},
+        "query_text": {"type": "string", "minLength": 1},
+        "purpose": {"enum": ["recall", "precision", "applicant_scope", "inventor_scope", "exclusion", "seed_check"]},
+        "field_codes": {"type": "array", "items": {"type": "string"}},
+        "expected_behaviour": {"type": "string"},
+        "unverified_dimensions": {"type": "array", "items": {"type": "string"}},
+        "revision": {"type": "string"},
+        "run_order": {"type": ["integer", "null"], "minimum": 0}
       },
       "additionalProperties": true
     },

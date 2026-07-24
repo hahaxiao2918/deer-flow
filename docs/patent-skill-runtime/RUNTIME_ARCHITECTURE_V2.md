@@ -2,10 +2,11 @@
 
 ## Outcome
 
-The five patent skills form a composable evidence pipeline rather than five independent end-to-end prompts:
+The six patent skills form a composable evidence pipeline rather than six independent end-to-end prompts:
 
 ```text
 ResearchBrief
+  -> QueryPlan
   -> CorpusManifest
   -> EvidenceCard[]
   -> LabelDecision[] | RouteMap | EvolutionMap | WeakSignalRegister
@@ -18,6 +19,7 @@ The lead agent chooses one primary skill from the user's requested deliverable. 
 
 | Primary deliverable | Primary skill |
 | --- | --- |
+| Search-query expressions (检索式) for a later corpus search | `patent-query-composition` |
 | Candidate list or auditable corpus | `applicant-tech-patent-retrieval` |
 | Per-document inclusion, relevance, or route labels | `evidence-based-labeling` |
 | Technical mechanisms and route comparison | `technology-insight-analysis` |
@@ -68,11 +70,11 @@ For multi-stage or multi-turn work, store artifacts under `workspace/patent-anal
 
 ## Current runtime limitation
 
-Deerflow's current `skill_context` treats previously read skills as active across later turns and unions their tool permissions. General-purpose subagents preload all enabled skill bodies but do not activate their `allowed-tools` policy. Therefore v2 does not instruct these skills to use general subagents. Reliable delegation requires a later runtime change: run-scoped primary skill state plus skill-specific subagent profiles with static tool lists.
+Deerflow's current `skill_context` treats previously read skills as active across later turns and unions their tool permissions. As of commit `b7679504a` (move subagent tool policy to runtime via `SkillToolPolicyMiddleware`) and upstream `65afc9b1d`/#4098 (apply `allowed-tools` only to active skills), general-purpose subagents no longer apply every enabled skill's `allowed-tools` at build time — they filter tools by active-skill state at runtime, the same as the lead agent. The residual blocker is therefore the `skill_context` cross-turn union itself, not the earlier preload behaviour. v2 still does not instruct these skills to use general subagents. Reliable delegation requires one later runtime change: run-scoped primary skill state (skill-specific subagent profiles already exist).
 
 ## Release gates
 
-1. All five directories are under `skills/public/` and appear in the production skill registry.
+1. All six directories are under `skills/public/` and appear in the production skill registry.
 2. Frontmatter parses and `allowed-tools` is enforced by the lead-agent middleware.
 3. Routing descriptions are mutually distinguishable on near-neighbor prompts.
 4. Each skill emits or consumes the v2 artifact contract.

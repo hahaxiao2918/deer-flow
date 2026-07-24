@@ -22,4 +22,4 @@ Fresh subagents received only the revised skill path and a user-like task. They 
 
 ## Remaining runtime limitation
 
-These evaluations validate skill behavior in isolated contexts. They do not validate general-purpose Deerflow subagent delegation, which remains disabled in the v2 suite manifest because current subagents preload all enabled skills without activating the associated `allowed-tools` policy.
+These evaluations validate skill behavior in isolated contexts. They do not validate general-purpose Deerflow subagent delegation. The original reason for keeping it disabled in the v2 suite manifest — subagents preloading all enabled skills without activating the associated `allowed-tools` policy — has since been fixed in the framework: commit `b7679504a` moves subagent tool policy to runtime via `SkillToolPolicyMiddleware`, and upstream `65afc9b1d`/#4098 applies `allowed-tools` only to active skills. Subagents now filter tools by active-skill state at runtime, the same as the lead agent. The suite-level `general_subagent_delegation` flag therefore reflects an outstanding product decision (run-scoped primary-skill state), not the original technical blocker.

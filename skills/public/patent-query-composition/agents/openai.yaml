@@ -1,0 +1,4 @@
+interface:
+  display_name: "Patent Query Composition"
+  short_description: "Compose validated patent search-query expressions."
+  default_prompt: "Use $patent-query-composition to compose a reusable set of patent search-query expressions (检索式) for a research intent before running a corpus search."
