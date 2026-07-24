@@ -80,13 +80,17 @@ class OAuth2Service:
         IPD redirects the browser here; the browser returns to the configured
         front-end interception route (``/loginsso``) carrying ``code``/``state``.
         """
+        # IPD (yudao) uses camelCase query params on its authorize endpoint:
+        # the backend /admin-api/system/oauth2/authorize rejects snake_case
+        # `client_id` with "Required request parameter 'clientId' ... not present".
         params: dict[str, str] = {
-            "client_id": client_id,
-            "redirect_uri": redirect_uri,
+            "clientId": client_id,
+            "redirectUri": redirect_uri,
+            "responseType": "code",
             "state": state,
         }
         if scopes:
-            params["scope"] = " ".join(scopes)
+            params["scopes"] = " ".join(scopes)
         endpoint = provider_config.authorization_endpoint
         if not endpoint:  # pragma: no cover — enforced by config model_validator
             raise OAuth2Error("provider_config.authorization_endpoint is not set")

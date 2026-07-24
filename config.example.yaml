@@ -2249,7 +2249,7 @@ authorization:
 #         # Front-end interception route registered with IPD as the callback
 #         # (IPD redirects the browser here with code/state/tenant-id/organize-id):
 #         redirect_uri: https://ipd.nebula-starlink.shanghai-electric.com/loginsso
-#         authorization_endpoint: <TODO B1: IPD 登录发起 URL — pending IT>
+#         authorization_endpoint: https://portal.nebula-starlink.shanghai-electric.com/oauth2/authorize  # B1: yudao authorize page (expects camelCase clientId/redirectUri/responseType)
 #         # B2 confirmed (curl 200, 2026-07-24):
 #         token_endpoint: https://portal.nebula-starlink.shanghai-electric.com/admin-api/system/oauth2/token
 #         # B3 confirmed (curl 200, 2026-07-24):

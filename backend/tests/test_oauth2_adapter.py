@@ -260,8 +260,8 @@ async def test_build_authorization_url_uses_configured_endpoint_and_params():
     svc = OAuth2Service()
     url = svc.build_authorization_url(_cfg(), "cid", "https://app/loginsso", "state123")
     assert url.startswith("https://portal.example.com/login?")
-    assert "client_id=cid" in url
-    assert "redirect_uri=https%3A%2F%2Fapp%2Floginsso" in url
+    assert "clientId=cid" in url
+    assert "redirectUri=https%3A%2F%2Fapp%2Floginsso" in url
     assert "state=state123" in url
     await svc.close()
 
@@ -270,5 +270,5 @@ async def test_build_authorization_url_uses_configured_endpoint_and_params():
 async def test_build_authorization_url_omits_scope_when_none():
     svc = OAuth2Service()
     url = svc.build_authorization_url(_cfg(), "cid", "https://app/loginsso", "s")
-    assert "scope" not in url
+    assert "scopes" not in url
     await svc.close()

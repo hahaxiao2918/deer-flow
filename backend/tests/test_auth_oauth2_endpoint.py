@@ -85,8 +85,8 @@ def test_oauth2_start_redirects_and_sets_nonce_cookie(monkeypatch):
     assert resp.status_code == 302
     location = resp.headers["location"]
     assert location.startswith("https://portal.example.com/login?")
-    assert "client_id=cid" in location
-    assert "redirect_uri=https%3A%2F%2Fapp.example.com%2Floginsso" in location
+    assert "clientId=cid" in location
+    assert "redirectUri=https%3A%2F%2Fapp.example.com%2Floginsso" in location
     # state (nonce) is present
     assert "state=" in location
     cookie_headers = resp.headers.get_list("set-cookie")
