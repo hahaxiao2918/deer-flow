@@ -2249,23 +2249,25 @@ authorization:
 #         # Front-end interception route registered with IPD as the callback
 #         # (IPD redirects the browser here with code/state/tenant-id/organize-id):
 #         redirect_uri: https://ipd.nebula-starlink.shanghai-electric.com/loginsso
-#         authorization_endpoint: <TODO B1: IPD 登录发起 URL>
-#         token_endpoint: <TODO B2: https://portal.../admin-api/system/oauth2/token>
-#         userinfo_endpoint: <TODO B3: https://portal.../admin-api/system/oauth2/user/get>
+#         authorization_endpoint: <TODO B1: IPD 登录发起 URL — pending IT>
+#         # B2 confirmed (curl 200, 2026-07-24):
+#         token_endpoint: https://portal.nebula-starlink.shanghai-electric.com/admin-api/system/oauth2/token
+#         # B3 confirmed (curl 200, 2026-07-24):
+#         userinfo_endpoint: https://portal.nebula-starlink.shanghai-electric.com/admin-api/system/oauth2/user/get
 #         # IPD cannot assert email verification — must be false for this provider:
 #         require_verified_email: false
 #         auto_create_users: true
 #         admin_emails: []                 # roleCodes are NEVER mapped to admin
 #         # tenant-id / organize-id normally arrive on the callback URL;
-#         # these defaults are used only when the callback omits them:
-#         default_tenant_id: 1             # TODO B4
-#         default_organize_id: 100         # TODO B5
+#         # these defaults are used only when the callback omits them (TODO B4/B5 values):
+#         default_tenant_id: 1
+#         default_organize_id: 100
 #         # allowed_tenant_ids: [1]        # whitelist (TODO B4)
 #         # allowed_organize_ids: [100]    # whitelist (TODO B5)
-#         # ASSUMPTION (pending B6): subject = userinfo.id, globally unique:
-#         subject_field: id
+#         # B6 confirmed: subject = workId (工号), globally unique:
+#         subject_field: workId
 #         namespace_with_tenant: false
 #         # ASSUMPTION (pending B7): synthesize an email when IPD returns none.
 #         # NOTE: use a REAL domain — reserved TLDs (.local/.test/.invalid) are
-#         # rejected by the email validator. "{id}" expands to the subject.
+#         # rejected by the email validator. "{id}" expands to the subject (= workId).
 #         email_synthesis_pattern: "{id}@ipd.shanghai-electric.com"
