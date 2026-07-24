@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 30
+config_version: 31
 
 # ============================================================================
 # Logging
@@ -2250,11 +2250,20 @@ authorization:
 #         # Front-end interception route registered with IPD as the callback
 #         # (IPD redirects the browser here with code/state/tenant-id/organize-id):
 #         redirect_uri: https://ipd.nebula-starlink.shanghai-electric.com/loginsso
-#         authorization_endpoint: https://portal.nebula-starlink.shanghai-electric.com/oauth2/authorize  # B1: yudao authorize page (expects camelCase clientId/redirectUri/responseType)
+#         # LTPA seamless SSO (use-case 2): /start redirects here with returnUrl
+#         # back to /loginsso. This is the base LOGIN page, NOT an authorize page —
+#         # IPD has no browser authorize URL (see docs/plans SSO todo §B1):
+#         authorization_endpoint: https://portal.nebula-starlink.shanghai-electric.com/login
 #         # B2 confirmed (curl 200, 2026-07-24):
 #         token_endpoint: https://portal.nebula-starlink.shanghai-electric.com/admin-api/system/oauth2/token
 #         # B3 confirmed (curl 200, 2026-07-24):
 #         userinfo_endpoint: https://portal.nebula-starlink.shanghai-electric.com/admin-api/system/oauth2/user/get
+#         # LTPA seamless SSO (use-case 2): ODM account-login endpoint (doc §5.1).
+#         # After portal login the base sets an LtpaToken cookie on the parent
+#         # .shanghai-electric.com domain; /start forwards it here server-side
+#         # (Authorization: Bearer base64(client_id:client_secret)) to resolve identity:
+#         odm_login_endpoint: https://portal.nebula-starlink.shanghai-electric.com/admin-api/system/odm-api-wrap/account/login
+#         # ltpa_cookie_names: ["LtpaToken", "LtpaToken2"]  # cookies checked for the LTPA token
 #         # IPD cannot assert email verification — must be false for this provider:
 #         require_verified_email: false
 #         auto_create_users: true

@@ -101,6 +101,20 @@ class OIDCProviderConfig(BaseModel):
         default=None,
         description="Fallback organize-id header value when the callback does not carry one (IPD).",
     )
+    odm_login_endpoint: str | None = Field(
+        default=None,
+        description=(
+            "ODM account-login endpoint (数字底座 ODM ``/odm-api-wrap/account/login``) used for "
+            "LTPA-cookie SSO (use-case 2 seamless entry). The base sets an ``LtpaToken`` cookie on the "
+            "parent domain after portal login; the backend forwards it here (server-side, "
+            "Authorization: Bearer base64(client_id:client_secret)) to resolve the user identity. "
+            "ASSUMPTION — the response is the ODM envelope {code:0, data:{account:{...}, isError:false}}."
+        ),
+    )
+    ltpa_cookie_names: list[str] = Field(
+        default_factory=lambda: ["LtpaToken", "LtpaToken2"],
+        description="Cookie names checked (in order) for the base LTPA SSO token on /start (use-case 2 seamless entry).",
+    )
     allowed_tenant_ids: list[int] = Field(
         default_factory=list,
         description="If non-empty, only allow these tenant-id values (IPD).",

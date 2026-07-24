@@ -20,13 +20,10 @@ from app.gateway.auth import (
 )
 from app.gateway.auth.config import get_auth_config
 from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse
-from app.gateway.auth.oauth2 import OAuth2Error, OAuth2Service
+from app.gateway.auth.oauth2 import OAuth2Error, OAuth2Service, identity_from_odm_account
 from app.gateway.auth.oauth2_state import (
-    OAuth2StatePayload,
     delete_oauth2_state_cookie,
-    generate_oauth2_nonce,
     get_oauth2_state_cookie,
-    set_oauth2_state_cookie,
 )
 from app.gateway.auth.oidc import OIDCError, OIDCService
 from app.gateway.auth.oidc_state import (
@@ -919,6 +916,34 @@ def _resolve_oauth2_redirect_uri(request: Request, provider_config: OIDCProvider
     return f"{origin}/loginsso"
 
 
+def _find_ltpa_token(request: Request, provider_config: OIDCProviderConfig) -> str | None:
+    """Return the base LTPA SSO cookie value, if the browser carries one.
+
+    The base sets ``LtpaToken`` (or ``LtpaToken2``) on the parent
+    ``.shanghai-electric.com`` domain after portal login, so the browser sends
+    it to DeerFlow automatically. Cookie names are configurable per provider.
+    """
+    for name in provider_config.ltpa_cookie_names or ["LtpaToken", "LtpaToken2"]:
+        value = request.cookies.get(name)
+        if value:
+            return value
+    return None
+
+
+def _build_base_login_url(request: Request, provider_config: OIDCProviderConfig) -> str:
+    """Build the base-login redirect for the LTPA entry (use-case 2).
+
+    Points at the provider's login page (``authorization_endpoint``) with a
+    ``returnUrl`` back to the front-end ``/loginsso`` route, so that after the
+    user authenticates the base sends the browser back here — now carrying the
+    fresh LtpaToken that the /start LTPA branch consumes.
+    """
+    endpoint = provider_config.authorization_endpoint or ""
+    redirect_uri = _resolve_oauth2_redirect_uri(request, provider_config)
+    sep = "&" if "?" in endpoint else "?"
+    return f"{endpoint}{sep}returnUrl={urllib.parse.quote(redirect_uri, safe='')}"
+
+
 def _oauth2_error_redirect(frontend_base_url: str | None, error_code: str, request: Request, provider: str) -> RedirectResponse:
     """Build an error redirect that also clears the oauth2 nonce cookie."""
     redirect = _build_error_redirect(frontend_base_url, error_code)
@@ -934,11 +959,15 @@ async def oauth2_login_start(
     next: str | None = None,  # noqa: A002 (shadowing built-in is intentional — this is the query param name)
     remember_me: bool = True,
 ):
-    """Initiate a non-OIDC OAuth2 login (数字底座/IPD).
+    """Initiate a non-OIDC OAuth2 login (数字底座/IPD) — use-case 2 entry.
 
-    Generates a DeerFlow nonce cookie and redirects to the provider's
-    authorization endpoint. The provider's ``state`` is not trusted; CSRF
-    relies on this cookie being present at callback time.
+    LTPA seamless SSO: if the browser already carries a base ``LtpaToken``
+    cookie (user logged into the portal), resolve it server-side via the ODM
+    account-login API and sign the user straight in. Otherwise redirect to the
+    base login page (with ``returnUrl`` back to ``/loginsso``); after base login
+    the base sets the LtpaToken cookie and the browser returns here, where the
+    LTPA branch signs them in. The OAuth authorization-code path is unchanged
+    and still handled at ``/callback`` for use-case 1 (portal "click app").
     """
     from deerflow.config.app_config import get_app_config
 
@@ -962,27 +991,46 @@ async def oauth2_login_start(
         )
 
     redirect_path = validate_next_param(next) or "/workspace"
-    redirect_uri = _resolve_oauth2_redirect_uri(request, provider_config)
-    nonce = generate_oauth2_nonce()
-
     service = _get_oauth2_service()
-    auth_url = service.build_authorization_url(
-        provider_config=provider_config,
-        client_id=provider_config.client_id,
-        redirect_uri=redirect_uri,
-        state=nonce,
-        scopes=provider_config.scopes or None,
-    )
 
-    state_payload = OAuth2StatePayload(
-        provider=provider,
-        nonce=nonce,
-        next_path=redirect_path,
-        remember_me=remember_me,
-    )
-    redirect_response = RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
-    set_oauth2_state_cookie(redirect_response, request, state_payload)
-    return redirect_response
+    # ── Use-case 2 seamless entry: LTPA cookie SSO ────────────────────────
+    # If the user already logged into the portal, the base set an LtpaToken
+    # cookie on the parent .shanghai-electric.com domain, which the browser
+    # carries here. When present, resolve it server-side via the ODM
+    # account-login API and sign the user straight in — NO base redirect.
+    ltpa_token = _find_ltpa_token(request, provider_config)
+    if ltpa_token and provider_config.odm_login_endpoint:
+        tenant_id = provider_config.default_tenant_id or 1
+        try:
+            account = await service.odm_login_with_ltpa(provider_config, ltpa_token, tenant_id)
+            identity = identity_from_odm_account(provider, provider_config, account, tenant_id)
+        except OAuth2Error as exc:
+            # Expired/foreign token or ODM outage — fall through to base-login redirect.
+            logger.warning("LTPA SSO token rejected for %s (%s); falling back to base-login redirect", provider, exc)
+        else:
+            try:
+                result = await get_or_provision_oidc_user(provider, provider_config, identity, get_local_provider())
+            except HTTPException as exc:
+                error_map = {status.HTTP_403_FORBIDDEN: "sso_not_allowed", status.HTTP_409_CONFLICT: "sso_account_exists"}
+                logger.warning("LTPA SSO provisioning failed for %s (%s): %s", identity.email, provider, exc.detail)
+                return _oauth2_error_redirect(oidc_config.frontend_base_url, error_map.get(exc.status_code, "sso_failed"), request, provider)
+
+            user = result["user"]
+            token = create_access_token(str(user.id), token_version=user.token_version)
+            frontend_base = oidc_config.frontend_base_url or ""
+            callback_redirect = f"{frontend_base}/auth/callback?next={urllib.parse.quote(redirect_path)}"
+            resp = RedirectResponse(url=callback_redirect, status_code=status.HTTP_302_FOUND)
+            _set_session_cookie(resp, token, request, remember_me=remember_me)
+            _set_csrf_cookie(resp, request)
+            logger.info("LTPA SSO login succeeded for %s (subject=%s)", provider, identity.subject)
+            return resp
+
+    # ── No valid LtpaToken → redirect to the base login page ─────────────
+    # Ask the base to return to /loginsso after authentication (returnUrl).
+    # After base login the base sets the LtpaToken cookie; the browser returns
+    # to /loginsso → /start, where the LTPA branch above signs the user in.
+    login_url = _build_base_login_url(request, provider_config)
+    return RedirectResponse(url=login_url, status_code=status.HTTP_302_FOUND)
 
 
 @router.get("/oauth2/{provider}/callback")

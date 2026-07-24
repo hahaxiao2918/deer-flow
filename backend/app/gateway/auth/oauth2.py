@@ -22,7 +22,9 @@ Key differences from the OIDC service (oidc.py):
 
 from __future__ import annotations
 
+import base64
 import logging
+import time
 from typing import Any
 from urllib.parse import urlencode
 
@@ -230,6 +232,64 @@ class OAuth2Service:
             claims=claims,
         )
 
+    # ── ODM account-login (LTPA SSO, use-case 2 seamless entry) ────────────
+
+    async def odm_login_with_ltpa(
+        self,
+        provider_config: OIDCProviderConfig,
+        ltpa_token: str,
+        tenant_id: int,
+    ) -> dict[str, Any]:
+        """Resolve a base ``LtpaToken`` cookie to the user's account (ODM doc §5.1).
+
+        Use-case 2 seamless entry: after the user logs into the portal, the base
+        sets an ``LtpaToken`` cookie on the parent ``.shanghai-electric.com``
+        domain. The browser carries it to DeerFlow; the backend forwards it
+        (server-side) to the ODM account-login endpoint to resolve the identity.
+        Auth is ``Authorization: Bearer base64(client_id:client_secret)``.
+
+        Returns the ``account`` object from the ODM envelope. Raises
+        ``OAuth2Error`` on transport/business/validation failure (e.g. expired
+        or foreign token) so the caller can fall back to a base-login redirect.
+        """
+        endpoint = provider_config.odm_login_endpoint
+        if not endpoint:
+            raise OAuth2Error("provider_config.odm_login_endpoint is not set")
+        body = {
+            "timestamp": int(time.time()),
+            "token": ltpa_token,
+            "userCode": "",
+            "password": "",
+            "hasCompanyInfo": True,
+            "hasAuthInfo": True,
+            "logInfo": {},
+        }
+        headers = {
+            "Authorization": _odm_auth_header(provider_config),
+            "tenant-id": str(tenant_id),
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        try:
+            resp = await self._http.post(endpoint, json=body, headers=headers)
+            resp.raise_for_status()
+            envelope = resp.json()
+        except httpx.HTTPStatusError as exc:
+            logger.warning("ODM ltpa login failed: HTTP %s", exc.response.status_code)
+            raise OAuth2Error(f"ODM login failed: HTTP {exc.response.status_code}") from exc
+        except httpx.RequestError as exc:
+            raise OAuth2Error(f"ODM login failed: {exc}") from exc
+
+        _raise_for_business_error(envelope, "ODM ltpa login")
+        data = envelope.get("data") or {}
+        if data.get("isError"):
+            msg = envelope.get("msg") or "isError"
+            raise OAuth2ProviderError(f"ODM ltpa login rejected: {msg}")
+        account = data.get("account") or {}
+        if not account:
+            raise OAuth2ValidationError("ODM login response is missing account")
+        return account
+
 
 def _raise_for_business_error(envelope: dict[str, Any], op: str) -> None:
     """Raise OAuth2ProviderError when the IPD-style envelope reports failure.
@@ -287,3 +347,42 @@ def _resolve_email(provider_config: OIDCProviderConfig, userinfo: dict[str, Any]
         # A malformed pattern must never crash login; fall back to the literal.
         logger.warning("email_synthesis_pattern %r could not be formatted; using literal", pattern)
         return pattern.lower(), True
+
+
+def _odm_auth_header(provider_config: OIDCProviderConfig) -> str:
+    """Build the ODM ``Authorization: Bearer base64(client_id:client_secret)`` header (doc §5.1.1.3)."""
+    raw = f"{provider_config.client_id}:{provider_config.client_secret or ''}".encode()
+    return "Bearer " + base64.b64encode(raw).decode()
+
+
+def identity_from_odm_account(
+    provider_id: str,
+    provider_config: OIDCProviderConfig,
+    account: dict[str, Any],
+    tenant_id: int,
+) -> OIDCIdentity:
+    """Map an ODM ``account`` object to an ``OIDCIdentity`` for provisioning.
+
+    The ODM account carries the workId （工号， globally unique) in ``code`` and a
+    real ``email`` (unlike the OAuth2 userinfo path, synthesis is normally not
+    needed). ``roleCodes``/org fields are passed through as claims but are never
+    mapped to a DeerFlow admin role.
+    """
+    subject = str(account.get("code") or account.get("userId") or "")
+    if not subject:
+        raise OAuth2ValidationError("ODM account is missing the workId 'code' field")
+    if provider_config.namespace_with_tenant:
+        subject = f"{tenant_id}:{subject}"
+
+    email, _synthesized = _resolve_email(provider_config, account, subject)
+
+    claims: dict[str, Any] = dict(account)
+    claims["_auth_via"] = "ltpa"
+    return OIDCIdentity(
+        provider=provider_id,
+        subject=subject,
+        email=email,
+        email_verified=False,  # LTPA/ODM cannot assert email verification
+        name=account.get("name") or account.get("name_EN"),
+        claims=claims,
+    )

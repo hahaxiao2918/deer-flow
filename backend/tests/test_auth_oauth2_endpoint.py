@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.gateway.auth.config import AuthConfig, set_auth_config
 from app.gateway.auth.models import User
+from app.gateway.auth.oauth2 import OAuth2ProviderError
 from app.gateway.auth.oidc import OIDCIdentity
 from app.gateway.routers import auth as auth_module
 from app.gateway.routers.auth import router
@@ -33,6 +34,7 @@ def _oauth2_cfg(**overrides):
         "require_verified_email": False,
         "default_tenant_id": 1,
         "default_organize_id": 100,
+        "odm_login_endpoint": "https://portal.example.com/admin-api/system/odm-api-wrap/account/login",
     }
     base.update(overrides)
     return OIDCProviderConfig(**base)
@@ -79,18 +81,72 @@ def test_providers_lists_oauth2_type(monkeypatch):
     assert resp.json()["providers"] == [{"id": "ipd", "display_name": "数字底座", "type": "oauth2"}]
 
 
-def test_oauth2_start_redirects_and_sets_nonce_cookie(monkeypatch):
+def _fake_odm_account():
+    """The ODM account-login (§5.1) account shape for the LTPA SSO path."""
+    return {
+        "userId": "276392",
+        "code": "03010633",  # workId (工号) — the globally-unique subject
+        "name": "林鑫",
+        "email": "linxin3@shanghai-electric.com",
+        "dept": {"code": "22BE6", "name": "知识产权研究部"},
+        "company": {"code": "3500", "name": "上海电气中央研究院(本部)"},
+    }
+
+
+def test_oauth2_start_without_ltpa_redirects_to_base_login_with_returnurl(monkeypatch):
+    """No LtpaToken cookie → redirect to the base login page with returnUrl back
+    to /loginsso (NOT the OAuth authorize URL, and no nonce cookie in LTPA mode)."""
     client = _client(monkeypatch, _oauth2_cfg())
     resp = client.get("/api/v1/auth/oauth2/ipd/start", follow_redirects=False)
     assert resp.status_code == 302
     location = resp.headers["location"]
     assert location.startswith("https://portal.example.com/login?")
-    assert "clientId=cid" in location
-    assert "redirectUri=https%3A%2F%2Fapp.example.com%2Floginsso" in location
-    # state (nonce) is present
-    assert "state=" in location
+    assert "returnUrl=" in location
+    assert "loginsso" in location
+    # LTPA mode: no OAuth authorize params, no nonce cookie, no session.
+    assert "clientId" not in location
     cookie_headers = resp.headers.get_list("set-cookie")
-    assert any("df_oauth2_state_ipd=" in c for c in cookie_headers)
+    assert not any("access_token=" in c for c in cookie_headers)
+
+
+def test_oauth2_start_with_ltpa_token_logs_in_seamlessly(monkeypatch):
+    """Browser carries a base LtpaToken → /start resolves it via ODM (server-side),
+    maps workId→subject, provisions, sets the session — all WITHOUT a base redirect."""
+    cfg = _oauth2_cfg()
+    service = MagicMock()
+    service.odm_login_with_ltpa = AsyncMock(return_value=_fake_odm_account())
+    user = User(email="linxin3@shanghai-electric.com", password_hash=None, system_role="user", oauth_provider="ipd", oauth_id="03010633")
+    local_provider = MagicMock()
+    local_provider.get_user_by_oauth = AsyncMock(return_value=user)
+
+    client = _client(monkeypatch, cfg, service=service, local_provider=local_provider)
+    client.cookies.set("LtpaToken", "LTPA-VALUE")
+    resp = client.get("/api/v1/auth/oauth2/ipd/start", follow_redirects=False)
+    assert resp.status_code == 302
+    assert "/auth/callback?next=" in resp.headers["location"]
+    cookie_headers = resp.headers.get_list("set-cookie")
+    assert any("access_token=" in c for c in cookie_headers)
+
+    service.odm_login_with_ltpa.assert_awaited_once()
+    kwargs = service.odm_login_with_ltpa.await_args
+    assert kwargs.args[1] == "LTPA-VALUE"  # the cookie value is forwarded to ODM
+
+
+def test_oauth2_start_ltpa_rejected_falls_back_to_base_login(monkeypatch):
+    """Expired/foreign LtpaToken (ODM rejects) → fall back to the base-login
+    redirect instead of erroring or looping."""
+    cfg = _oauth2_cfg()
+    service = MagicMock()
+    service.odm_login_with_ltpa = AsyncMock(side_effect=OAuth2ProviderError("账号或密码错误!"))
+    client = _client(monkeypatch, cfg, service=service)
+    client.cookies.set("LtpaToken", "STALE")
+    resp = client.get("/api/v1/auth/oauth2/ipd/start", follow_redirects=False)
+    assert resp.status_code == 302
+    location = resp.headers["location"]
+    assert location.startswith("https://portal.example.com/login?")
+    assert "returnUrl=" in location
+    cookie_headers = resp.headers.get_list("set-cookie")
+    assert not any("access_token=" in c for c in cookie_headers)
 
 
 def test_oauth2_start_rejects_oidc_provider(monkeypatch):
@@ -165,12 +221,8 @@ def test_oauth2_callback_full_flow_sets_session_and_redirects(monkeypatch):
 
     client = _client(monkeypatch, cfg, service=service, local_provider=local_provider)
 
-    # /start sets the nonce cookie; the TestClient cookie jar carries it to /callback.
-    start_resp = client.get("/api/v1/auth/oauth2/ipd/start", follow_redirects=False)
-    assert start_resp.status_code == 302
-    nonce_cookie = start_resp.cookies.get("df_oauth2_state_ipd")
-    assert nonce_cookie
-
+    # Full success path (no /start needed — the callback is IPD-initiated, and the
+    # nonce cookie is optional since 54bfd3a).
     resp = client.get("/api/v1/auth/oauth2/ipd/callback?code=C&tenant-id=1&organize-id=100", follow_redirects=False)
     assert resp.status_code == 302
     assert "/auth/callback?next=" in resp.headers["location"]
@@ -190,9 +242,6 @@ def test_oauth2_callback_rejects_non_whitelisted_tenant(monkeypatch):
     service = MagicMock()
     service.authenticate_callback = AsyncMock(return_value=_fake_identity())
     client = _client(monkeypatch, cfg, service=service)
-
-    start_resp = client.get("/api/v1/auth/oauth2/ipd/start", follow_redirects=False)
-    assert start_resp.cookies.get("df_oauth2_state_ipd")
 
     resp = client.get("/api/v1/auth/oauth2/ipd/callback?code=C&tenant-id=999&organize-id=100", follow_redirects=False)
     assert resp.status_code == 302

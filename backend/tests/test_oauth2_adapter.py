@@ -10,6 +10,7 @@ from app.gateway.auth.oauth2 import (
     OAuth2ProviderError,
     OAuth2Service,
     OAuth2ValidationError,
+    identity_from_odm_account,
 )
 from deerflow.config.auth_config import OIDCProviderConfig
 
@@ -170,6 +171,101 @@ async def test_fetch_userinfo_sends_bearer_tenant_organize_and_carryrole(monkeyp
     assert captured["headers"]["organize-id"] == "100"
     assert "carryRole=true" in captured["url"]
     await svc.close()
+
+
+# ── ODM account-login (LTPA SSO, doc §5.1) ────────────────────────────────
+
+
+def _official_odm_envelope():
+    """The ODM account-login success envelope (code:0, data.account, isError:false)."""
+    return {
+        "code": 0,
+        "data": {
+            "account": {
+                "userId": "276392",
+                "code": "03010633",  # workId (工号)
+                "name": "林鑫",
+                "email": "linxin3@shanghai-electric.com",
+                "dept": {"code": "22BE6", "name": "知识产权研究部"},
+                "company": {"code": "3500", "name": "上海电气中央研究院(本部)"},
+            },
+            "token": "REFRESHED-LTPA",
+            "isError": False,
+        },
+        "msg": "",
+    }
+
+
+@pytest.mark.asyncio
+async def test_odm_login_with_ltpa_sends_bearer_base64_and_parses_account(monkeypatch):
+    import base64 as _b64
+
+    svc = OAuth2Service()
+    captured = {}
+
+    async def fake_post(url, json=None, headers=None):
+        captured["url"] = url
+        captured["json"] = json
+        captured["headers"] = headers
+        return _Resp(_official_odm_envelope())
+
+    monkeypatch.setattr(svc._http, "post", fake_post)
+    account = await svc.odm_login_with_ltpa(_cfg(odm_login_endpoint="https://portal.example.com/admin-api/system/odm-api-wrap/account/login"), "LTPA-VALUE", tenant_id=1)
+
+    assert account["code"] == "03010633"
+    assert account["email"] == "linxin3@shanghai-electric.com"
+    # Authorization: Bearer base64(client_id:client_secret); tenant-id header
+    assert captured["headers"]["Authorization"] == "Bearer " + _b64.b64encode(b"cid:csec").decode()
+    assert captured["headers"]["tenant-id"] == "1"
+    # Body forwards the ltpa token in `token`, empty userCode/password
+    assert captured["json"]["token"] == "LTPA-VALUE"
+    assert captured["json"]["userCode"] == ""
+    assert captured["json"]["password"] == ""
+    await svc.close()
+
+
+@pytest.mark.asyncio
+async def test_odm_login_raises_on_iserror(monkeypatch):
+    svc = OAuth2Service()
+    env = _official_odm_envelope()
+    env["data"]["isError"] = True
+    env["msg"] = "单点登录失败!"
+
+    async def fake_post(url, json=None, headers=None):
+        return _Resp(env)
+
+    monkeypatch.setattr(svc._http, "post", fake_post)
+    with pytest.raises(OAuth2ProviderError):
+        await svc.odm_login_with_ltpa(_cfg(odm_login_endpoint="https://x/login"), "BAD", tenant_id=1)
+    await svc.close()
+
+
+@pytest.mark.asyncio
+async def test_odm_login_raises_on_business_error_code(monkeypatch):
+    svc = OAuth2Service()
+
+    async def fake_post(url, json=None, headers=None):
+        return _Resp({"code": 100, "data": None, "msg": "账号或密码错误!"})
+
+    monkeypatch.setattr(svc._http, "post", fake_post)
+    with pytest.raises(OAuth2ProviderError):
+        await svc.odm_login_with_ltpa(_cfg(odm_login_endpoint="https://x/login"), "BAD", tenant_id=1)
+    await svc.close()
+
+
+def test_identity_from_odm_account_maps_workid_email_name():
+    identity = identity_from_odm_account("ipd", _cfg(), _official_odm_envelope()["data"]["account"], tenant_id=1)
+    assert identity.provider == "ipd"
+    assert identity.subject == "03010633"  # workId (code), NOT userId
+    assert identity.email == "linxin3@shanghai-electric.com"  # real email, no synthesis
+    assert identity.name == "林鑫"
+    assert identity.email_verified is False
+    assert identity.claims["_auth_via"] == "ltpa"
+
+
+def test_identity_from_odm_account_namespaces_subject_when_configured():
+    identity = identity_from_odm_account("ipd", _cfg(namespace_with_tenant=True), _official_odm_envelope()["data"]["account"], tenant_id=7)
+    assert identity.subject == "7:03010633"
 
 
 # ── authenticate_callback ───────────────────────────────────────────────
