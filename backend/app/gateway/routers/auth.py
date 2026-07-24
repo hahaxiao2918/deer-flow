@@ -990,6 +990,7 @@ async def oauth2_callback(
     request: Request,
     provider: str,
     code: str | None = None,
+    state: str | None = None,
     tenant_id: int | None = Query(default=None, alias="tenant-id"),
     organize_id: int | None = Query(default=None, alias="organize-id"),
 ):
@@ -1023,15 +1024,18 @@ async def oauth2_callback(
     if not code:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing code parameter")
 
-    # ── Verify DeerFlow nonce cookie (CSRF) ───────────────────────────
-    # ASSUMPTION: the nonce cookie is required. This covers use-case 2 (the
-    # primary flow where /start sets it). IPD's own `state` query param is NOT
-    # trusted (empty/0/1 in practice). Use-case 1 (direct portal click with no
-    # prior /start) would lack the cookie — pending B1/entry-mode confirmation.
+    # ── DeerFlow nonce cookie (CSRF), only for DeerFlow-initiated flows ──
+    # Two entry modes (per the official 用例一/用例二 flowcharts):
+    #  - DeerFlow-initiated (our /start): we set a signed nonce cookie and
+    #    REQUIRE it here — the CSRF proof for a flow we started.
+    #  - IPD-initiated (portal "click app" — the official 用例一/用例二 path):
+    #    the portal mints the code and opens /loginsso in a fresh tab that
+    #    never called our /start, so there is no nonce cookie. We ALLOW it:
+    #    the one-time, short-lived code + client_secret at exchange is the
+    #    defense (we cannot bind a state we never issued).
     state_payload = get_oauth2_state_cookie(request, provider)
-    if not state_payload:
-        logger.warning("OAuth2 callback for %s missing nonce cookie (no prior /start or expired)", provider)
-        return _oauth2_error_redirect(oidc_config.frontend_base_url, "sso_failed", request, provider)
+    if state_payload is None:
+        logger.info("OAuth2 callback for %s has no nonce cookie: IPD-initiated portal flow (official entry), allowing", provider)
 
     # ── Resolve + whitelist tenant/organize ───────────────────────────
     tenant_id = tenant_id if tenant_id is not None else provider_config.default_tenant_id
@@ -1051,7 +1055,7 @@ async def oauth2_callback(
             provider_config=provider_config,
             code=code,
             redirect_uri=redirect_uri,
-            state="",  # IPD state is not trusted
+            state=state or "",  # IPD-issued state, echoed back per doc 2.3 (not a CSRF proof)
             tenant_id=tenant_id,  # type: ignore[arg-type]
             organize_id=organize_id,  # type: ignore[arg-type]
         )
@@ -1076,12 +1080,14 @@ async def oauth2_callback(
     # ── Issue DeerFlow session ────────────────────────────────────────
     token = create_access_token(str(user.id), token_version=user.token_version)
 
-    redirect_target = state_payload.next_path or "/workspace"
+    # state_payload is None for the IPD-initiated (portal click) flow — fall
+    # back to defaults (no caller-chosen next / no remember preference).
+    redirect_target = (state_payload.next_path if state_payload else "") or "/workspace"
     frontend_base = oidc_config.frontend_base_url or ""
     callback_redirect = f"{frontend_base}/auth/callback?next={urllib.parse.quote(redirect_target)}"
 
     redirect_response = RedirectResponse(url=callback_redirect, status_code=status.HTTP_302_FOUND)
-    _set_session_cookie(redirect_response, token, request, remember_me=state_payload.remember_me)
+    _set_session_cookie(redirect_response, token, request, remember_me=state_payload.remember_me if state_payload else True)
     _set_csrf_cookie(redirect_response, request)
     delete_oauth2_state_cookie(redirect_response, request, provider)
     return redirect_response

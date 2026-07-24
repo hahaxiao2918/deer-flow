@@ -26,6 +26,9 @@ export default function LoginSsoPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+    // IPD issues its own `state` and echoes it back; forward it so the token
+    // exchange can return it per doc 2.3 (it is NOT a CSRF proof for us).
+    const state = params.get("state");
     // IPD sends tenant-id / organize-id with a hyphen; forward as-is.
     const tenantId = params.get("tenant-id") ?? params.get("tenant_id");
     const organizeId = params.get("organize-id") ?? params.get("organize_id");
@@ -43,6 +46,7 @@ export default function LoginSsoPage() {
         }
         if (code) {
           const q = new URLSearchParams({ code });
+          if (state) q.set("state", state);
           if (tenantId) q.set("tenant-id", tenantId);
           if (organizeId) q.set("organize-id", organizeId);
           window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(oauth2.id)}/callback?${q.toString()}`;

@@ -117,11 +117,42 @@ def test_oauth2_callback_missing_code_returns_400(monkeypatch):
     assert resp.status_code == 400
 
 
-def test_oauth2_callback_missing_nonce_cookie_redirects_to_error(monkeypatch):
-    client = _client(monkeypatch, _oauth2_cfg())
+def test_oauth2_callback_without_nonce_cookie_is_allowed_as_ipd_initiated_flow(monkeypatch):
+    """Official 用例一/用例二 path: the portal mints the code and opens /loginsso
+    in a fresh tab that never called /start — so there is no nonce cookie. The
+    callback must ALLOW this (the one-time code + client_secret is the defense),
+    provision the user, and set the session."""
+    cfg = _oauth2_cfg()
+    service = MagicMock()
+    service.authenticate_callback = AsyncMock(return_value=_fake_identity())
+    user = User(email="u@example.com", password_hash=None, system_role="user", oauth_provider="ipd", oauth_id="1")
+    local_provider = MagicMock()
+    local_provider.get_user_by_oauth = AsyncMock(return_value=user)
+
+    client = _client(monkeypatch, cfg, service=service, local_provider=local_provider)
+    # NOTE: no /start call first → no df_oauth2_state_ipd cookie (IPD-initiated).
     resp = client.get("/api/v1/auth/oauth2/ipd/callback?code=C&tenant-id=1&organize-id=100", follow_redirects=False)
     assert resp.status_code == 302
-    assert "/login?error=sso_failed" in resp.headers["location"]
+    assert "/auth/callback?next=" in resp.headers["location"]
+    cookie_headers = resp.headers.get_list("set-cookie")
+    assert any("access_token=" in c for c in cookie_headers)
+    service.authenticate_callback.assert_awaited_once()
+
+
+def test_oauth2_callback_forwards_ipd_state_to_token_exchange(monkeypatch):
+    """Doc 2.3: the code exchange echoes the IPD-issued `state` back to the token
+    endpoint. The callback must forward the `state` query param it received."""
+    cfg = _oauth2_cfg()
+    service = MagicMock()
+    service.authenticate_callback = AsyncMock(return_value=_fake_identity())
+    user = User(email="u@example.com", password_hash=None, system_role="user", oauth_provider="ipd", oauth_id="1")
+    local_provider = MagicMock()
+    local_provider.get_user_by_oauth = AsyncMock(return_value=user)
+
+    client = _client(monkeypatch, cfg, service=service, local_provider=local_provider)
+    resp = client.get("/api/v1/auth/oauth2/ipd/callback?code=C&state=ipd-nonce-99&tenant-id=1&organize-id=100", follow_redirects=False)
+    assert resp.status_code == 302
+    assert service.authenticate_callback.await_args.kwargs["state"] == "ipd-nonce-99"
 
 
 def test_oauth2_callback_full_flow_sets_session_and_redirects(monkeypatch):

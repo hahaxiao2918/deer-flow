@@ -293,11 +293,31 @@ canonical example is the Shanghai Electric "数字底座" (IPD) platform.
   state` **all in the query string**, with `tenant-id` in a header.
 - UserInfo is the **sole** identity source (no ID token); fetched with
   `Authorization: Bearer`, `tenant-id` + `organize-id` headers, `carryRole=true`.
-- `state` is provider-generated and **not** trusted; CSRF relies on a
-  DeerFlow-issued nonce cookie.
+- `state` is provider-generated and **not** trusted as a CSRF proof; it is
+  echoed back to the token endpoint unchanged (per the IPD flow doc §2.3).
 - The callback is a **front-end interception route** (`/loginsso`): IPD
   redirects the browser there with `code`, and the front-end forwards to
   `/api/v1/auth/oauth2/{provider}/callback`.
+
+### Two entry modes (per the official 用例一/用例二 flowcharts)
+
+IPD has **no standard browser authorize URL** that auto-redirects back with a
+code. The authorization code is minted only by the portal's **"click the app in
+the desktop list"** action (用例一). So there are two ways a login can begin:
+
+1. **IPD-initiated (portal click — the official path).** The user logs into the
+   portal, clicks the 智海·思铸 app icon, and the portal opens
+   `/loginsso?code=...&state=...&tenant-id=...&organize-id=...` in a fresh tab.
+   This tab never called DeerFlow's `/start`, so there is **no** nonce cookie.
+   The callback **allows** this: the one-time, short-lived `code` plus the
+   server-held `client_secret` at exchange is the defense (we cannot bind a
+   `state` we never issued).
+2. **DeerFlow-initiated (use-case 2 entry).** The user visits `/loginsso`
+   without a `code`; the front-end calls `/start`, which sets the signed nonce
+   cookie and 302s to the portal **login page** (`authorization_endpoint`).
+   After the user logs in, the flow continues as use-case 1 (desktop → click
+   app). When the nonce cookie **is** present at callback, it is enforced as
+   the CSRF proof for the flow DeerFlow started.
 
 ### Endpoints
 
