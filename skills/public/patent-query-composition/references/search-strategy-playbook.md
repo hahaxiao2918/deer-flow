@@ -23,6 +23,8 @@ Strategy is constrained by the tools at hand. The `patent-data` MCP provides:
 | **FTO / freedom-to-operate** | Boolean precision on the exact claims/features + jurisdiction **`ENTRY_COUNTRY:<code>`** (or `EPDS:<c> GAND EPDS_SLS:1` for an EP member-state; `AUTHORITY` is the filing office and under-counts EP national validations) + **`SIMPLE_LEGAL_STATUS:(1 OR 2)`** (有效 + 审中) + date; narrow hard. | Needs live-or-pending, enforceable, in-jurisdiction claims — precision dominates. |
 | **Landscape / white-space** | Classification-driven (CPC first): define the technology space by CPC ranges, then `patent_search` per subclass/slice (read `coverage.total_search_result_count`; collapse for family-level density) to map density and find sparse areas; layer applicant counts. | Classification gives the stable technology map; counts reveal density. |
 | **Competitor / portfolio monitoring** | Applicant-scoped: `ALL_AN:(TREE@"公司全名")` + date window + optional classification; `patent_search` (sort by date) for volume trends. | Portfolio = applicant boundary over time. |
+| **SEP / standards mapping** | `SEP:1` + `SEP_PROJECT`/`SEP_SOURCE`/`SEP_DECLARANT` (ETSI/IEEE/ITU); cross CPC. (Declared ≠ essential.) | Standards participation / licensing / FRAND scoping. |
+| **Portfolio quality / due-diligence** | Applicant scope + `PV:[N TO *]` + `FAM_COUNTRY_COUNT:[N TO *]` + `CLAIM_COUNT`/`LITIGATION_COUNT`; intersect CPC. | M&A / licensing-target ranking by value & coverage. |
 
 This skill **composes** the query expressions for whichever strategy the goal implies; it still hands off a `query_plan`. Running the full corpus search is `applicant-tech-patent-retrieval`'s job.
 

@@ -12,7 +12,7 @@
   "skills": {
     "patent-query-composition": {
       "version": "2.0.0",
-      "sha256": "e02796826afb42a9ea38a199fc94ff8bc38e5321baa9e96b29674a22cfa92263"
+      "sha256": "d64cac8db4f40c1610aa02972234c9470131840f37e5e7c29e31d571dbb35618"
     },
     "applicant-tech-patent-retrieval": {
       "version": "2.0.0",

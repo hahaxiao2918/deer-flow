@@ -62,7 +62,8 @@
             "jurisdiction": {"type": ["string", "null"]},
             "date_window": {"type": ["string", "null"]},
             "classification": {"type": ["string", "null"]},
-            "recall_vs_precision": {"type": "string"}
+            "recall_vs_precision": {"type": "string"},
+            "goal": {"type": ["string", "null"], "description": "search goal: novelty/invalidation/FTO/landscape/monitoring/SEP/portfolio_quality"}
           },
           "additionalProperties": true
         },
@@ -85,7 +86,8 @@
         "revision": {"type": "string"},
         "run_order": {"type": ["integer", "null"], "minimum": 0},
         "count_volume": {"type": ["integer", "null"], "minimum": 0, "description": "family-level hit count from patent_search data.coverage.total_search_result_count"},
-        "sample_publication_numbers": {"type": "array", "items": {"type": "string"}, "description": "sample publication numbers returned by the patent_search calibration probe"}
+        "sample_publication_numbers": {"type": "array", "items": {"type": "string"}, "description": "sample publication numbers returned by the patent_search calibration probe"},
+        "combination_type": {"enum": ["all_elements", "partial", "single"], "description": "block-combination tactic (CNIPA 全要素/部分/单要素)"}
       },
       "additionalProperties": true
     },

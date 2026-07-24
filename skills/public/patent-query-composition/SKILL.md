@@ -41,6 +41,8 @@ Identify the goal (captured in scope intake), then pick the strategy. **Block-se
 | **FTO / freedom-to-operate** | Boolean precision on the exact claims/features + jurisdiction **`ENTRY_COUNTRY:<code>`** (not `AUTHORITY`, which is the filing office; for an EP member-state use `EPDS:<c> GAND EPDS_SLS:1`) + **`SIMPLE_LEGAL_STATUS:(1 OR 2)`** (有效 + 审中 — pending can mature into enforceable rights; do **not** narrow to `PATENT_TYPE:B`, it drops utility models `U`) + date. |
 | **Landscape / white-space** | Classification-driven (CPC first); `patent_search` per subclass/slice for density (read `coverage.total_search_result_count`; use `collapse_type` for family-level density); mind family inflation when comparing slices. |
 | **Competitor / portfolio monitoring** | Applicant `ALL_AN:(TREE@"公司全名")` + date window + optional classification; `patent_search` with `sort` by date for volume trends. |
+| **SEP / standards-essential** | `SEP:1` + `SEP_PROJECT` (5G...) + `SEP_SOURCE` (ETSI/IEEE/ITU) + optional `SEP_DECLARANT`; cross with CPC. (Declared ≠ truly essential — recall-oriented.) |
+| **Portfolio quality / due-diligence** | Applicant scope + quality filters `PV:[N TO *]`, `FAM_COUNTRY_COUNT:[N TO *]`, `CLAIM_COUNT`, `LITIGATION_COUNT`; intersect the target's CPC space. |
 
 Per-goal rationale and worked examples: `references/search-strategy-playbook.md`.
 
