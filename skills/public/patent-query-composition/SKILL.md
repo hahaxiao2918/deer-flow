@@ -22,6 +22,40 @@ Compose a versioned set of validated patent search-query expressions (检索式)
 
 Use status values consistently: `needs_input`, `scope_ambiguous`, `ready`, `no_results`, `partial_data`, `insufficient_evidence`, `unsupported_request`, or `completed`.
 
+**Artifact shape (contractual — copy these exact field names, do not invent a parallel structure):**
+
+```json
+{
+  "schema_version": "2.0.0",
+  "analysis_id": "<slug>",
+  "artifact_type": "query_plan",
+  "status": "completed",
+  "skill_name": "patent-query-composition",
+  "created_at": "<YYYY-MM-DD>",
+  "payload": {
+    "intent": {"goal": "FTO", "concepts": ["..."], "jurisdiction": "CN", "recall_vs_precision": "recall"},
+    "defaults_applied": ["<dimensions you defaulted>"],
+    "query_set": [
+      {
+        "query_id": "Q1",
+        "combination_type": "all_elements",
+        "purpose": "precision",
+        "query_text": "(<BlockA> AND <BlockB> AND <BlockC>) AND ENTRY_COUNTRY:CN AND SIMPLE_LEGAL_STATUS:(1 OR 2)",
+        "field_codes": ["TAC_ALL", "IPC_CPC", "ENTRY_COUNTRY", "SIMPLE_LEGAL_STATUS"],
+        "count_volume": 898,
+        "sample_publication_numbers": ["CN118934079A"],
+        "expected_behaviour": "<what this expression is for>"
+      }
+    ],
+    "validation_notes": ["<probe findings, expansions made>"]
+  },
+  "assumptions": ["..."],
+  "limitations": ["..."]
+}
+```
+
+Per expression REQUIRED: `query_id`, `query_text`, `purpose` (`recall` / `precision` / `applicant_scope` / `inventor_scope` / `exclusion` / `seed_check`), `field_codes`. After calibration always add `count_volume` (family-level, from the probe), `sample_publication_numbers`, and `combination_type` (`all_elements` / `partial` / `single`). Blocks are expressed AS `query_set` entries (keywords-OR-classification `query_text`), not as a separate ad-hoc `blocks`/`combos` object.
+
 ## Scope intake (one structured `ask_clarification` card)
 
 Call `ask_clarification` **once** (`clarification_type: "missing_info"`) to capture the scope dimensions that materially change the query set; apply disclosed defaults for anything omitted and record them in `defaults_applied`. Block (status `needs_input` / `scope_ambiguous`) only when a MUST-HAVE field for the chosen goal is missing and no safe default exists.
@@ -65,6 +99,15 @@ Per-goal rationale and worked examples: `references/search-strategy-playbook.md`
    - A near-zero all-elements count ⇒ **expand first** (add synonyms, broaden classification, add 功能类似 / neighbouring fields), then re-probe — never infer absence of prior art from one AND-all.
 4. **Calibrate with `patent_search`** (¥0.20/probe, so be economical): probe each block and combination with `patent_search(query_text, limit=3-5, collapse_type, collapse_by, collapse_order)` — read the family-level count from `data.coverage.total_search_result_count` (**not** `data.total_search_result_count`, which is null for `patent_search`) and skim the few returned records to confirm they are on-topic (a right-count / wrong-documents check). Too few hits → expand synonyms / add classifications / relax; too many → narrow keywords / add classification / add proximity. Re-probe after each revision and record the family-level volume per expression. (Caps: `limit <= 1000`, `offset+limit <= 20000` — both hard-error `68300004` beyond; `sort` options: PBDT/APD/ISD/SCORE.)
 5. Deliver the block table, the combination `query_text` set (全要素 all-elements / partial / single-element), per-block family-level count volumes + sample publication numbers, assumptions, limitations, and the `query_plan` handoff. Use only small-limit `patent_search` probes for calibration + sanity samples — do not run full corpus pulls (large `limit` / deep pagination); that is the corpus skill's job.
+
+## Wrap-up discipline (how to finish — read before writing files)
+
+Long runs are trimmed from the middle; if you loop, the run dies. Finish deterministically:
+
+- **Fixed deliverable names, written ONCE**: `workspace/patent-analysis/<analysis_id>/query-plan.json` (+ optionally ONE report `workspace/patent-analysis/<analysis_id>/query-report.md`). If you also copy to `/mnt/user-data/outputs/`, keep the SAME basename. Never write a second copy under a different name or "final-v2" variant; to change content, `str_replace` the existing file.
+- **Probe budget**: default **≤ 12 `patent_search` probes** per intent (¥0.20 each). At the cap, stop probing, consolidate what you have, mark `partial_data` if calibration is thin, and note in `validation_notes` what further probes would buy.
+- **No re-reads after writing starts**: you already have the references' content; do not re-read SKILL.md or references to "double-check" — compose from what you have.
+- **Terminate**: once deliverables are written, call `present_files` **once**, then emit the final summary as plain text and STOP — zero further tool calls. The run is complete when your summary is emitted.
 
 ## Query-text syntax — core (verified on the patent-data API)
 
