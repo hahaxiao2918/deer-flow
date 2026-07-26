@@ -197,6 +197,7 @@ def _assemble_from_features(
       10.  ViewImageMiddleware (vision feature)
       11.  SubagentLimitMiddleware (subagent feature)
       12.  LoopDetectionMiddleware (loop_detection feature)
+      12.5 RecursionGuardMiddleware (recursion_guard feature)
       13.  ClarificationMiddleware (always last)
 
     Two-phase ordering:
@@ -323,6 +324,16 @@ def _assemble_from_features(
 
             chain.append(LoopDetectionMiddleware.from_config(LoopDetectionConfig()))
 
+    # --- [12.5] RecursionGuard ---
+    if feat.recursion_guard is not False:
+        if isinstance(feat.recursion_guard, AgentMiddleware):
+            chain.append(feat.recursion_guard)
+        else:
+            from deerflow.agents.middlewares.recursion_guard_middleware import RecursionGuardMiddleware
+            from deerflow.config.recursion_guard_config import RecursionGuardConfig
+
+            chain.append(RecursionGuardMiddleware.from_config(RecursionGuardConfig()))
+
     # --- [13] TokenBudget ---
     if feat.token_budget is not False:
         if isinstance(feat.token_budget, AgentMiddleware):
@@ -345,6 +356,15 @@ def _assemble_from_features(
         clar_idx = next(i for i, m in enumerate(chain) if isinstance(m, ClarificationMiddleware))
         if clar_idx != len(chain) - 1:
             chain.append(chain.pop(clar_idx))
+
+    # Recursion guard calibration: tell the guard how many before/after-model
+    # hook nodes the rest of the chain adds per model cycle, so its step-cost
+    # estimate tracks LangGraph's true super-step count.
+    from deerflow.agents.middlewares.recursion_guard_middleware import RecursionGuardMiddleware
+
+    for mw in chain:
+        if isinstance(mw, RecursionGuardMiddleware):
+            mw.set_extra_hook_nodes(RecursionGuardMiddleware.count_model_hook_nodes(chain, exclude=mw))
 
     return chain, extra_tools
 

@@ -239,7 +239,7 @@ class DeerFlowClient:
         }
         return RunnableConfig(
             configurable=configurable,
-            recursion_limit=overrides.get("recursion_limit", 100),
+            recursion_limit=overrides.get("recursion_limit", 250),
         )
 
     def _ensure_agent(self, config: RunnableConfig):
@@ -803,6 +803,11 @@ class DeerFlowClient:
         run_id = str(uuid.uuid4())
         state: dict[str, Any] = {"messages": [HumanMessage(content=message, additional_kwargs={"run_id": run_id})]}
         context = {"thread_id": thread_id, "run_id": run_id}
+        # Surface the effective recursion budget to in-graph middleware
+        # (recursion guard) — mirrors the Gateway's build_run_config plumbing.
+        recursion_limit = config.get("recursion_limit")
+        if isinstance(recursion_limit, int) and not isinstance(recursion_limit, bool) and recursion_limit > 0:
+            context["recursion_limit"] = recursion_limit
         if deerflow_trace_id:
             context[DEERFLOW_TRACE_METADATA_KEY] = deerflow_trace_id
         if self._agent_name:

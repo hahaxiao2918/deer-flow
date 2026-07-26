@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 31
+config_version: 32
 
 # ============================================================================
 # Logging
@@ -1074,6 +1074,21 @@ loop_detection:
   max_tracked_threads: 100
   tool_freq_warn: 30
   tool_freq_hard_limit: 50
+
+# ============================================================================
+# Recursion Guard Configuration
+# ============================================================================
+# Convert LangGraph's hard GraphRecursionError into a natural finish for long
+# tool-heavy runs. The guard estimates consumed super-steps per model cycle
+# (model + middleware hook nodes + tools node; hook count auto-calibrated from
+# the assembled chain), injects a wrap-up reminder at warn_ratio of the run's
+# recursion_limit, and strips tool_calls at limit - hard_margin so the run ends
+# with a final answer (stop_reason=recursion_capped) instead of an exception.
+
+recursion_guard:
+  enabled: true
+  warn_ratio: 0.75
+  hard_margin: 10
   # Per-tool overrides for tool_freq_warn / tool_freq_hard_limit. Values can be
   # higher or lower than the global defaults. Commonly used to raise thresholds
   # for high-frequency tools like bash in batch workflows (e.g. RNA-seq pipelines)
@@ -1972,7 +1987,7 @@ run_ownership:
 #   session:
 #     assistant_id: lead_agent  # or a custom agent name; custom agents route via lead_agent + agent_name
 #     config:
-#       recursion_limit: 100
+#       recursion_limit: 250  # server default (raised from 100: tool-heavy workflows); clamp ceiling is max_recursion_limit
 #     context:
 #       thinking_enabled: true
 #       is_plan_mode: false
