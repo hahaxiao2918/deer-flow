@@ -6,6 +6,23 @@
 > - you need **advanced operators** (wildcards, proximity, frequency, event-group `GAND`, company-tree `TREE@`).
 >
 > Source: 智慧芽 in-product search help (verified, 280 searchable fields) cross-checked against the 智慧芽开放平台 P002 API docs. This reference documents the **中文智慧芽** product syntax, which is what the `patent-data` search tool targets.
+>
+> **API-verified 2026-07-23**: every field family and operator below was confirmed to run (`status: success`) against the live patent-data API — including `TREE@`, `GAND`, proximity `$Wn`, frequency `$FREQn`, date ranges, IPC/CPC, and legal-status fields.
+>
+> **同族去重 (P001 count, re-verified 2026-07-24, ~30 probes)**: dedup is **silently ignored unless all three params are sent together** — `collapse_type` + `collapse_by` + `collapse_order`. Sending `collapse_type` alone (or with only one of the other two) returns the raw count with no error — this is why earlier tests concluded "dedup does nothing". Correct usage and verified behavior:
+> - Activate dedup: `collapse_type: APNO|DOCDB|INPADOC|EXTEND` + `collapse_by: PBD|APD|AUTHORITY|SCORE` + `collapse_order: OLDEST|LATEST`. All values case-insensitive. `collapse_type: ALL` always returns the raw count.
+> - For a **count**, the result depends only on `collapse_type`; `collapse_by`/`collapse_order` merely choose which family member survives in a *result list* (matters for P002, invisible in a count) — all `collapse_by` values give the same count, `OLDEST`/`LATEST` give the same count.
+> - Verified family-size ordering (raw → APNO → DOCDB → INPADOC → EXTEND, strict decrease): Huawei corpus 685,688 → 465,601 → 165,167 → 161,771 → 158,187; solid-state-battery 2020-2025 corpus 26,849 → 21,953 → 18,829 → 18,525 → 18,376.
+> - `stemming: 1` works independently of collapse params (expands English morphology; changes the count).
+> - Family-query fields (`FAM`/`IFAM`/`EFAM`, `FAM_COUNT`/`IFAM_COUNT`/`EFAM_COUNT`, §5) remain the alternative when per-family detail is needed rather than a collapsed count.
+>
+> **P002 检索 (query-search-patent/v2, verified 2026-07-24, ~20 probes)**: same silent 3-param gating as P001 — `collapse_type` without `collapse_by`+`collapse_order` is a no-op, and deduped `total_search_result_count` matches P001 exactly for the same query+params. P002-specific findings:
+> - **Member selection works and is visible in results**: `collapse_by: AUTHORITY` + `collapse_order_authority: [CN,US,EP,JP,KR]` vs `[US,EP,JP,KR,CN]` returned different surviving members from the same families (e.g. EP member swapped in for CN member when US/EP outrank CN). `OLDEST`/`LATEST` on APD/PBD pick the surviving member's date.
+> - **Result payload is richer than the OpenAPI doc shows**: each item carries `pn`, `patent_id`, `apno`, `title`, `original_assignee`, `current_assignee`, `inventor` (pipe-joined), `apdt`, `pbdt` (both `YYYYMMDD` ints), `authority`.
+> - `sort` accepts `PBDT_YEARMONTHDAY` / `APD_YEARMONTHDAY` / `ISD` / `SCORE` × `ASC`/`DESC`; a bogus field errors with `68300004 Invalid sort field: <X>`.
+> - **Paging caps are hard errors, not clamps**: `limit > 1000` → `68300004 请求参数异常`; `offset + limit > 20000` → `68300004 Can only return the first 20000 search results` (deep paging beyond 20k is impossible — narrow the query instead).
+> - `stemming: 1` is accepted on P002 too (undocumented there): raw total 26,849 → 28,639 on the test corpus.
+> - Cost: 0.20 CNY/call regardless of `limit` — always pull `limit: 1000` when fetching a corpus.
 
 ## 1. Text fields — choose by recall vs precision
 
