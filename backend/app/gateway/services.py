@@ -409,7 +409,7 @@ def resolve_agent_factory(assistant_id: str | None):
 # call), enabling runaway API cost / DoS. ``_DEFAULT_RECURSION_LIMIT`` is the
 # server default when the client sends nothing; the hard ceiling any client
 # value is clamped to is configurable via ``AppConfig.max_recursion_limit``.
-_DEFAULT_RECURSION_LIMIT = 100
+_DEFAULT_RECURSION_LIMIT = 250  # github channel has run 250 in production; 100 kills legitimate tool-heavy runs (patent smoke 2026-07-26)
 _DEFAULT_MAX_RECURSION_LIMIT = 1000
 
 
@@ -553,6 +553,16 @@ def build_run_config(
         external_values = config.get(section)
         if isinstance(external_values, dict):
             external_values.pop(INTERNAL_CHECKPOINT_MODE_KEY, None)
+
+    # Surface the effective (post-clamp) recursion budget to in-graph
+    # middleware (recursion guard) via runtime context. The guard is inactive
+    # without this key, so un-plumbed run paths keep the previous behaviour.
+    effective_limit = config.get("recursion_limit")
+    if isinstance(effective_limit, int) and not isinstance(effective_limit, bool) and effective_limit > 0:
+        context_section = config.setdefault("context", {})
+        if isinstance(context_section, dict):
+            context_section.setdefault("thread_id", thread_id)
+            context_section["recursion_limit"] = effective_limit
 
     if metadata:
         config.setdefault("metadata", {}).update(metadata)

@@ -331,7 +331,7 @@ def test_build_run_config_basic():
 
     config = build_run_config("thread-1", None, None)
     assert config["configurable"]["thread_id"] == "thread-1"
-    assert config["recursion_limit"] == 100
+    assert config["recursion_limit"] == 250
 
 
 def test_build_run_config_with_overrides():
@@ -844,8 +844,9 @@ def test_merge_run_context_overrides_propagates_to_runtime_context():
     assert config["configurable"]["is_bootstrap"] is True
     assert config["context"]["agent_name"] == "my-agent"
     assert config["context"]["is_bootstrap"] is True
-    # Non-whitelisted keys are not forwarded.
-    assert "thread_id" not in config["context"]
+    # Non-whitelisted keys are not forwarded: the override's thread_id is
+    # ignored; only build_run_config's own route thread id is present.
+    assert config["context"]["thread_id"] == "thread-1"
 
 
 def test_merge_run_context_overrides_forwards_subagent_total_limit():
@@ -1487,7 +1488,7 @@ def test_build_run_config_with_context():
     assert config["context"]["thread_id"] == "thread-1"
     # configurable carries thread_id for the checkpointer; user context stays in context.
     assert config["configurable"] == {"thread_id": "thread-1"}
-    assert config["recursion_limit"] == 100
+    assert config["recursion_limit"] == 250
 
 
 def test_build_run_config_context_injects_thread_id():
@@ -1511,7 +1512,7 @@ def test_build_run_config_null_context_becomes_empty_context():
 
     config = build_run_config("thread-1", {"context": None}, None)
 
-    assert config["context"] == {"thread_id": "thread-1"}
+    assert config["context"] == {"thread_id": "thread-1", "recursion_limit": 250}
     assert config["configurable"] == {"thread_id": "thread-1"}
 
 
@@ -1581,7 +1582,8 @@ def test_build_run_config_no_request_config():
 
     config = build_run_config("thread-abc", None, None)
     assert config["configurable"] == {"thread_id": "thread-abc"}
-    assert "context" not in config
+    # Recursion-guard plumbing always surfaces the effective limit via context.
+    assert config["context"] == {"thread_id": "thread-abc", "recursion_limit": 250}
 
 
 def test_strip_internal_context_keys_scrubs_config_smuggled_non_interactive():

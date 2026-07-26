@@ -36,6 +36,7 @@ from deerflow.agents.middlewares.clarification_middleware import ClarificationMi
 from deerflow.agents.middlewares.configured_extensions import load_configured_extension_middlewares
 from deerflow.agents.middlewares.loop_detection_middleware import LoopDetectionMiddleware
 from deerflow.agents.middlewares.memory_middleware import MemoryMiddleware
+from deerflow.agents.middlewares.recursion_guard_middleware import RecursionGuardMiddleware
 from deerflow.agents.middlewares.safety_finish_reason_middleware import SafetyFinishReasonMiddleware
 from deerflow.agents.middlewares.subagent_limit_middleware import SubagentLimitMiddleware
 from deerflow.agents.middlewares.summarization_middleware import DeerFlowSummarizationMiddleware, create_summarization_middleware
@@ -415,6 +416,12 @@ def build_middlewares(
     if loop_detection_config.enabled:
         middlewares.append(LoopDetectionMiddleware.from_config(loop_detection_config))
 
+    # RecursionGuardMiddleware — gracefully cap runs before LangGraph's hard
+    # recursion limit raises GraphRecursionError mid-endgame.
+    recursion_guard_config = resolved_app_config.recursion_guard
+    if recursion_guard_config.enabled:
+        middlewares.append(RecursionGuardMiddleware.from_config(recursion_guard_config))
+
     # TokenBudgetMiddleware - enforce per-run token limits
     token_budget_config = resolved_app_config.token_budget
     if token_budget_config.enabled:
@@ -446,6 +453,13 @@ def build_middlewares(
 
     # ClarificationMiddleware should always be last
     middlewares.append(ClarificationMiddleware())
+
+    # Recursion guard calibration: tell the guard how many before/after-model
+    # hook nodes the rest of the chain adds per model cycle, so its step-cost
+    # estimate tracks LangGraph's true super-step count.
+    for mw in middlewares:
+        if isinstance(mw, RecursionGuardMiddleware):
+            mw.set_extra_hook_nodes(RecursionGuardMiddleware.count_model_hook_nodes(middlewares, exclude=mw))
     return middlewares
 
 
