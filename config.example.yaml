@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 29
+config_version: 31
 
 # ============================================================================
 # Logging
@@ -2233,3 +2233,51 @@ authorization:
 #         # Security features (enabled by default):
 #         pkce_enabled: true               # PKCE (S256) for authorization code flow
 #         nonce_enabled: true              # Nonce validation in ID tokens
+#
+#       # ── Custom OAuth2 provider (non-OIDC, e.g. 上海电气"数字底座"/IPD) ──
+#       # Use-case 2 entry: the front-end /loginsso route intercepts IPD's
+#       # authorization code and forwards it to
+#       # /api/v1/auth/oauth2/{provider}/callback. See
+#       # docs/plans/2026-07-22-digital-foundation-sso-todo.md and
+#       # backend/docs/SSO.md. Values marked <TODO> / B1-B7 are placeholders
+#       # pending IT confirmation; client_secret MUST come from an env var.
+#       shanghai-electric-ipd:
+#         display_name: 数字底座
+#         provider_type: oauth2            # non-OIDC custom OAuth2 (IPD)
+#         scopes: []                       # non-OIDC; do not send OIDC scopes (IPD uses its own, e.g. user.read)
+#         client_id: $IPD_CLIENT_ID
+#         client_secret: $IPD_CLIENT_SECRET
+#         # Front-end interception route registered with IPD as the callback
+#         # (IPD redirects the browser here with code/state/tenant-id/organize-id):
+#         redirect_uri: https://ipd.nebula-starlink.shanghai-electric.com/loginsso
+#         # LTPA seamless SSO (use-case 2): /start redirects here with returnUrl
+#         # back to /loginsso. This is the base LOGIN page, NOT an authorize page —
+#         # IPD has no browser authorize URL (see docs/plans SSO todo §B1):
+#         authorization_endpoint: https://portal.nebula-starlink.shanghai-electric.com/login
+#         # B2 confirmed (curl 200, 2026-07-24):
+#         token_endpoint: https://portal.nebula-starlink.shanghai-electric.com/admin-api/system/oauth2/token
+#         # B3 confirmed (curl 200, 2026-07-24):
+#         userinfo_endpoint: https://portal.nebula-starlink.shanghai-electric.com/admin-api/system/oauth2/user/get
+#         # LTPA seamless SSO (use-case 2): ODM account-login endpoint (doc §5.1).
+#         # After portal login the base sets an LtpaToken cookie on the parent
+#         # .shanghai-electric.com domain; /start forwards it here server-side
+#         # (Authorization: Bearer base64(client_id:client_secret)) to resolve identity:
+#         odm_login_endpoint: https://portal.nebula-starlink.shanghai-electric.com/admin-api/system/odm-api-wrap/account/login
+#         # ltpa_cookie_names: ["LtpaToken", "LtpaToken2"]  # cookies checked for the LTPA token
+#         # IPD cannot assert email verification — must be false for this provider:
+#         require_verified_email: false
+#         auto_create_users: true
+#         admin_emails: []                 # roleCodes are NEVER mapped to admin
+#         # tenant-id / organize-id normally arrive on the callback URL;
+#         # these defaults are used only when the callback omits them (TODO B4/B5 values):
+#         default_tenant_id: 1
+#         default_organize_id: 100
+#         # allowed_tenant_ids: [1]        # whitelist (TODO B4)
+#         # allowed_organize_ids: [100]    # whitelist (TODO B5)
+#         # B6 confirmed: subject = workId (工号), globally unique:
+#         subject_field: workId
+#         namespace_with_tenant: false
+#         # ASSUMPTION (pending B7): synthesize an email when IPD returns none.
+#         # NOTE: use a REAL domain — reserved TLDs (.local/.test/.invalid) are
+#         # rejected by the email validator. "{id}" expands to the subject (= workId).
+#         email_synthesis_pattern: "{id}@ipd.shanghai-electric.com"

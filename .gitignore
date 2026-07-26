@@ -29,6 +29,13 @@ backend/scripts/benchmark/*.jsonl
 # Environment variables
 .env
 github token.md
+# 三方登录（数字底座 SSO）凭据与内部对接文档，绝不入库
+三方登录client_id.md
+三方登录参考文档.md
+数字底座对接文档v1.md
+三方登录流程图.png
+用例二流程图.png
+docs/未命名文档(29).pdf
 
 # Configuration files
 config.yaml
@@ -70,3 +77,55 @@ config.yaml.bak
 
 # Monocle agent-observability trace output (local file exporter)
 .monocle/
+
+# lxdd 开发机本地工具残留(绝不入库;38 是权威 gitea/证书签发机)
+.acme.sh/
+.aliyun-credentials.ini
+.netrc
+gitea/
+mcp-gitea/
+
+# --- 开发机杂物：与本仓库无关的未跟踪内容，仅本地忽略，绝不入库，不提交 ---
+# 误放在 deerflow 下的其它项目（独立仓库/目录）
+/chatbox/
+/deerflow/
+/mcpcopy/
+/mcpmaster/
+/mcpserver/
+/patentmcp/
+/scholarmcp/
+/zhuanliyujing/
+/claude/
+/1ms-helper
+/services/deerflow-patent-data-mcp-staging/
+/services/deerflow-patent-data-mcp-v2/
+/gitea_team.xlsx
+# 家目录/工具环境残留
+/.bash_history
+/.bash_logout
+/.bashrc
+/.profile
+/.ssh/
+/.sudo_as_admin_successful
+/.wget-hsts
+/.cache/
+/.config/
+/.cursor/
+/.docker/
+/.dotnet/
+/.npm/
+/.nvm/
+/.vscode-server/
+/.zai/
+/.claude.json
+/.claude.json.bak.*
+# 备份/临时
+/1
+/backups/
+/tmp/
+/test-static/
+*.bak
+*.bak-*
+/config.yaml.bak*
+/extensions_config.json.bak*
+/.env.bak-*

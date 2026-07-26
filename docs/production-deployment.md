@@ -284,4 +284,24 @@ cd ~/deerflow
 
 ---
 
-最后更新：2026-07-20
+## 16. SSO（数字底座/IPD）部署参数
+
+启用数字底座三方登录（用例二）时，除 `config.yaml -> auth.oidc.providers.shanghai-electric-ipd` 配置块外，还需以下环境变量与部署检查：
+
+| Parameter | Value | Where to set | Rationale |
+|-----------|-------|--------------|-----------|
+| `IPD_CLIENT_ID` | IT 分配 | shell env / `.env` | IPD OAuth2 client id。 |
+| `IPD_CLIENT_SECRET` | IT 分配（机密） | shell env / `.env`，绝不入库 | IPD client secret；`config.yaml` 用 `$IPD_CLIENT_SECRET` 引用，不写明文。 |
+| `AUTH_JWT_SECRET` | 强随机串 | shell env / `.env` | 签发 DeerFlow session JWT + 签名 SSO nonce cookie；SSO 依赖它，生产必须显式设置。 |
+
+部署检查：
+
+- `auth.local.allow_registration: false`（推荐）—— 关闭公开自注册，账号由 SSO provision。
+- IPD provider 的 `authorization_endpoint` / `token_endpoint` / `userinfo_endpoint` / `default_tenant_id` / `default_organize_id` 必须回填 IT 提供的真实值（`config.example.yaml` 中标 `<TODO B1-B5>`）。
+- 前端 `/loginsso` 路由（`frontend/src/app/loginsso/page.tsx`）是 IPD 登记的回调地址；确保反代（nginx）把 `/loginsso` 路由到前端而非后端。
+- HTTPS：IPD token 接口走 query 传 `client_secret`，生产必须全程 HTTPS，否则 secret 明文泄露。
+- 详见 `docs/plans/2026-07-22-digital-foundation-sso-todo.md`（需求/blocker）与 `backend/docs/SSO.md`（配置）。
+
+---
+
+最后更新：2026-07-23

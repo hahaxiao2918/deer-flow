@@ -26,7 +26,9 @@ export default async function WorkspaceLayout({
     case "system_setup_required":
       redirect("/setup");
     case "unauthenticated":
-      redirect("/login");
+      // SSO-first: unauthenticated workspace access starts the 数字底座 SSO flow.
+      // Local password login remains reachable directly at /login (break-glass).
+      redirect("/loginsso");
     case "gateway_unavailable":
       // GatewayOfflineFallback supplies the AuthProvider; WorkspaceContent
       // already mounts the banner inside its sidebar layout, so renderBanner

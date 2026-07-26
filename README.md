@@ -60,6 +60,7 @@
 
 - auth-disabled 模式下跳过 thread `owner_check`，artifact 解析支持跨 user bucket 回退。
 - 浏览器认证使用 HttpOnly session cookie，并统一 remember-me 与 CSRF cookie 生命周期；部署可通过 `auth.local.allow_registration: false` 关闭普通访客自注册，同时保留首次管理员初始化和既有管理员登录。
+- 支持数字底座（IPD）三方登录（自定义 OAuth2 授权码，用例二）：在 `config.yaml -> auth.oidc.providers` 配置 `provider_type: oauth2` 的 provider，前端 `/loginsso` 拦截 IPD 回调并转发后端换会话；本地登录、首次管理员初始化与既有 OIDC SSO 均不受影响。配置与协议差异见 [backend/docs/SSO.md](backend/docs/SSO.md)，需求与 IT 对接清单见 [docs/plans/2026-07-22-digital-foundation-sso-todo.md](docs/plans/2026-07-22-digital-foundation-sso-todo.md)。
 - upstream 的可信 principal、可插拔 AuthorizationProvider 与内置 RBAC 基础设施已经进入代码基线；启用授权策略前仍需按部署需求完成配置和回归。
 - 注意：`DEER_FLOW_AUTH_DISABLED=1` 等 dev-only 参数**上生产前必须移除**，完整清单见 [docs/production-deployment.md](docs/production-deployment.md)。
 

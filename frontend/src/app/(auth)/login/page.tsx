@@ -349,7 +349,13 @@ export default function LoginPage() {
                 className="w-full"
                 disabled={loading}
                 onClick={() => {
-                  window.location.href = `/api/v1/auth/oauth/${provider.id}?next=${encodeURIComponent(redirectPath)}&remember_me=${String(rememberMe)}`;
+                  // oauth2 (数字底座/IPD) uses its own start route; standard OIDC
+                  // providers use /oauth/{id}.
+                  const base =
+                    provider.type === "oauth2"
+                      ? `/api/v1/auth/oauth2/${provider.id}/start`
+                      : `/api/v1/auth/oauth/${provider.id}`;
+                  window.location.href = `${base}?next=${encodeURIComponent(redirectPath)}&remember_me=${String(rememberMe)}`;
                 }}
               >
                 {t.login.continueWith(provider.display_name)}
