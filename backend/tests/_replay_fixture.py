@@ -156,7 +156,7 @@ def drive_gateway(app, *, prompt: str, context: dict) -> list[dict]:
         body = {
             "assistant_id": "lead_agent",
             "input": {"messages": [{"role": "user", "content": prompt}]},
-            "config": {"recursion_limit": 50},
+            "config": {"recursion_limit": 150},  # headroom for the full middleware chain (~11 steps/tool-cycle since the recursion guard added a node; 50 was tuned to the old chain)
             "context": context,
             "stream_mode": ["values"],
         }

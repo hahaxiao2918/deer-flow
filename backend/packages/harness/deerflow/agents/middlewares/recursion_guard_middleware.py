@@ -119,9 +119,15 @@ class RecursionGuardMiddleware(AgentMiddleware[AgentState]):
             if exclude is not None and mw is exclude:
                 continue
             t = type(mw)
-            if t.before_model is not _Base.before_model or t.abefore_model is not _Base.abefore_model:
+            # getattr-with-default: non-middleware stand-ins (e.g. MagicMock in
+            # tests) raise AttributeError on class-attribute access.
+            before = getattr(t, "before_model", None)
+            abefore = getattr(t, "abefore_model", None)
+            after = getattr(t, "after_model", None)
+            aafter = getattr(t, "aafter_model", None)
+            if (before is not None and before is not _Base.before_model) or (abefore is not None and abefore is not _Base.abefore_model):
                 count += 1
-            if t.after_model is not _Base.after_model or t.aafter_model is not _Base.aafter_model:
+            if (after is not None and after is not _Base.after_model) or (aafter is not None and aafter is not _Base.aafter_model):
                 count += 1
         return count
 
@@ -157,7 +163,13 @@ class RecursionGuardMiddleware(AgentMiddleware[AgentState]):
 
     def _thresholds(self, limit: int) -> tuple[int, int]:
         warn_at = max(1, int(limit * self._warn_ratio))
-        hard_at = max(warn_at + 1, limit - self._hard_margin)
+        # The margin must cover the post-strip tail: the remaining after_model
+        # hook nodes in this same cycle still execute after the strip (reverse
+        # dispatch), plus END routing — a flat margin smaller than the chain's
+        # hook count lets LangGraph raise anyway (verified on the full lead
+        # chain at limit=50: strip at cost 44 still died at 50).
+        margin = max(self._hard_margin, self._extra_hook_nodes + 4)
+        hard_at = max(warn_at + 1, limit - margin)
         return warn_at, hard_at
 
     def _clear(self, runtime: Runtime) -> None:

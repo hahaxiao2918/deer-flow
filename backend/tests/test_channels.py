@@ -3596,10 +3596,11 @@ class TestResolveRunParamsUserId:
         _, gh_config, _ = manager._resolve_run_params(gh_msg, "thread-1")
         assert gh_config["recursion_limit"] >= 250
 
-        # Interactive channels keep the default ceiling.
+        # Interactive channels keep the default ceiling (250 since the
+        # recursion-guard change raised the server default from 100).
         slack_msg = InboundMessage(channel_name="slack", chat_id="C1", user_id="u", text="hi")
         _, slack_config, _ = manager._resolve_run_params(slack_msg, "thread-1")
-        assert slack_config["recursion_limit"] == 100
+        assert slack_config["recursion_limit"] == 250
 
     def test_github_channel_recursion_limit_respects_higher_override(self):
         """An explicit higher recursion_limit in channel/user config must not be

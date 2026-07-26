@@ -708,7 +708,9 @@ def test_loop_detection_before_clarification(mock_create_agent):
     loop_idx = mw_types.index("LoopDetectionMiddleware")
     clar_idx = mw_types.index("ClarificationMiddleware")
     assert loop_idx < clar_idx
-    assert loop_idx == clar_idx - 1
+    # RecursionGuardMiddleware sits between loop detection and clarification.
+    assert mw_types[loop_idx + 1] == "RecursionGuardMiddleware"
+    assert mw_types[clar_idx - 1] == "RecursionGuardMiddleware"
 
 
 # ---------------------------------------------------------------------------
@@ -751,9 +753,11 @@ def test_loop_detection_custom_middleware(mock_create_agent):
     mw_types = [type(m).__name__ for m in middleware]
     # Default LoopDetectionMiddleware must not also appear.
     assert "LoopDetectionMiddleware" not in mw_types
-    # Custom replacement sits immediately before TokenBudgetMiddleware and ClarificationMiddleware.
+    # Custom replacement sits before TokenBudgetMiddleware, the recursion
+    # guard, and ClarificationMiddleware.
     assert mw_types[-1] == "ClarificationMiddleware"
-    assert mw_types[-2] == "MyLoopDetection"
+    assert mw_types[-2] == "RecursionGuardMiddleware"
+    assert mw_types[-3] == "MyLoopDetection"
 
 
 # ---------------------------------------------------------------------------
@@ -885,6 +889,7 @@ def test_full_chain_order(mock_create_agent):
         "ViewImageMiddleware",
         "SubagentLimitMiddleware",
         "LoopDetectionMiddleware",
+        "RecursionGuardMiddleware",
         "ClarificationMiddleware",
     ]
     assert mw_types == expected_order
