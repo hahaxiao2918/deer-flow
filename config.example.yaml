@@ -108,6 +108,25 @@ max_recursion_limit: 1000
 #                                      # (optional; omit → hits billed at miss price)
 
 models:
+  # Example: Kimi Code K3 (OpenAI-compatible endpoint).
+  # Keep the generic effort selector hidden: DeerFlow fixes thinking to high.
+  # In Flash mode it sends `none`, allowing Kimi to route K3 to K2.6.
+  # - name: kimi-k3
+  #   display_name: Kimi K3
+  #   use: deerflow.models.patched_kimi:PatchedChatKimi
+  #   model: k3
+  #   api_key: $KIMI_CODE_API_KEY
+  #   base_url: https://api.kimi.com/coding/v1
+  #   timeout: 600.0
+  #   max_retries: 2
+  #   max_tokens: 16384
+  #   supports_thinking: true
+  #   supports_reasoning_effort: false
+  #   when_thinking_enabled:
+  #     reasoning_effort: high
+  #   when_thinking_disabled:
+  #     reasoning_effort: none
+
   # Example: Volcengine (Doubao) model
   # - name: doubao-seed-1.8
   #   display_name: Doubao-Seed-1.8

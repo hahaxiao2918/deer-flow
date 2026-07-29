@@ -267,7 +267,11 @@ def create_chat_model(name: str | None = None, thinking_enabled: bool = False, *
             model_settings_from_config["thinking"] = {"type": "disabled"}
     if not model_config.supports_reasoning_effort:
         kwargs.pop("reasoning_effort", None)
-        model_settings_from_config.pop("reasoning_effort", None)
+        # Kimi Code hides the generic frontend effort picker but owns a fixed
+        # provider profile: high for thinking, none for Flash/K2.6 routing.
+        # Keep that profile value without allowing a runtime UI value through.
+        if not getattr(model_class, "preserve_hidden_reasoning_effort", False):
+            model_settings_from_config.pop("reasoning_effort", None)
 
     # Normalize the api_base -> base_url alias FIRST, so the downstream OpenAI-compatible
     # heuristics (stream_usage default below / stream_chunk_timeout) see the canonical endpoint key.

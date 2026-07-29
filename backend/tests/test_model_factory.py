@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import pytest
 from langchain.chat_models import BaseChatModel
 
@@ -435,6 +437,30 @@ def test_reasoning_effort_cleared_when_not_supported(monkeypatch):
     factory_module.create_chat_model(name="no-effort", thinking_enabled=False)
 
     assert captured.get("reasoning_effort") is None
+
+
+def test_kimi_profile_effort_is_preserved_while_runtime_effort_is_hidden(monkeypatch):
+    """K3 needs a fixed effort profile even though the UI must not expose it."""
+    model = _make_model(
+        "kimi-k3",
+        use="deerflow.models.patched_kimi:PatchedChatKimi",
+        supports_thinking=True,
+        supports_reasoning_effort=False,
+        when_thinking_disabled={"reasoning_effort": "none"},
+    )
+    cfg = _make_app_config([model])
+
+    class KimiCapturingModel(FakeChatModel):
+        preserve_hidden_reasoning_effort: ClassVar[bool] = True
+
+    _patch_factory(monkeypatch, cfg, model_class=KimiCapturingModel)
+    factory_module.create_chat_model(
+        name="kimi-k3",
+        thinking_enabled=False,
+        reasoning_effort="minimal",
+    )
+
+    assert FakeChatModel.captured_kwargs.get("reasoning_effort") == "none"
 
 
 def test_reasoning_effort_preserved_when_supported(monkeypatch):
