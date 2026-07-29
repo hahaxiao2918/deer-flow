@@ -265,9 +265,17 @@ def create_chat_model(name: str | None = None, thinking_enabled: bool = False, *
         elif has_thinking_settings and effective_wte.get("thinking", {}).get("type"):
             # Native langchain_anthropic: thinking is a direct constructor parameter
             model_settings_from_config["thinking"] = {"type": "disabled"}
+    # ``reasoning_effort`` may come from both the model profile and the run
+    # context (the frontend always supplies its current selection).  Passing
+    # one through ``kwargs`` while retaining the profile value would expand
+    # into ``model_class(**kwargs, **model_settings_from_config)`` twice and
+    # raise ``TypeError: got multiple values for keyword argument``.  Normalize
+    # it into the profile dict once; an explicit runtime value takes precedence.
+    runtime_reasoning_effort = kwargs.pop("reasoning_effort", None)
     if not model_config.supports_reasoning_effort:
-        kwargs.pop("reasoning_effort", None)
         model_settings_from_config.pop("reasoning_effort", None)
+    elif runtime_reasoning_effort is not None:
+        model_settings_from_config["reasoning_effort"] = runtime_reasoning_effort
 
     # Normalize the api_base -> base_url alias FIRST, so the downstream OpenAI-compatible
     # heuristics (stream_usage default below / stream_chunk_timeout) see the canonical endpoint key.
@@ -282,7 +290,7 @@ def create_chat_model(name: str | None = None, thinking_enabled: bool = False, *
         model_settings_from_config.pop("max_tokens", None)
 
         # Use explicit reasoning_effort from frontend if provided (low/medium/high)
-        explicit_effort = kwargs.pop("reasoning_effort", None)
+        explicit_effort = runtime_reasoning_effort
         if not thinking_enabled:
             model_settings_from_config["reasoning_effort"] = "none"
         elif explicit_effort and explicit_effort in ("low", "medium", "high", "xhigh"):
