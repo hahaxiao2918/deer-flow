@@ -8,6 +8,38 @@ export {
 
 export const MAX_SKILL_SUGGESTIONS = 6;
 
+export type ComposerReasoningEffort =
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high";
+
+/**
+ * Selecting an orchestration mode must not overwrite a separately selectable
+ * reasoning effort. Models without that selector retain the historical mode
+ * defaults, which are harmlessly ignored by providers that do not support it.
+ */
+export function reasoningEffortForModeChange({
+  mode,
+  currentEffort,
+  supportsReasoningEffort,
+}: {
+  mode: "flash" | "thinking" | "pro" | "ultra";
+  currentEffort: ComposerReasoningEffort | undefined;
+  supportsReasoningEffort: boolean;
+}): ComposerReasoningEffort | undefined {
+  if (supportsReasoningEffort) {
+    return currentEffort;
+  }
+  return mode === "ultra"
+    ? "high"
+    : mode === "pro"
+      ? "medium"
+      : mode === "thinking"
+        ? "low"
+        : "minimal";
+}
+
 // Mirror of the backend raw request limit (`ThreadGoalRequest.objective`
 // max_length and `MAX_GOAL_OBJECTIVE_CHARS` in backend goal.py). Kept here so
 // the composer can reject an over-length `/goal <objective>` before issuing the

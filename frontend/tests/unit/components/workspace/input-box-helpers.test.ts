@@ -19,6 +19,7 @@ import {
   parseCompactCommand,
   parseGoalCommand,
   readGoalResponseError,
+  reasoningEffortForModeChange,
   type SlashSuggestion,
 } from "@/components/workspace/input-box-helpers";
 import { enUS } from "@/core/i18n/locales/en-US";
@@ -42,6 +43,35 @@ const builtins: SlashSuggestion[] = [
   },
   { name: "new", description: "Start a new thread", kind: "builtin" },
 ];
+
+describe("reasoningEffortForModeChange", () => {
+  it("preserves the user-selected effort when the model exposes that selector", () => {
+    expect(
+      reasoningEffortForModeChange({
+        mode: "ultra",
+        currentEffort: "low",
+        supportsReasoningEffort: true,
+      }),
+    ).toBe("low");
+  });
+
+  it("keeps the legacy mode defaults for models without an effort selector", () => {
+    expect(
+      reasoningEffortForModeChange({
+        mode: "flash",
+        currentEffort: "high",
+        supportsReasoningEffort: false,
+      }),
+    ).toBe("minimal");
+    expect(
+      reasoningEffortForModeChange({
+        mode: "pro",
+        currentEffort: undefined,
+        supportsReasoningEffort: false,
+      }),
+    ).toBe("medium");
+  });
+});
 
 describe("parseGoalCommand", () => {
   it("returns status for a bare /goal", () => {

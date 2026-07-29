@@ -150,6 +150,7 @@ import {
   isGoalObjectiveTooLong,
   MAX_GOAL_OBJECTIVE_CHARS,
   readGoalResponseError,
+  reasoningEffortForModeChange,
   type SlashSuggestion,
 } from "./input-box-helpers";
 import { useThread } from "./messages/context";
@@ -845,17 +846,21 @@ export function InputBox({
       onContextChange?.({
         ...context,
         mode: getResolvedMode(mode, supportThinking),
-        reasoning_effort:
-          mode === "ultra"
-            ? "high"
-            : mode === "pro"
-              ? "medium"
-              : mode === "thinking"
-                ? "low"
-                : "minimal",
+        reasoning_effort: reasoningEffortForModeChange({
+          mode,
+          currentEffort: context.reasoning_effort,
+          supportsReasoningEffort: supportReasoningEffort,
+        }),
       });
     },
-    [disabled, onContextChange, context, polishingInput, supportThinking],
+    [
+      disabled,
+      onContextChange,
+      context,
+      polishingInput,
+      supportReasoningEffort,
+      supportThinking,
+    ],
   );
 
   const handleReasoningEffortSelect = useCallback(
