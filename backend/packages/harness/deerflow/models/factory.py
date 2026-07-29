@@ -265,13 +265,21 @@ def create_chat_model(name: str | None = None, thinking_enabled: bool = False, *
         elif has_thinking_settings and effective_wte.get("thinking", {}).get("type"):
             # Native langchain_anthropic: thinking is a direct constructor parameter
             model_settings_from_config["thinking"] = {"type": "disabled"}
-    if not model_config.supports_reasoning_effort:
+    from deerflow.models.patched_kimi import PatchedChatKimi
+
+    if issubclass(model_class, PatchedChatKimi):
+        # K3 has a provider-specific three-level effort protocol.  Normalize
+        # the shared UI names here and replace any profile default, so a
+        # runtime value can never create duplicate constructor kwargs.
+        explicit_effort = kwargs.pop("reasoning_effort", None)
+        model_settings_from_config.pop("reasoning_effort", None)
+        model_settings_from_config["reasoning_effort"] = model_class.resolve_reasoning_effort(
+            thinking_enabled=thinking_enabled,
+            effort=explicit_effort,
+        )
+    elif not model_config.supports_reasoning_effort:
         kwargs.pop("reasoning_effort", None)
-        # Kimi Code hides the generic frontend effort picker but owns a fixed
-        # provider profile: high for thinking, none for Flash/K2.6 routing.
-        # Keep that profile value without allowing a runtime UI value through.
-        if not getattr(model_class, "preserve_hidden_reasoning_effort", False):
-            model_settings_from_config.pop("reasoning_effort", None)
+        model_settings_from_config.pop("reasoning_effort", None)
 
     # Normalize the api_base -> base_url alias FIRST, so the downstream OpenAI-compatible
     # heuristics (stream_usage default below / stream_chunk_timeout) see the canonical endpoint key.

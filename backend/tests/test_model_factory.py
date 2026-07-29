@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
-
 import pytest
 from langchain.chat_models import BaseChatModel
 
@@ -439,28 +437,39 @@ def test_reasoning_effort_cleared_when_not_supported(monkeypatch):
     assert captured.get("reasoning_effort") is None
 
 
-def test_kimi_profile_effort_is_preserved_while_runtime_effort_is_hidden(monkeypatch):
-    """K3 needs a fixed effort profile even though the UI must not expose it."""
+@pytest.mark.parametrize(
+    ("thinking_enabled", "runtime_effort", "expected_effort"),
+    [
+        (False, "minimal", "none"),
+        (False, "high", "none"),
+        (True, "minimal", "low"),
+        (True, "low", "low"),
+        (True, "medium", "high"),
+        (True, "high", "max"),
+    ],
+)
+def test_kimi_effort_is_normalized_without_duplicate_constructor_kwargs(monkeypatch, thinking_enabled, runtime_effort, expected_effort):
+    """K3 uses its own effort vocabulary and must never receive duplicate kwargs."""
     model = _make_model(
         "kimi-k3",
         use="deerflow.models.patched_kimi:PatchedChatKimi",
         supports_thinking=True,
-        supports_reasoning_effort=False,
+        supports_reasoning_effort=True,
+        when_thinking_enabled={"reasoning_effort": "high"},
         when_thinking_disabled={"reasoning_effort": "none"},
     )
     cfg = _make_app_config([model])
 
-    class KimiCapturingModel(FakeChatModel):
-        preserve_hidden_reasoning_effort: ClassVar[bool] = True
-
-    _patch_factory(monkeypatch, cfg, model_class=KimiCapturingModel)
+    kimi_class = resolve_class("deerflow.models.patched_kimi:PatchedChatKimi", BaseChatModel)
+    captured: dict = {}
+    _patch_factory(monkeypatch, cfg, model_class=_capturing_class(kimi_class, captured))
     factory_module.create_chat_model(
         name="kimi-k3",
-        thinking_enabled=False,
-        reasoning_effort="minimal",
+        thinking_enabled=thinking_enabled,
+        reasoning_effort=runtime_effort,
     )
 
-    assert FakeChatModel.captured_kwargs.get("reasoning_effort") == "none"
+    assert captured.get("reasoning_effort") == expected_effort
 
 
 def test_reasoning_effort_preserved_when_supported(monkeypatch):

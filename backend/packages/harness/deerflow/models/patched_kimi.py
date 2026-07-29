@@ -1,18 +1,32 @@
-"""Kimi Code adapter for DeerFlow's hidden reasoning-effort UI policy.
+"""Kimi Code adapter and DeerFlow-to-K3 effort mapping.
 
-Kimi Code accepts ``reasoning_effort=high`` for K3 thinking and
-``reasoning_effort=none`` to disable thinking (which lets Kimi route K3 flash
-requests to K2.6).  DeerFlow deliberately hides the generic effort picker for
-this provider, so the factory must retain these profile-owned values while it
-still drops any request-supplied generic effort.
+K3 accepts ``low``, ``high`` and ``max``.  DeerFlow's shared console uses
+``minimal``, ``low``, ``medium`` and ``high``; this adapter makes those values
+safe for K3 without changing the generic provider path.  Flash always maps to
+``none``, allowing Kimi to route the request to K2.6.
 """
-
-from typing import ClassVar
 
 from langchain_openai import ChatOpenAI
 
 
 class PatchedChatKimi(ChatOpenAI):
-    """OpenAI-compatible Kimi Code client with profile-owned effort settings."""
+    """OpenAI-compatible Kimi Code client with K3 effort normalization."""
 
-    preserve_hidden_reasoning_effort: ClassVar[bool] = True
+    @staticmethod
+    def resolve_reasoning_effort(*, thinking_enabled: bool, effort: str | None) -> str:
+        """Translate DeerFlow's shared effort names to K3's supported values."""
+        if not thinking_enabled:
+            return "none"
+        return {
+            "minimal": "low",
+            "minimum": "low",
+            "low": "low",
+            "medium": "high",
+            # DeerFlow has no xhigh option. Its highest visible choice maps to
+            # K3's highest supported effort.
+            "high": "max",
+            "ultra": "max",
+            "xhigh": "max",
+            "max": "max",
+            "none": "none",
+        }.get(effort or "", "high")
