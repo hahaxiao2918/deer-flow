@@ -40,6 +40,8 @@ _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     # Inbound webhooks authenticate themselves via provider-specific signatures
     # (e.g. GitHub's X-Hub-Signature-256), not session cookies.
     "/api/webhooks/",
+    # Dedicated read-only service-token route; the handler fails closed.
+    "/api/internal/portal-analytics/",
 )
 
 # Exact auth paths that are public (login/register/status check).

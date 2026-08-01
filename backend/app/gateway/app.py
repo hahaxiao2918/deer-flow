@@ -28,6 +28,7 @@ from app.gateway.routers import (
     mcp,
     memory,
     models,
+    portal_analytics,
     runs,
     scheduled_tasks,
     skills,
@@ -494,6 +495,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Console API (cross-thread observability) is mounted at /api/console
     app.include_router(console.router)
+
+    # Content-free, service-token protected facts consumed by ip-portal.
+    app.include_router(portal_analytics.router)
 
     # MCP API is mounted at /api/mcp
     app.include_router(mcp.router)

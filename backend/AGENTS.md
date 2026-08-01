@@ -1019,6 +1019,17 @@ When using `make dev` from root, the frontend automatically connects through ngi
 
 ## Key Features
 
+### Central Portal Analytics
+
+`app/gateway/routers/portal_analytics.py` exposes the read-only
+`GET /api/internal/portal-analytics/runs` cursor contract. It is public only at
+the global cookie-auth middleware layer so that a dedicated Bearer token can be
+used; the route itself fails closed unless `DEER_FLOW_PORTAL_ANALYTICS_TOKEN` is
+configured and matches in constant time. Keep its SQL projection content-free:
+never add prompts, answers, files, feedback, or error text. Only terminal runs
+are exported, ordered by `(updated_at, run_id)` so runs that complete after a
+long queue delay are not skipped.
+
 ### File Upload
 
 Multi-file upload with automatic document conversion:
