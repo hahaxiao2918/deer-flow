@@ -69,6 +69,12 @@
 - 子任务时间线展示 tool-call 参数；favicon 替换；设置菜单精简。
 - IM 频道（Feishu / Slack / Telegram / Discord / DingTalk）经 Gateway 桥接同一个 agent，实现位于 `backend/app/channels/`——分发版主线使用 Web UI，IM 细节见 [backend/AGENTS.md](backend/AGENTS.md)。
 
+### 门户统计接口
+
+- `GET /api/internal/portal-analytics/runs` 为 IP 门户提供只读、游标分页的终态运行事实。
+- 接口只返回运行 ID、工号、时间、状态、耗时、模型与 token 数，不返回提示词、回答、附件、反馈或错误正文。
+- 使用独立环境变量 `DEER_FLOW_PORTAL_ANALYTICS_TOKEN` 的 Bearer token；未配置时接口 fail-closed 返回 503。
+
 ## 部署与运维
 
 ### 服务拓扑
