@@ -28,6 +28,8 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressContentEditableWarning suppressHydrationWarning>
       <body>
+        {/* 返回门户 — 跨板块统一悬浮按钮, 相对路径 / 回同源门户首页 */}
+        <a href="/" title="返回智海门户首页" style={{position:"fixed",top:10,right:14,zIndex:99999,padding:"5px 12px",fontSize:12,lineHeight:"1.4",color:"#fff",background:"rgba(0,118,184,0.92)",borderRadius:14,textDecoration:"none",boxShadow:"0 2px 8px rgba(0,0,0,0.18)",fontFamily:"system-ui,-apple-system,sans-serif"}}>← 返回门户</a>
         <ThemeProvider attribute="class" enableSystem disableTransitionOnChange>
           <I18nProvider initialLocale={locale}>{children}</I18nProvider>
         </ThemeProvider>
