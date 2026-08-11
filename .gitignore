@@ -38,7 +38,8 @@ github token.md
 docs/未命名文档(29).pdf
 
 # Configuration files
-config.yaml
+# config.yaml 已纳入 gitea 同步(config-gitea-sync 方案,内网私有仓库):dev/prod 共用一份,
+# 所有 secret 只在各机 .env;扫描确认 config.yaml 无明文密钥。详见 AGENTS.md「Secrets and runtime state」。
 mcp_config.json
 extensions_config.json
 
