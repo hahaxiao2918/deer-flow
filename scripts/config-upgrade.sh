@@ -43,7 +43,7 @@ else
     EXAMPLE_WIN="$EXAMPLE"
 fi
 
-cd "$REPO_ROOT/backend" && CONFIG_WIN_PATH="$CONFIG_WIN" EXAMPLE_WIN_PATH="$EXAMPLE_WIN" uv run python -c "
+cd "$REPO_ROOT/backend" && CONFIG_WIN_PATH="$CONFIG_WIN" EXAMPLE_WIN_PATH="$EXAMPLE_WIN" python3 -c "
 import os
 import sys, shutil, copy, re
 from pathlib import Path
