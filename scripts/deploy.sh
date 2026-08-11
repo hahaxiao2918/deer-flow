@@ -185,6 +185,22 @@ fi
 require_regular_file DEER_FLOW_CONFIG_PATH
 require_regular_file DEER_FLOW_EXTENSIONS_CONFIG_PATH
 
+# ── Config preflight: validate YAML + auto-upgrade schema ────────────────────
+# config-gitea-sync: config.yaml 由 gitea 管理(dev/prod 共用一份)。部署前先校验
+# YAML 语法(坏 config 会让 gateway 启动失败),再跑 config-upgrade 把 upstream
+# 新增字段 merge 进来(幂等:config_version 已最新时为 no-op)。任一步失败则中止,
+# 不进 compose up,保护运行中的生产。
+echo -e "${GREEN}→ Config preflight ($DEER_FLOW_CONFIG_PATH)...${NC}"
+if ! python3 -c "import yaml; yaml.safe_load(open('$DEER_FLOW_CONFIG_PATH'))" 2>/dev/null; then
+    echo -e "${RED}✗ config.yaml YAML 语法无效,中止部署(未启动 Compose)${NC}" >&2
+    exit 1
+fi
+echo -e "${GREEN}✓ config.yaml YAML 语法有效${NC}"
+"$REPO_ROOT/scripts/config-upgrade.sh" || {
+    echo -e "${RED}✗ config-upgrade 失败,中止部署${NC}" >&2
+    exit 1
+}
+
 
 # ── BETTER_AUTH_SECRET ───────────────────────────────────────────────────────
 # Required by Next.js in production. Generated once and persisted so auth

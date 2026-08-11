@@ -188,13 +188,18 @@ three-branch flow:
   images live under `frontend/public/images/branding/`. Do not restore the
   original public landing page or replace Shanghai Electric identity without a
   user request.
-- **Secrets and runtime state** — never commit tokens, `.env`, `config.yaml`,
+- **Secrets and runtime state** — never commit tokens, `.env`,
   `extensions_config.json`, or `.deer-flow` data. In particular, the local
   `github token.md` is intentionally ignored. Docker builds from the current
   checkout; `docker compose up --build` does not replace source control history.
   Keep `backend/.deer-flow` excluded from the Docker build context: it contains
   live per-thread state and can include sandbox-owned paths that the Docker
   builder cannot read.
+- **`config.yaml` 内网 gitea 同步策略(config-gitea-sync 方案)** — 例外:`config.yaml`
+  **已纳入版本控制**,dev/prod 共用一份,经 gitea 同步以消除配置漂移。安全前提:(1) 本仓库为
+  纯内网私有部署;(2) config.yaml 中所有密钥用 `$ENV_VAR` 占位(已扫描确认无明文 secret),
+  真实值只在各机 `.env`(仍不入库,由 `.env.template` 约束变量集);(3) upstream 更新后跑
+  `make config-upgrade` 合并新增字段。**严禁**把真实 secret 写进 config.yaml;新增 secret 字段必须用 `$` 占位。
 
 - **Production deployment safety** — `scripts/deploy.sh` is the only supported
   entry point for rebuilding, starting, or stopping the production DeerFlow
