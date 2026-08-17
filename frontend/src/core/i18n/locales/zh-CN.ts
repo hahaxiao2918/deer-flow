@@ -184,11 +184,48 @@ export const zhCN: Translations = {
   welcome: {
     greeting: "你好，欢迎回来！",
     description:
-      "欢迎使用 SynForge·思铸，一个面向复杂工作的超级 Agent。通过内置和自定义的 Skills，\nSynForge 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等成果。",
+      "欢迎使用 SynForge·思铸，一个面向复杂工作的超级 Agent。\nSynForge 可以帮你调查信息、搜索专利、整理情报、制作网页、生成 PPT。\n你还可以自定义 Skills。",
 
     createYourOwnSkill: "创建你自己的 Agent SKill",
     createYourOwnSkillDescription:
       "创建你的 Agent Skill 来扩展 SynForge 的能力。通过自定义技能，SynForge\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品。",
+  },
+
+  // Onboarding guide (first visit)
+  onboarding: {
+    title: "欢迎使用 SynForge·思铸",
+    subtitle: "花一分钟了解模型选择与四种模式，帮你更快上手。",
+
+    modelsTitle: "模型说明",
+    modelsIntro: "模型分为两类，请注意区分使用：",
+    modelPrivateName: "私有部署模型",
+    modelPrivateDesc:
+      "部署在集团内部，数据不出集团网络，可用于处理工作相关内容。",
+    modelPrivateTag: "内部",
+    modelExternalName: "外部模型",
+    modelExternalDesc:
+      "调用集团外部服务，输入内容会传输到外部，请勿发送涉密、敏感或内部资料。",
+    modelExternalTag: "外部",
+    modelsWarning:
+      "⚠️ 信息安全提醒：涉及集团内部或敏感内容时，请务必选择「私有部署」模型。",
+
+    modesTitle: "四种模式",
+    modesIntro: "输入框上方可切换模式，按任务复杂度选择：",
+    modeFlashName: "闪速",
+    modeFlashDesc: "快速完成任务，适合简单问答、改写等轻量任务",
+    modeFlashCons: "缺点：可能不够精准，复杂任务容易出错",
+    modeThinkingName: "思考",
+    modeThinkingDesc: "思考后再行动，适合日常大部分任务，速度与质量平衡",
+    modeThinkingCons: "缺点：比闪速慢一些",
+    modeProName: "Pro",
+    modeProDesc: "思考、计划再执行，适合重要报告、深度分析等精准任务",
+    modeProCons: "缺点：耗时长，简单任务用它反而浪费",
+    modeUltraName: "Ultra",
+    modeUltraDesc: "继承 Pro 并可调用子代理分工协作，适合复杂多步骤任务，能力最强",
+    modeUltraCons: "缺点：耗时最长、消耗最多，仅建议复杂任务使用",
+
+    getStarted: "开始使用",
+    showAgain: "再次查看新手引导",
   },
 
   // Clipboard

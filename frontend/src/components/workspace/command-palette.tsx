@@ -4,6 +4,7 @@ import {
   KeyboardIcon,
   MessageSquarePlusIcon,
   SettingsIcon,
+  SparklesIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,6 +28,7 @@ import {
 import { useI18n } from "@/core/i18n/hooks";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 
+import { OnboardingDialog } from "./onboarding/onboarding-dialog";
 import { SettingsDialog } from "./settings";
 
 export function CommandPalette() {
@@ -35,6 +37,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isMac, setIsMac] = useState(false);
 
   const handleNewChat = useCallback(() => {
@@ -45,6 +48,11 @@ export function CommandPalette() {
   const handleOpenSettings = useCallback(() => {
     setOpen(false);
     setSettingsOpen(true);
+  }, []);
+
+  const handleShowOnboarding = useCallback(() => {
+    setOpen(false);
+    setOnboardingOpen(true);
   }, []);
 
   const handleShowShortcuts = useCallback(() => {
@@ -73,6 +81,7 @@ export function CommandPalette() {
   return (
     <>
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <OnboardingDialog open={onboardingOpen} onOpenChange={setOnboardingOpen} />
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder={t.shortcuts.searchActions} />
         <CommandList>
@@ -95,6 +104,10 @@ export function CommandPalette() {
               <KeyboardIcon className="mr-2 h-4 w-4" />
               {t.shortcuts.keyboardShortcuts}
               <CommandShortcut>{metaKey}/</CommandShortcut>
+            </CommandItem>
+            <CommandItem onSelect={handleShowOnboarding}>
+              <SparklesIcon className="mr-2 h-4 w-4" />
+              {t.onboarding.showAgain}
             </CommandItem>
           </CommandGroup>
         </CommandList>

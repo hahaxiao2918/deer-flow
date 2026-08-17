@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@/components/query-client-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { CommandPalette } from "@/components/workspace/command-palette";
 import { GatewayOfflineBanner } from "@/components/workspace/gateway-offline-banner";
+import { OnboardingDialog } from "@/components/workspace/onboarding/onboarding-dialog";
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
 
 function parseSidebarOpenCookie(
@@ -37,6 +38,7 @@ export async function WorkspaceContent({
         </SidebarInset>
       </SidebarProvider>
       <CommandPalette />
+      <OnboardingDialog />
       <Toaster position="top-center" />
     </QueryClientProvider>
   );

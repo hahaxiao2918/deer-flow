@@ -70,11 +70,53 @@ export const enUS: Translations = {
   welcome: {
     greeting: "Hello, again!",
     description:
-      "Welcome to SynForge·思铸, a super agent for complex work. With built-in and custom skills, SynForge helps you search the web, analyze data, and create artifacts such as slides, web pages, and more.",
+      "Welcome to SynForge·思铸, a super agent for complex work.\nSynForge helps you investigate information, search patents, organize intelligence, build web pages, and generate slides.\nYou can also define your own skills.",
 
     createYourOwnSkill: "Create Your Own Skill",
     createYourOwnSkillDescription:
       "Create your own skill to extend SynForge. With customized skills,\nSynForge can help you search the web, analyze data, and generate\nartifacts like slides and web pages.",
+  },
+
+  // Onboarding guide (first visit)
+  onboarding: {
+    title: "Welcome to SynForge·思铸",
+    subtitle: "Take a minute to learn about models and the four modes.",
+
+    modelsTitle: "Models",
+    modelsIntro: "There are two kinds of models — choose carefully:",
+    modelPrivateName: "Privately deployed models",
+    modelPrivateDesc:
+      "Hosted inside the group network. Data never leaves the group; safe for work content.",
+    modelPrivateTag: "Internal",
+    modelExternalName: "External models",
+    modelExternalDesc:
+      "Served outside the group. Your input leaves the group network — never send classified, sensitive, or internal materials.",
+    modelExternalTag: "External",
+    modelsWarning:
+      "⚠️ Security notice: for internal or sensitive content, always pick a privately deployed model.",
+
+    modesTitle: "Four Modes",
+    modesIntro: "Switch modes above the composer based on task complexity:",
+    modeFlashName: "Flash",
+    modeFlashDesc:
+      "Fastest completion; good for simple Q&A and light edits",
+    modeFlashCons: "Trade-off: may be less accurate; complex tasks can go wrong",
+    modeThinkingName: "Thinking",
+    modeThinkingDesc:
+      "Thinks before acting; the balanced default for most daily tasks",
+    modeThinkingCons: "Trade-off: slower than Flash",
+    modeProName: "Pro",
+    modeProDesc:
+      "Thinks, plans, then executes; for important reports and deep analysis",
+    modeProCons: "Trade-off: takes much longer; overkill for simple tasks",
+    modeUltraName: "Ultra",
+    modeUltraDesc:
+      "Pro plus subagent collaboration; strongest, for complex multi-step work",
+    modeUltraCons:
+      "Trade-off: slowest and most expensive; reserve for complex tasks",
+
+    getStarted: "Get Started",
+    showAgain: "Show onboarding guide again",
   },
 
   // Clipboard

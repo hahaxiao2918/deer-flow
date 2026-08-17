@@ -62,6 +62,37 @@ export interface Translations {
     createYourOwnSkillDescription: string;
   };
 
+  // Onboarding guide (first visit)
+  onboarding: {
+    title: string;
+    subtitle: string;
+    modelsTitle: string;
+    modelsIntro: string;
+    modelPrivateName: string;
+    modelPrivateDesc: string;
+    modelPrivateTag: string;
+    modelExternalName: string;
+    modelExternalDesc: string;
+    modelExternalTag: string;
+    modelsWarning: string;
+    modesTitle: string;
+    modesIntro: string;
+    modeFlashName: string;
+    modeFlashDesc: string;
+    modeFlashCons: string;
+    modeThinkingName: string;
+    modeThinkingDesc: string;
+    modeThinkingCons: string;
+    modeProName: string;
+    modeProDesc: string;
+    modeProCons: string;
+    modeUltraName: string;
+    modeUltraDesc: string;
+    modeUltraCons: string;
+    getStarted: string;
+    showAgain: string;
+  };
+
   // Clipboard
   clipboard: {
     copyToClipboard: string;
