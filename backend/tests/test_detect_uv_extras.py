@@ -246,3 +246,51 @@ def test_resolve_extras_root_config_takes_precedence(isolated_cwd):
     (sub / "config.yaml").write_text("database:\n  backend: postgres\n")
     # Root config.yaml is checked first, matching the precedence in serve.sh.
     assert detect.resolve_extras() == []
+
+
+def test_memory_retrieval_extra_detected_from_adapter_config(tmp_path):
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        "\n".join(
+            [
+                "memory:",
+                "  enabled: true",
+                "  backend_config:",
+                "    storage_path: ''",
+                "    retrieval_adapter: deerflow.memory_retrieval.fastembed_retrieval:create_retrieval",
+                "agents_api:",
+                "  enabled: true",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    assert detect.detect_from_config(config) == ["memory-retrieval"]
+
+
+def test_memory_retrieval_extra_absent_when_adapter_empty_or_missing():
+    empty_adapter = ["memory:", "  backend_config:", "    retrieval_adapter: ''"]
+    assert detect._memory_retrieval_adapter_set(empty_adapter) is False
+
+    no_backend = ["memory:", "  enabled: true", "  model_name: null"]
+    assert detect._memory_retrieval_adapter_set(no_backend) is False
+
+    unrelated_backend = [
+        "memory:",
+        "  enabled: true",
+        "not_memory:",
+        "  backend_config:",
+        "    retrieval_adapter: x:y",
+    ]
+    assert detect._memory_retrieval_adapter_set(unrelated_backend) is False
+
+
+def test_memory_retrieval_adapter_after_sibling_block_ignored():
+    """A retrieval_adapter key after backend_config closed must not match."""
+    yaml_lines = [
+        "memory:",
+        "  backend_config:",
+        "    retrieval_model: BAAI/bge-small-zh-v1.5",
+        "  other:",
+        "    retrieval_adapter: x:y",
+    ]
+    assert detect._memory_retrieval_adapter_set(yaml_lines) is False

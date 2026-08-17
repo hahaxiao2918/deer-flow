@@ -74,6 +74,10 @@ monocle = ["monocle_apptrace>=0.8.8"]
 # so the core harness install stays lean; import is lazy inside the private
 # Playwright loop. After install, run `playwright install chromium` once.
 browser = ["playwright>=1.40"]
+# Semantic memory-fact retrieval (deerflow.memory_retrieval.fastembed_retrieval).
+# Optional so default installs stay free of the ONNX runtime stack; the adapter
+# raises an actionable error when configured but missing.
+memory-retrieval = ["fastembed>=0.4,<0.9", "huggingface-hub<1.0"]
 
 [build-system]
 requires = ["hatchling"]

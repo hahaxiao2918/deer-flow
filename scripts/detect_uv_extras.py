@@ -267,7 +267,50 @@ def detect_from_config(path: Path) -> list[str]:
         extras.add("discord")
     if tools_include_name(lines, "browser_navigate"):
         extras.add("browser")
+    if _memory_retrieval_adapter_set(lines):
+        extras.add("memory-retrieval")
     return sorted(extras)
+
+
+def _memory_retrieval_adapter_set(lines: list[str]) -> bool:
+    """True when ``memory.backend_config.retrieval_adapter`` has a non-empty value.
+
+    Three-level nesting, so ``nested_section_value`` (two levels) does not
+    apply. Line-based like the rest of this module (no yaml import): find the
+    ``memory:`` block, then its ``backend_config:`` child, then a non-empty
+    ``retrieval_adapter:`` key directly inside it.
+    """
+    memory_indent: int | None = None
+    backend_indent: int | None = None
+    for raw in lines:
+        line = _strip_comment(raw)
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+
+        if memory_indent is not None and indent <= memory_indent:
+            # Leaving the memory: block resets both levels.
+            memory_indent = None
+            backend_indent = None
+
+        if memory_indent is None:
+            if re.fullmatch(r"memory:", stripped):
+                memory_indent = indent
+            continue
+
+        if backend_indent is None:
+            if indent > memory_indent and re.fullmatch(r"backend_config:", stripped):
+                backend_indent = indent
+            continue
+
+        if indent <= backend_indent:
+            backend_indent = None
+            continue
+        match = re.fullmatch(r"retrieval_adapter:\s*(\S.*)", stripped)
+        if match:
+            return bool(match.group(1).strip().strip("'\""))
+    return False
 
 
 def detect_from_runtime_env() -> list[str]:

@@ -120,6 +120,11 @@ services:
       - DEER_FLOW_HOME=/app/backend/.deer-flow
       - DEER_FLOW_CONFIG_PATH=/app/backend/config.yaml
       - DEER_FLOW_EXTENSIONS_CONFIG_PATH=/app/backend/extensions_config.json
+      # Semantic memory retrieval (memory.backend_config.retrieval_adapter):
+      # embedding model weights download from the mirror on first start, then
+      # persist under ${DEER_FLOW_HOME}/memory-retrieval-cache (config.yaml's
+      # retrieval_cache_dir points at the same in-container path).
+      - HF_ENDPOINT=${HF_ENDPOINT:-https://hf-mirror.com}
       - DEER_FLOW_STREAM_BRIDGE_REDIS_URL=${DEER_FLOW_STREAM_BRIDGE_REDIS_URL:-redis://redis:6379/0}
       - DEER_FLOW_CHANNELS_LANGGRAPH_URL=${DEER_FLOW_CHANNELS_LANGGRAPH_URL:-http://gateway:8001/api}
       - DEER_FLOW_CHANNELS_GATEWAY_URL=${DEER_FLOW_CHANNELS_GATEWAY_URL:-http://gateway:8001}

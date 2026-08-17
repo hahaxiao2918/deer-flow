@@ -72,6 +72,17 @@ class DeerMemConfig(BaseModel):
         default="",
         description="Optional dotted retrieval-adapter factory. It receives DeerMemConfig and must implement RetrievalPort.",
     )
+    retrieval_model: str = Field(
+        default="BAAI/bge-small-zh-v1.5",
+        description="Embedding model id passed to the retrieval adapter (fastembed hub id or local path). Only read by the adapter named in retrieval_adapter.",
+    )
+    retrieval_cache_dir: str = Field(
+        default="",
+        description=(
+            "Optional cache directory for the retrieval adapter (embedding model weights, vector index persistence). "
+            "Empty = adapter default (~/.cache/deerflow-memory-retrieval). Only read by the adapter named in retrieval_adapter."
+        ),
+    )
     # ── Queue ────────────────────────────────────────────────────────────
     debounce_seconds: int = Field(
         default=30,
