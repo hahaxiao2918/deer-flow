@@ -286,3 +286,93 @@ def test_config_deleted_after_init_via_real_env_resolution_does_not_raise(cache_
     # last-known-good MCP tools), matching the deliberate contract in
     # test_config_deleted_after_init_is_not_stale above.
     assert cache_module._is_cache_stale() is False
+
+
+class TestLazyInitTimeout:
+    """Regression anchors for the Gateway-freeze fix.
+
+    A wedged MCP server (HTTP layer accepts requests but the initialize /
+    tools-list handshake never completes) used to hang ``initialize_mcp_tools``
+    forever. ``get_cached_mcp_tools`` blocked the caller's event loop on
+    ``future.result()`` with no bound, so one bad server froze the entire
+    Gateway — /health included. Production incident 2026-08-18 (thread
+    c5de163d-07f6-462e-8cdf-cc84930e4f1f): every request needing a lead agent
+    deadlocked at cache.py's unbounded wait while the aminer SSE and
+    zai-mcp-server relays stalled their handshakes.
+    """
+
+    def test_lazy_init_times_out_and_degrades(self, cache_globals, monkeypatch):
+        """A wedged init must return [] after the bounded wait, not block forever."""
+        from langchain_core.tools import tool
+
+        @tool
+        def _probe() -> str:
+            """Probe tool."""
+            return "ok"
+
+        async def _hang_forever() -> list:
+            await asyncio.Event().wait()  # never completes
+            return [_probe]
+
+        monkeypatch.setattr(cache_module, "initialize_mcp_tools", _hang_forever)
+
+        # Run inside a live loop so get_cached_mcp_tools takes the
+        # executor.submit + future.result(timeout=...) path (the one that
+        # froze the Gateway), with a short bound to keep the test fast.
+        monkeypatch.setattr(cache_module, "_LAZY_INIT_TIMEOUT_SECONDS", 0.2)
+
+        import threading
+
+        results: list = []
+
+        def sync_call() -> None:
+            # Called from a side thread while the main thread keeps a running
+            # loop, mirroring the Gateway: get_cached_mcp_tools runs where
+            # asyncio.get_event_loop().is_running() is True, so it takes the
+            # executor.submit + bounded future.result() path.
+            results.append(cache_module.get_cached_mcp_tools())
+
+        async def drive() -> None:
+            t = threading.Thread(target=sync_call)
+            t.start()
+            await asyncio.sleep(0)  # ensure loop.is_running() observes True
+            t.join(timeout=10)
+            assert not t.is_alive(), "get_cached_mcp_tools blocked past its timeout bound"
+
+        asyncio.run(drive())
+        assert results == [[]]
+
+    def test_lazy_init_success_returns_tools(self, cache_globals, monkeypatch):
+        """Healthy init path still returns the loaded tools."""
+        from langchain_core.tools import tool
+
+        @tool
+        def _probe() -> str:
+            """Probe tool."""
+            return "ok"
+
+        async def _fast_init() -> list:
+            # Mirror the real initialize_mcp_tools: it populates the module
+            # cache that get_cached_mcp_tools returns on success.
+            cache_module._mcp_tools_cache = [_probe]
+            cache_module._cache_initialized = True
+            return [_probe]
+
+        monkeypatch.setattr(cache_module, "initialize_mcp_tools", _fast_init)
+
+        import threading
+
+        results: list = []
+
+        def sync_call() -> None:
+            results.append(cache_module.get_cached_mcp_tools())
+
+        async def drive() -> None:
+            t = threading.Thread(target=sync_call)
+            t.start()
+            await asyncio.sleep(0)
+            t.join(timeout=10)
+            assert not t.is_alive(), "get_cached_mcp_tools blocked on a healthy init"
+
+        asyncio.run(drive())
+        assert results == [[_probe]]

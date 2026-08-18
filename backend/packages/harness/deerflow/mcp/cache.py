@@ -11,6 +11,16 @@ from deerflow.config.file_signature import get_config_signature as _get_config_s
 
 logger = logging.getLogger(__name__)
 
+# Upper bound for the synchronous lazy-init wait in get_cached_mcp_tools().
+# Large enough for a healthy multi-server discovery (observed: a few seconds);
+# small enough that a wedged MCP server degrades the Gateway to "no MCP tools"
+# instead of freezing every request behind the blocked future.result().
+_LAZY_INIT_TIMEOUT_SECONDS = 60.0
+# Extra slack on the outer future.result wait beyond _LAZY_INIT_TIMEOUT_SECONDS
+# so the inner wait_for's cancellation + loop shutdown normally finishes first;
+# the outer bound only fires when even cancellation itself is wedged.
+_JOIN_GRACE_SECONDS = 15.0
+
 _mcp_tools_cache: list[BaseTool] | None = None
 _cache_initialized = False
 _initialization_lock = asyncio.Lock()
@@ -161,6 +171,15 @@ def get_cached_mcp_tools() -> list[BaseTool]:
 
     if not _cache_initialized:
         logger.info("MCP tools not initialized, performing lazy initialization...")
+
+        async def _bounded_init() -> list[BaseTool]:
+            # wait_for inside the runner coroutine makes cancellation possible
+            # *inside* asyncio.run: a plain future.result timeout on the
+            # outside cannot cancel the inner loop (it keeps awaiting the
+            # wedged coroutine during shutdown and the executor thread never
+            # returns).
+            return await asyncio.wait_for(initialize_mcp_tools(), timeout=_LAZY_INIT_TIMEOUT_SECONDS)
+
         try:
             # Try to initialize in the current event loop
             loop = asyncio.get_event_loop()
@@ -170,15 +189,30 @@ def get_cached_mcp_tools() -> list[BaseTool]:
                 import concurrent.futures
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(asyncio.run, initialize_mcp_tools())
-                    future.result()
+                    future = executor.submit(asyncio.run, _bounded_init())
+                    # Bounded wait: an MCP server that accepts the TCP/HTTP
+                    # request but never completes the handshake hangs the
+                    # inner init forever, and blocking here freezes the
+                    # caller's event loop (the whole Gateway) with it. On
+                    # timeout, degrade to running without MCP tools rather
+                    # than deadlocking the process.
+                    try:
+                        future.result(timeout=_LAZY_INIT_TIMEOUT_SECONDS + _JOIN_GRACE_SECONDS)
+                    except concurrent.futures.TimeoutError:
+                        logger.error(
+                            "MCP tools lazy initialization timed out after %ss; continuing without MCP tools",
+                            _LAZY_INIT_TIMEOUT_SECONDS,
+                        )
+                        return []
             else:
                 # If no loop is running, we can use the current loop
                 loop.run_until_complete(initialize_mcp_tools())
         except RuntimeError:
-            # No event loop exists, create one
+            # No event loop exists, create one. Bound it the same way: without
+            # wait_for this branch hangs forever on a wedged MCP server (this
+            # is the path taken from worker threads with no ambient loop).
             try:
-                asyncio.run(initialize_mcp_tools())
+                asyncio.run(_bounded_init())
             except Exception:
                 logger.exception("Failed to lazy-initialize MCP tools")
                 return []

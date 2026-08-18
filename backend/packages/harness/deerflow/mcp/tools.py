@@ -30,6 +30,11 @@ from deerflow.tools.types import Runtime
 
 logger = logging.getLogger(__name__)
 
+# Upper bound for a single MCP server's initialize + tools/list discovery.
+# Generous for slow-but-healthy servers (cold upstream, OAuth token exchange);
+# finite so one wedged server cannot stall the whole tool-loading gather.
+_SERVER_DISCOVERY_TIMEOUT_SECONDS = 45.0
+
 # Maximum size of a local image/video file that we inline as a data URL when
 # calling a remote (HTTP/SSE) MCP server. 4 MiB of original file becomes ~5.3 MiB
 # of base64, which leaves plenty of headroom under the 25 MiB nginx/supergateway
@@ -802,7 +807,14 @@ async def get_mcp_tools() -> list[BaseTool]:
 
         async def load_server_tools(server_name: str) -> list[BaseTool]:
             try:
-                return await client.get_tools(server_name=server_name)
+                # Per-server bound: a server whose HTTP layer accepts requests
+                # but never finishes the initialize/tools-list handshake would
+                # otherwise stall this coroutine forever, and the whole gather
+                # (and every request waiting on MCP init) with it.
+                return await asyncio.wait_for(client.get_tools(server_name=server_name), timeout=_SERVER_DISCOVERY_TIMEOUT_SECONDS)
+            except TimeoutError:
+                logger.warning(f"Skipping MCP server '{server_name}' after tool discovery timed out ({_SERVER_DISCOVERY_TIMEOUT_SECONDS}s)")
+                return []
             except Exception as e:
                 logger.warning(
                     f"Skipping MCP server '{server_name}' after tool discovery failed: {e}",
