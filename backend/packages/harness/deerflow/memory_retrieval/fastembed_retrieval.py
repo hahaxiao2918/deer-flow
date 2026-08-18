@@ -109,7 +109,17 @@ class FastembedVectorStore:
 
 
 class FastembedRetrieval:
-    """``RetrievalPort`` implementation over :class:`FastembedVectorStore`."""
+    """``RetrievalPort`` implementation over :class:`FastembedVectorStore`.
+
+    The vector index is process-local (in memory). Storage calls
+    ``upsert``/``remove`` only on *writes*, so after a gateway restart the
+    index starts empty while the durable Markdown fact files still hold every
+    fact. To keep pre-restart facts searchable, storage registers a
+    ``backfill`` callback (via :func:`set_backfill`) that lazily re-embeds a
+    scope's facts from the durable store the first time a search touches an
+    empty index for that scope. Backfill runs at most once per scope and is
+    idempotent (re-upserting a fact id just replaces its vector).
+    """
 
     def __init__(
         self,
@@ -124,6 +134,11 @@ class FastembedRetrieval:
             self._embedder = self._load_embedder(model_id=model_id, cache_dir=cache_dir)
             self._store = FastembedVectorStore(self._embedder)
             self._owned_embedder = True
+        # scope-key(str(sorted(scope.items()))) -> True once backfilled
+        self._backfilled_scopes: set[str] = set()
+        # storage-provided callback: (scope) -> list[{"id","content"}]
+        self._backfill: Any = None
+        self._backfill_lock = threading.Lock()
 
     @staticmethod
     def _load_embedder(model_id: str, cache_dir: str) -> EmbeddingFunction:
@@ -138,6 +153,45 @@ class FastembedRetrieval:
         return TextEmbedding(model_name=model_id, cache_dir=resolved_cache)
 
     # ── RetrievalPort ────────────────────────────────────────────────────
+
+    def set_backfill(self, callback: Any) -> None:
+        """Register storage's lazy re-index callback (see class docstring)."""
+        self._backfill = callback
+
+    def _maybe_backfill(self, scopes: list[dict[str, str | None]]) -> None:
+        """Re-embed durable facts for scopes whose index slice is still empty.
+
+        Called before search. A scope counts as needing backfill when the
+        index holds no vector tagged with a matching scope — after a restart
+        that is every scope, and it stays "backfilled" thereafter because the
+        ``_backfilled_scopes`` mark is set under the lock before the callback
+        runs (single-flight per scope, idempotent re-upserts).
+        """
+        if self._backfill is None:
+            return
+        with self._backfill_lock:
+            pending: list[dict[str, str | None]] = []
+            for scope in scopes:
+                key = repr(sorted((scope or {}).items()))
+                if key in self._backfilled_scopes:
+                    continue
+                if len(self._store) == 0 or not any(_scopes_match(meta["scope"], scope) for meta in self._store._meta.values()):
+                    pending.append(scope)
+                else:
+                    self._backfilled_scopes.add(key)
+            for scope in pending:
+                key = repr(sorted((scope or {}).items()))
+                self._backfilled_scopes.add(key)
+            if not pending:
+                return
+        for scope in pending:
+            try:
+                facts = self._backfill(scope)
+            except Exception:
+                logger.exception("Memory retrieval backfill failed for scope %s", scope)
+                continue
+            for fact in facts or []:
+                self.upsert(fact, scope=scope, path="")
 
     def upsert(self, fact: dict[str, Any], *, scope: dict[str, str | None], path: str) -> None:
         fact_id = fact.get("id")
@@ -159,6 +213,7 @@ class FastembedRetrieval:
         mode: str = "hybrid",
         filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
+        self._maybe_backfill(scopes)
         hits = self._store.search(query, scopes=scopes, top_k=top_k)
         results: list[dict[str, Any]] = []
         for hit in hits:

@@ -166,3 +166,87 @@ def test_search_results_are_json_serializable():
     hits = store.search("x", scopes=[_scope()], top_k=1)
     assert isinstance(hits[0]["score"], float)
     json.dumps(hits)  # must not raise
+
+
+class TestRestartBackfill:
+    """Restart recovery: empty index + durable facts => search still finds them."""
+
+    def test_search_triggers_backfill_for_empty_scope(self):
+        retrieval = FastembedRetrieval(store=_make_fake_store())
+        durable = [{"id": "f1", "content": "用户负责专利检索业务"}]
+        calls = []
+
+        def backfill(scope):
+            calls.append(dict(scope))
+            return list(durable)
+
+        retrieval.set_backfill(backfill)
+        results = retrieval.search("专利检索", scopes=[_scope()], top_k=5, mode="hybrid", filters=None)
+        assert calls == [{"userId": "alice", "agentName": "agent-a"}]
+        assert results[0]["fact"]["content"] == "用户负责专利检索业务"
+
+    def test_backfill_runs_once_per_scope(self):
+        retrieval = FastembedRetrieval(store=_make_fake_store())
+        calls = []
+
+        retrieval.set_backfill(lambda scope: (calls.append(1), [{"id": "f1", "content": "x"}])[1])
+        retrieval.search("x", scopes=[_scope()], top_k=5, mode="hybrid", filters=None)
+        retrieval.search("x", scopes=[_scope()], top_k=5, mode="hybrid", filters=None)
+        assert len(calls) == 1
+
+    def test_backfill_skipped_when_scope_already_indexed(self):
+        retrieval = FastembedRetrieval(store=_make_fake_store())
+        retrieval.upsert({"id": "f1", "content": "fresh"}, scope=_scope(), path="")
+        calls = []
+        retrieval.set_backfill(lambda scope: (calls.append(1), [])[1])
+        retrieval.search("x", scopes=[_scope()], top_k=5, mode="hybrid", filters=None)
+        assert calls == []
+
+    def test_backfill_failure_does_not_break_search(self):
+        retrieval = FastembedRetrieval(store=_make_fake_store())
+
+        def boom(scope):
+            raise RuntimeError("durable store unavailable")
+
+        retrieval.set_backfill(boom)
+        results = retrieval.search("x", scopes=[_scope()], top_k=5, mode="hybrid", filters=None)
+        assert results == []
+
+    def test_backfill_marks_scope_even_when_durable_empty(self):
+        retrieval = FastembedRetrieval(store=_make_fake_store())
+        calls = []
+        retrieval.set_backfill(lambda scope: (calls.append(1), [])[1])
+        retrieval.search("x", scopes=[_scope()], top_k=5, mode="hybrid", filters=None)
+        retrieval.search("x", scopes=[_scope()], top_k=5, mode="hybrid", filters=None)
+        assert len(calls) == 1  # second search does not retry the empty durable store
+
+
+def test_create_storage_registers_backfill_for_restart_recovery(tmp_path):
+    """E2E with real FileMemoryStorage + fake embedder: restart-empty index recovers from durable facts."""
+    from deerflow.agents.memory.backends.deermem.deermem.config import DeerMemConfig
+    from deerflow.agents.memory.backends.deermem.deermem.core.storage import create_storage
+
+    cfg = DeerMemConfig(storage_path=str(tmp_path))
+    # 直接走 create_storage 的注册分支:传入已构造好的 retrieval(等价 factory 产物)
+    retrieval = FastembedRetrieval(store=_make_fake_store())
+    storage = create_storage(cfg, retrieval=retrieval)
+    assert retrieval._backfill is not None, "create_storage must register the backfill callback"
+
+    # 写入两条事实(durable + 索引),然后模拟重启:新建空索引 retrieval + 新 storage
+    doc = {
+        "version": "1.0",
+        "revision": 0,
+        "lastUpdated": "2026-08-18T00:00:00Z",
+        "user": {"workContext": {"summary": "", "updatedAt": ""}},
+        "history": {"recentMonths": {"summary": "", "updatedAt": ""}},
+        "facts": [{"id": "fact_R1", "content": "用户负责专利检索业务", "confidence": 0.9}],
+    }
+    storage.save(doc, "agent-a", user_id="alice")
+
+    fresh_retrieval = FastembedRetrieval(store=_make_fake_store())
+    fresh_storage = create_storage(cfg, retrieval=fresh_retrieval)
+    assert len(fresh_retrieval._store) == 0  # restart: empty index
+    hits = fresh_storage.search_facts("专利", scopes=[{"userId": "alice", "agentName": "agent-a"}], top_k=3)
+    assert len(hits) == 1
+    assert hits[0]["fact"]["content"] == "用户负责专利检索业务"
+    assert len(fresh_retrieval._store) == 1  # backfilled from durable store

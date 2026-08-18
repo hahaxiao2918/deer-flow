@@ -1466,7 +1466,21 @@ def create_storage(config: DeerMemConfig, retrieval: RetrievalPort | None = None
             raise ValueError(f"backend_config.retrieval_adapter={config.retrieval_adapter!r} failed to load: {exc}") from exc
     storage_class_path = config.storage_class
     if not storage_class_path or storage_class_path == "file":
-        return FileMemoryStorage(config, retrieval=retrieval)
+        storage = FileMemoryStorage(config, retrieval=retrieval)
+        # After a process restart the retrieval adapter's vector index starts
+        # empty while durable Markdown facts still exist. Give the adapter a
+        # lazy re-embed callback (it calls this on first search of a not-yet-
+        # indexed scope) so pre-restart facts remain searchable. Adapters that
+        # do not support backfill (no ``set_backfill``) simply keep index-
+        # on-write semantics.
+        if retrieval is not None and hasattr(retrieval, "set_backfill"):
+
+            def _backfill(scope: dict[str, str | None]) -> list[dict[str, Any]]:
+                facts = storage.list_facts(**FileMemoryStorage._scope_kwargs(scope))
+                return [{"id": fact.get("id"), "content": fact.get("content")} for fact in facts]
+
+            retrieval.set_backfill(_backfill)
+        return storage
     try:
         module_path, class_name = storage_class_path.rsplit(".", 1)
         storage_class = getattr(importlib.import_module(module_path), class_name)
