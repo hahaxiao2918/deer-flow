@@ -10,13 +10,21 @@ runs: a completed conversation killed at step ~248/250.
 This middleware converts that hard death into a natural finish, following the
 same pattern as ``LoopDetectionMiddleware`` / ``TokenBudgetMiddleware``:
 
-1. Track a per-run estimate of consumed super-steps. Measured on LangGraph
-   (``stream_mode="updates"``), each model cycle costs: ``model`` node (1) +
-   one node per middleware implementing ``before_model``/``after_model`` +
+1. Track consumed super-steps per run. The primary signal is the graph's TRUE
+   step counter: LangGraph stamps ``metadata["langgraph_step"]`` on the config
+   it executes each node with, and every middleware model hook runs inside its
+   own node, so the guard reads the real count instead of estimating. When no
+   config context is active (hooks invoked outside a graph), it falls back to
+   an additive per-cycle estimate: ``model`` node (1) + one node per middleware
+   implementing ``before_model``/``after_model`` (the builders count the
+   chain's hook nodes and inject them via ``set_extra_hook_nodes``; the guard's
+   own ``after_model`` node is always accounted, baseline 2 = model + self) +
    ``tools`` node (1, when the response calls tools — parallel calls share one
-   node). The builders (lead-agent / factory) count the chain's hook nodes and
-   inject them via ``set_extra_hook_nodes``; the guard's own ``after_model``
-   node is always accounted (baseline 2 = model + self).
+   node). That estimate is not theoretical: production 2026-08-27 measured
+   466 super-steps over 33 model calls (14.1/cycle) on the full lead chain,
+   matching the injected count (11 hook nodes → est. 14/cycle) exactly. The
+   true counter simply removes the dependency on that estimate staying
+   calibrated across upstream middleware-topology changes.
 2. At ``warn_ratio * limit``: queue a wrap-up reminder, injected at the next
    model call via ``wrap_model_call`` — never between ``AIMessage.tool_calls``
    and their ``ToolMessage`` responses (pairing validators reject that).
@@ -43,6 +51,7 @@ from langchain.agents import AgentState
 from langchain.agents.middleware import AgentMiddleware
 from langchain.agents.middleware.types import ModelCallResult, ModelRequest, ModelResponse
 from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.config import get_config
 from langgraph.runtime import Runtime
 
 from deerflow.agents.middlewares._bounded_dict import BoundedDict
@@ -91,6 +100,11 @@ class RecursionGuardMiddleware(AgentMiddleware[AgentState]):
         self._lock = threading.Lock()
         # Per-run estimated step cost, keyed by (thread_id, run_id).
         self._costs: BoundedDict[tuple[str, str], int] = BoundedDict(1000)
+        # First true super-step observed per run: langgraph_step is cumulative
+        # across a thread's checkpoint chain (continuation runs resume at the
+        # thread's current step), but recursion_limit is per-invoke, so exact
+        # accounting charges the per-run delta.
+        self._step_baseline: BoundedDict[tuple[str, str], int] = BoundedDict(1000)
         self._warned: BoundedDict[tuple[str, str], bool] = BoundedDict(1000)
         self._pending_warnings: BoundedDict[tuple[str, str], bool] = BoundedDict(1000)
         self._stop_reason: BoundedDict[str, str] = BoundedDict(1000)
@@ -109,8 +123,11 @@ class RecursionGuardMiddleware(AgentMiddleware[AgentState]):
         """Count middleware in *chain* that add a graph node per model cycle.
 
         A middleware adds a node when it overrides ``before_model`` or
-        ``after_model`` (sync or async variants). ``wrap_model_call`` /
-        ``wrap_tool_call`` compose inside the model/tools nodes and add nothing.
+        ``after_model`` (sync or async variants — LangChain creates one node
+        per hook kind, not per method). ``wrap_model_call`` / ``wrap_tool_call``
+        compose inside the model/tools nodes and add nothing. Verified against
+        production 2026-08-27: 11 counted nodes → est. 14 steps/cycle vs
+        14.1 measured (466 steps / 33 model calls).
         """
         from langchain.agents.middleware import AgentMiddleware as _Base
 
@@ -161,6 +178,25 @@ class RecursionGuardMiddleware(AgentMiddleware[AgentState]):
             return None
         return value
 
+    @staticmethod
+    def _read_true_step() -> int | None:
+        """Read the graph's true super-step counter, or ``None`` if unavailable.
+
+        LangGraph stamps ``metadata["langgraph_step"]`` (0-based) on the
+        RunnableConfig used to execute each node; every middleware model hook
+        runs inside its own node, so this observes the run's real step count.
+        ``get_config()`` raises outside a runnable context (direct hook calls),
+        and older runtimes may omit the key — both fall back to the estimate.
+        """
+        try:
+            metadata = (get_config() or {}).get("metadata") or {}
+        except Exception:
+            return None
+        step = metadata.get("langgraph_step")
+        if isinstance(step, bool) or not isinstance(step, int) or step < 0:
+            return None
+        return step
+
     def _thresholds(self, limit: int) -> tuple[int, int]:
         warn_at = max(1, int(limit * self._warn_ratio))
         # The margin must cover the post-strip tail: the remaining after_model
@@ -176,6 +212,7 @@ class RecursionGuardMiddleware(AgentMiddleware[AgentState]):
         key = self._key(runtime)
         with self._lock:
             self._costs.pop(key, None)
+            self._step_baseline.pop(key, None)
             self._warned.pop(key, None)
             self._pending_warnings.pop(key, None)
 
@@ -204,16 +241,30 @@ class RecursionGuardMiddleware(AgentMiddleware[AgentState]):
         if invalid:
             n_tools += len(invalid)
 
-        # Cycle cost (measured, see module docstring): model node (1) + this
-        # guard's own after_model node (1) + other middleware hook nodes +
-        # tools node (1) when the response calls tools. Parallel tool calls
-        # share one tools node, so batch size does not change the cost.
-        cycle_cost = 2 + self._extra_hook_nodes + (1 if n_tools > 0 else 0)
-
         key = self._key(runtime)
         warn_at, hard_at = self._thresholds(limit)
+        true_step = self._read_true_step()
         with self._lock:
-            cost = self._costs.get(key, 0) + cycle_cost
+            if true_step is not None:
+                # Exact accounting: the node currently executing reports the
+                # graph's real super-step counter. The counter is cumulative
+                # across the thread's checkpoint chain, so charge the delta
+                # from this run's first observed step (recursion_limit is a
+                # per-invoke budget); steps only move forward, so a high-water
+                # max is idempotent across the per-hook calls of one node.
+                baseline = self._step_baseline.get(key)
+                if baseline is None:
+                    baseline = true_step
+                    self._step_baseline[key] = baseline
+                cost = max(self._costs.get(key, 0), true_step - baseline + 1)
+            else:
+                # Fallback estimate (no graph config context): model node (1)
+                # + this guard's own after_model node (1) + other middleware
+                # hook nodes + tools node (1) when the response calls tools.
+                # Parallel tool calls share one tools node, so batch size does
+                # not change the cost.
+                cycle_cost = 2 + self._extra_hook_nodes + (1 if n_tools > 0 else 0)
+                cost = self._costs.get(key, 0) + cycle_cost
             self._costs[key] = cost
             queue_warn = warn_at <= cost < hard_at and not self._warned.get(key)
             if queue_warn:

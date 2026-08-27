@@ -1,22 +1,25 @@
 """Tests for RecursionGuardMiddleware.
 
 The guard converts LangGraph's hard ``GraphRecursionError`` death into a
-natural finish: it estimates consumed super-steps per model cycle (model node
-+ own after_model node + builder-injected extra hook nodes + tools node when
-the response calls tools — parallel calls share one node), injects a wrap-up
-reminder at the warn ratio, and strips ``tool_calls`` at the hard threshold so
-the agent loop terminates with a final answer. It reads the run's effective
-limit from ``runtime.context["recursion_limit"]`` and is inactive when the key
-is absent.
+natural finish: it tracks consumed super-steps — primarily by reading the
+graph's true counter (``metadata["langgraph_step"]``, visible from inside any
+middleware hook node), falling back to an additive per-cycle estimate (model
+node + own after_model node + builder-injected extra hook nodes + tools node
+when the response calls tools — parallel calls share one node) when no graph
+config context is active — injects a wrap-up reminder at the warn ratio, and
+strips ``tool_calls`` at the hard threshold so the agent loop terminates with
+a final answer. It reads the run's effective limit from
+``runtime.context["recursion_limit"]`` and is inactive when the key is absent.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, override
 from unittest.mock import MagicMock
 
 import pytest
 from langchain.agents import create_agent
+from langchain.agents.middleware import AgentMiddleware
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import Runnable
@@ -127,7 +130,13 @@ def test_cost_accounting_counts_tool_calls():
 
 
 def test_cost_accounting_includes_extra_hook_nodes():
-    """Builders inject the chain's other hook nodes; each adds 1 per cycle."""
+    """Fallback estimate (no graph config context): builders inject the
+    chain's other hook nodes; each adds 1 per cycle.
+
+    Production-verified calibration (2026-08-27): the full lead chain counts
+    11 hook nodes -> est. 14 steps/cycle vs 14.1 measured (466 super-steps
+    over 33 model calls on thread d069999a).
+    """
     mw = RecursionGuardMiddleware()
     mw.set_extra_hook_nodes(4)
     runtime = _make_runtime(limit=100)
@@ -135,6 +144,41 @@ def test_cost_accounting_includes_extra_hook_nodes():
     assert mw._costs[("t-thread", "t-run")] == 2 + 4 + 1
     mw.after_model(_state_with_ai([], content="text"), runtime)
     assert mw._costs[("t-thread", "t-run")] == 2 + 4 + 1 + 2 + 4
+
+
+def test_read_true_step_returns_none_outside_graph_context():
+    """Direct hook calls (unit tests) have no runnable config -> fallback."""
+    assert RecursionGuardMiddleware._read_true_step() is None
+
+
+def test_exact_step_accounting_is_per_run_not_thread_cumulative(monkeypatch):
+    """langgraph_step is cumulative across a thread's checkpoint chain (a
+    continuation run resumes at the thread's current step, e.g. 466 after a
+    466-step first run — production thread d069999a), but recursion_limit is
+    a PER-INVOKE budget. Exact accounting must therefore baseline the first
+    observed step of each run and charge the delta, or every continuation
+    run would start with hundreds of steps already consumed."""
+    mw = RecursionGuardMiddleware()
+    key = ("t-thread", "t-run")
+    runtime = _make_runtime(limit=1000)
+
+    steps = iter([466, 480, 500])
+    monkeypatch.setattr(RecursionGuardMiddleware, "_read_true_step", staticmethod(lambda: next(steps)))
+    mw.after_model(_state_with_ai([_tc()]), runtime)
+    assert mw._costs[key] == 1  # 466 - 466 + 1
+    mw.after_model(_state_with_ai([_tc()]), runtime)
+    assert mw._costs[key] == 15  # 480 - 466 + 1
+    mw.after_model(_state_with_ai([_tc()]), runtime)
+    assert mw._costs[key] == 35  # 500 - 466 + 1
+
+    # A fresh run on the same thread baselines anew.
+    steps2 = iter([520, 530])
+    monkeypatch.setattr(RecursionGuardMiddleware, "_read_true_step", staticmethod(lambda: next(steps2)))
+    runtime2 = _make_runtime(thread_id="t-thread", run_id="t-run-2", limit=1000)
+    mw.after_model(_state_with_ai([_tc()]), runtime2)
+    assert mw._costs[("t-thread", "t-run-2")] == 1  # 520 - 520 + 1
+    mw.after_model(_state_with_ai([_tc()]), runtime2)
+    assert mw._costs[("t-thread", "t-run-2")] == 11  # 530 - 520 + 1
 
 
 def test_count_model_hook_nodes():
@@ -355,6 +399,108 @@ def test_e2e_short_run_untouched_by_guard():
     # The model never saw a guard reminder.
     for seen in model.seen_messages:
         assert not any(getattr(m, "name", None) == "recursion_guard_warning" for m in seen)
+
+
+class _StepSpyMiddleware(AgentMiddleware):
+    """Records the graph's true super-step (metadata.langgraph_step) at each
+    after_model, proving whether hooks can observe the real counter."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.steps: list[int | None] = []
+
+    @override
+    def after_model(self, state, runtime) -> dict | None:  # noqa: ANN001
+        from langgraph.config import get_config
+
+        try:
+            metadata = (get_config() or {}).get("metadata") or {}
+        except RuntimeError:
+            self.steps.append(None)
+            return None
+        self.steps.append(metadata.get("langgraph_step"))
+        return None
+
+
+def test_exact_step_mode_uses_langgraph_step_not_hook_count():
+    """Primary signal is the graph's true super-step counter, readable from
+    inside the model node — even when the builder-injected hook count is
+    wildly wrong (extension bloat, future topology changes), exact accounting
+    keeps the budget tied to real steps."""
+    captured: list[dict] = []
+    own_steps: list[int | None] = []
+
+    class _RecordingGuard(RecursionGuardMiddleware):
+        @override
+        def after_model(self, state, runtime) -> dict | None:  # noqa: ANN001
+            own_steps.append(self._read_true_step())
+            result = super().after_model(state, runtime)
+            with self._lock:
+                captured.append(dict(self._costs))
+            return result
+
+    responses = [AIMessage(content="", tool_calls=[{"name": "echo", "args": {"text": str(i)}, "id": f"call-{i}"}]) for i in range(5)]
+    responses.append(AIMessage(content="final answer"))
+    model = _ToolCallingFakeModel(responses=responses)
+    mw = _RecordingGuard()
+    mw.set_extra_hook_nodes(55)  # adversarial: 4x the real chain's 11
+    spy = _StepSpyMiddleware()
+    agent = create_agent(model, tools=[echo], middleware=[mw, spy])
+
+    context = {"thread_id": "e2e-x", "run_id": "e2e-x-r", "recursion_limit": 100}
+    agent.invoke({"messages": [HumanMessage(content="start")]}, config={"recursion_limit": 100}, context=context)
+
+    true_steps = [s for s in spy.steps if s is not None]
+    assert true_steps, "after_model must observe langgraph_step inside a real graph"
+    own_true = [s for s in own_steps if s is not None]
+    assert own_true, "the guard itself must read langgraph_step inside a real graph"
+    # after_agent clears per-run state, so assert on the in-run snapshot.
+    cost = captured[-1][("e2e-x", "e2e-x-r")]
+    # Exact mode: recorded cost == the per-run delta of the true super-steps
+    # observed at the guard's own node (steps are cumulative across a thread,
+    # the budget is per-run). Each after_model hook is its own super-step, so
+    # the guard's node may sit one step past the spy's — hence asserting
+    # against the guard's OWN observations, not the spy's.
+    assert cost == max(own_true) - min(own_true) + 1
+    assert max(own_true) >= max(true_steps)
+    # ...and nothing like the 58/cycle additive estimate (6 cycles -> 348).
+    assert cost < 6 * 10
+
+
+def test_budget_tracks_real_steps_even_with_miscalibrated_hook_count():
+    """Robustness against hook-count miscalibration: if the builder-injected
+    count ever overstates the chain (extension bloat, upstream topology
+    change), the additive estimate alone would strip a limit-30 run after its
+    FIRST tool cycle (2+55+1 = 58 >= hard_at 23). True-step accounting keeps
+    the strip point tied to the REAL step ceiling regardless of the injected
+    count. (For the record: the real lead chain counts 11 hook nodes and the
+    additive estimate matched production exactly at 14.1 steps/cycle — this
+    test pins the safety property, not a live miscalibration.)"""
+    calls: list[str] = []
+
+    @as_tool
+    def echo_tracked(text: str = "x") -> str:
+        """Echo the input text."""
+        calls.append(text)
+        return text
+
+    responses = [AIMessage(content="", tool_calls=[{"name": "echo_tracked", "args": {"text": str(i)}, "id": f"call-{i}"}]) for i in range(30)]
+    model = _ToolCallingFakeModel(responses=responses)
+    mw = RecursionGuardMiddleware()
+    mw.set_extra_hook_nodes(55)
+    agent = create_agent(model, tools=[echo_tracked], middleware=[mw])
+
+    context = {"thread_id": "e2e-i", "run_id": "e2e-i-r", "recursion_limit": 30}
+    result = agent.invoke({"messages": [HumanMessage(content="start")]}, config={"recursion_limit": 30}, context=context)
+
+    assert context.get("stop_reason") == "recursion_capped"
+    # Old behaviour stripped on cycle 1 (1 tool call); true steps (~2/cycle)
+    # allow roughly half the budget of real cycles before the strip.
+    assert len(calls) >= 5
+    last = result["messages"][-1]
+    assert isinstance(last, AIMessage)
+    assert not last.tool_calls
+    assert _HARD_STOP_MSG in last.content
 
 
 # ---------------------------------------------------------------------------
