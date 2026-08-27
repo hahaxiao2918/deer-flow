@@ -7,6 +7,9 @@ allowed-tools:
   - str_replace
   - present_files
   - patent-data_patent_search
+  - web_search
+  - web_fetch
+  - bash
 ---
 
 # Patent Search-Query Composition
