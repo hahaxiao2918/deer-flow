@@ -318,12 +318,12 @@ def _memory_retrieval_adapter_set(lines: list[str]) -> bool:
             if not value:
                 return False
             # ``fts5`` is upstream's built-in default adapter and ships in the
-            # harness core — no optional extra needed. Only dotted custom
-            # factories (e.g. the fastembed semantic adapter) pull the
-            # memory-retrieval extra.
-            if value == "fts5":
-                return False
-            return "." in value
+            # harness core, and ``openai_embedding_retrieval`` talks to a
+            # remote endpoint over core httpx — neither needs an optional
+            # extra. Only adapters that actually pull the fastembed package
+            # (the fastembed_retrieval factory) require the memory-retrieval
+            # extra.
+            return "fastembed" in value.lower()
     return False
 
 

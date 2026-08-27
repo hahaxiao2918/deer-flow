@@ -318,6 +318,18 @@ def test_memory_retrieval_extra_absent_when_adapter_empty_or_missing():
     no_backend = ["memory:", "  enabled: true", "  model_name: null"]
     assert detect._memory_retrieval_adapter_set(no_backend) is False
 
+
+def test_memory_retrieval_extra_absent_for_http_adapter():
+    """The OpenAI-compatible HTTP embedding adapter runs over core httpx —
+    configuring it must not pull the fastembed extra (it would force an
+    unnecessary model download + install in the gateway image)."""
+    lines = [
+        "memory:",
+        "  backend_config:",
+        "    retrieval_adapter: deerflow.memory_retrieval.openai_embedding_retrieval:create_retrieval",
+    ]
+    assert detect._memory_retrieval_adapter_set(lines) is False
+
     unrelated_backend = [
         "memory:",
         "  enabled: true",

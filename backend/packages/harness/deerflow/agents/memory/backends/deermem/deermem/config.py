@@ -75,13 +75,26 @@ class DeerMemConfig(BaseModel):
     )
     retrieval_model: str = Field(
         default="BAAI/bge-small-zh-v1.5",
-        description="Embedding model id passed to the retrieval adapter (fastembed hub id or local path). Only read by the adapter named in retrieval_adapter.",
+        description="Embedding model id passed to the retrieval adapter (fastembed hub id, or the API model name for HTTP adapters). Only read by the adapter named in retrieval_adapter.",
     )
     retrieval_cache_dir: str = Field(
         default="",
         description=(
             "Optional cache directory for the retrieval adapter (embedding model weights, vector index persistence). Empty = adapter default (~/.cache/deerflow-memory-retrieval). Only read by the adapter named in retrieval_adapter."
         ),
+    )
+    retrieval_base_url: str = Field(
+        default="",
+        description="Base URL of an OpenAI-compatible embeddings endpoint (e.g. https://host/v1); the adapter appends /embeddings. Only read by HTTP-based adapters (openai_embedding_retrieval). '$VAR' values resolve from the environment.",
+    )
+    retrieval_api_key: str = Field(
+        default="",
+        description="Bearer token for the embeddings endpoint. Only read by HTTP-based adapters (openai_embedding_retrieval). '$VAR' values resolve from the environment.",
+    )
+    retrieval_dimensions: int = Field(
+        default=0,
+        ge=0,
+        description="Embedding dimensionality requested from the endpoint (OpenAI 'dimensions' field). 0 = endpoint default. Only read by HTTP-based adapters (openai_embedding_retrieval).",
     )
     # ── Queue ────────────────────────────────────────────────────────────
     debounce_seconds: int = Field(

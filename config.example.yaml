@@ -1877,9 +1877,12 @@ memory:
     strict_user_scope: false    # set true in authenticated deployments after all callers propagate user_id
     manifest_filename: memory.json # user-global JSON: version/revision/time + user/history only; no facts or fact index
     file_lock_timeout_seconds: 10 # per-scope cross-process advisory lock timeout (single-machine local filesystem)
-    retrieval_adapter: fts5     # fts5 (default), empty to disable, or a dotted RetrievalPort factory(config); built-in semantic option: deerflow.memory_retrieval.fastembed_retrieval.create_retrieval (requires the memory-retrieval uv extra)
-    retrieval_model: BAAI/bge-small-zh-v1.5 # embedding model id for the fastembed adapter (in-process ONNX, no external API)
-    retrieval_cache_dir: ""     # empty = adapter default (~/.cache/deerflow-memory-retrieval); point at a persistent dir (e.g. .deer-flow/memory-retrieval-cache) so model weights survive container restarts
+    retrieval_adapter: fts5     # fts5 (default), empty to disable, or a dotted RetrievalPort factory(config); built-in semantic option: deerflow.memory_retrieval.fastembed_retrieval.create_retrieval (requires the memory-retrieval uv extra); HTTP option: deerflow.memory_retrieval.openai_embedding_retrieval.create_retrieval (OpenAI-compatible endpoint, no extra)
+    retrieval_model: BAAI/bge-small-zh-v1.5 # embedding model id: fastembed hub id (fastembed adapter) or API model name (openai_embedding adapter)
+    retrieval_cache_dir: ""     # empty = adapter default (~/.cache/deerflow-memory-retrieval); point at a persistent dir (e.g. .deer-flow/memory-retrieval-cache) so model weights survive container restarts (fastembed adapter only)
+    # retrieval_base_url: https://host/v1  # openai_embedding adapter: base URL; the adapter appends /embeddings ($VAR resolved)
+    # retrieval_api_key: $MY_EMBEDDING_API_KEY  # openai_embedding adapter: bearer token ($VAR resolved)
+    # retrieval_dimensions: 1024  # openai_embedding adapter: request this dimensionality; 0 = endpoint default
     debounce_seconds: 30 # Wait time before processing queued updates
     # Backpressure cap on pending items. 0 = unlimited. At the cap, new
     # non-signal updates are rejected (QueueFull); signal updates are always
