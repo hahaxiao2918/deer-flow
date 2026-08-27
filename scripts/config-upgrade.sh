@@ -43,7 +43,21 @@ else
     EXAMPLE_WIN="$EXAMPLE"
 fi
 
-cd "$REPO_ROOT/backend" && CONFIG_WIN_PATH="$CONFIG_WIN" EXAMPLE_WIN_PATH="$EXAMPLE_WIN" python3 -c "
+# Some hosts have a broken python3 but a working python (or vice versa); probe
+# both for a PyYAML-capable interpreter instead of assuming python3.
+PY_BIN=""
+for _py in python3 python; do
+    if command -v "$_py" >/dev/null 2>&1 && "$_py" -c "import yaml" >/dev/null 2>&1; then
+        PY_BIN="$_py"
+        break
+    fi
+done
+if [ -z "$PY_BIN" ]; then
+    echo "✗ No python3/python with PyYAML available for config merge"
+    exit 1
+fi
+
+cd "$REPO_ROOT/backend" && CONFIG_WIN_PATH="$CONFIG_WIN" EXAMPLE_WIN_PATH="$EXAMPLE_WIN" "$PY_BIN" -c "
 import os
 import sys, shutil, copy, re
 from pathlib import Path

@@ -55,11 +55,12 @@ three-branch flow:
   `codex/shanghai-electric` is retired and survives only at archive tag
   `archive/shanghai-electric-pre-convergence-20260722`; it is not a development,
   sync, or release target.
-- **Branding ownership** — the root route redirects to `/login`. The branded
-  login experience is owned by `frontend/src/app/(auth)/login/page.tsx`; brand
-  images live under `frontend/public/images/branding/`. Do not restore the
-  original public landing page or replace Shanghai Electric identity without a
-  user request.
+- **Branding ownership** — the root route redirects to `/loginsso` (数字底座
+  SSO interception; local password login is preserved at `/login` as
+  break-glass). The branded login experience is owned by
+  `frontend/src/app/(auth)/login/page.tsx`; brand images live under
+  `frontend/public/images/branding/`. Do not restore the original public
+  landing page or replace Shanghai Electric identity without a user request.
 - **Secrets and runtime state** — never commit tokens, `.env`,
   `extensions_config.json`, or `.deer-flow` data. In particular, the local
   `github token.md` is intentionally ignored. Docker builds from the current

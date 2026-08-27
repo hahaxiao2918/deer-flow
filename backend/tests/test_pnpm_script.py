@@ -120,7 +120,10 @@ def test_official_entrypoints_route_pnpm_through_shared_runner():
     assert "PNPM = $(PYTHON) ../scripts/pnpm.py" in frontend_makefile
     assert '"$DEERFLOW_PNPM_PYTHON" "$DEERFLOW_PNPM_RUNNER" install --silent' in serve_script
     assert 'DEERFLOW_PNPM_RUNNER="$REPO_ROOT/scripts/pnpm.py"' in serve_script
-    assert 'FRONTEND_CMD=\'env PORT=3000 "$DEERFLOW_PNPM_PYTHON" "$DEERFLOW_PNPM_RUNNER" run dev\'' in serve_script
+    # Distribution: the local dev frontend runs on the high FRONTEND_PORT
+    # (default 13000), not upstream's 3000 — the port is exported so run_service's
+    # `sh -c` child shell can expand it.
+    assert 'FRONTEND_CMD=\'env PORT=$FRONTEND_PORT "$DEERFLOW_PNPM_PYTHON" "$DEERFLOW_PNPM_RUNNER" run dev\'' in serve_script
     assert '"\\$DEERFLOW_PNPM_RUNNER\\" run preview"' in serve_script
     assert 'Path(__file__).resolve().with_name("pnpm.py")' in doctor_script
     assert 'project_root / "scripts" / "pnpm.py"' in support_bundle_script

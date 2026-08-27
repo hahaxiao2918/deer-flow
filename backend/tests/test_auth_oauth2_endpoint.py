@@ -265,3 +265,39 @@ def test_resolve_oauth2_redirect_uri_falls_back_to_origin():
     req.headers = {"host": "ipd.nebula-starlink.shanghai-electric.com"}
     # _request_origin reads forwarded headers; with none it falls back to host
     assert _resolve_oauth2_redirect_uri(req, cfg).endswith("/loginsso")
+
+
+def test_oauth2_callback_revalidates_state_next_path_as_defense_in_depth(monkeypatch):
+    """The signed state cookie's next_path is validated at /start before it is
+    written, but mirror the OIDC callback's defense-in-depth re-check: anything
+    that is not a safe relative path (tampered cookie, future state writer)
+    must fall back to /workspace instead of being used verbatim."""
+    from app.gateway.auth.oauth2_state import OAuth2StatePayload, _cookie_name, _sign
+
+    cfg = _oauth2_cfg()
+    service = MagicMock()
+    service.authenticate_callback = AsyncMock(return_value=_fake_identity())
+    user = User(email="u@example.com", password_hash=None, system_role="user", oauth_provider="ipd", oauth_id="1")
+    local_provider = MagicMock()
+    local_provider.get_user_by_oauth = AsyncMock(return_value=user)
+    client = _client(monkeypatch, cfg, service=service, local_provider=local_provider)
+
+    for evil in ("https://evil.example.com/phish", "//evil.example.com", "/a\\b", "javascript:alert(1)"):
+        signed = _sign(OAuth2StatePayload(provider="ipd", nonce="n", next_path=evil))
+        resp = client.get(
+            "/api/v1/auth/oauth2/ipd/callback?code=C&tenant-id=1&organize-id=100",
+            cookies={_cookie_name("ipd"): signed},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302, evil
+        assert resp.headers["location"].endswith("next=/workspace"), (evil, resp.headers["location"])
+
+    # A genuinely safe next_path from a real /start flow still passes through.
+    signed = _sign(OAuth2StatePayload(provider="ipd", nonce="n", next_path="/workspace/blog"))
+    resp = client.get(
+        "/api/v1/auth/oauth2/ipd/callback?code=C&tenant-id=1&organize-id=100",
+        cookies={_cookie_name("ipd"): signed},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["location"].endswith("next=/workspace/blog")

@@ -80,8 +80,7 @@ class DeerMemConfig(BaseModel):
     retrieval_cache_dir: str = Field(
         default="",
         description=(
-            "Optional cache directory for the retrieval adapter (embedding model weights, vector index persistence). "
-            "Empty = adapter default (~/.cache/deerflow-memory-retrieval). Only read by the adapter named in retrieval_adapter."
+            "Optional cache directory for the retrieval adapter (embedding model weights, vector index persistence). Empty = adapter default (~/.cache/deerflow-memory-retrieval). Only read by the adapter named in retrieval_adapter."
         ),
     )
     # ── Queue ────────────────────────────────────────────────────────────

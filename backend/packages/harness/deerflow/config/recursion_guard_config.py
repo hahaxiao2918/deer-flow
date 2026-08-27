@@ -34,5 +34,9 @@ class RecursionGuardConfig(BaseModel):
     hard_margin: int = Field(
         default=10,
         ge=1,
-        description="Hard-stop margin: tool_calls are stripped at ``limit - hard_margin`` estimated steps (never below warn+1). The effective margin is ``max(hard_margin, chain_hook_nodes + 4)`` so the post-strip tail (remaining after_model hook nodes in the same cycle + END routing) always fits before LangGraph's hard error.",
+        description=(
+            "Hard-stop margin: tool_calls are stripped at ``limit - hard_margin`` estimated steps (never below warn+1)."
+            " The effective margin is ``max(hard_margin, chain_hook_nodes + 4)`` so the post-strip tail"
+            " (remaining after_model hook nodes in the same cycle + END routing) always fits before LangGraph's hard error."
+        ),
     )

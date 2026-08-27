@@ -460,7 +460,7 @@ def test_captured_subagent_message_survives_task_running_conversion():
     assert event["content"]["task_id"] == "task-1"
     assert event["content"]["message_index"] == 0
     assert event["content"]["text"] == "searching"
-    assert event["content"]["tool_calls"] == [{"name": "web_search", "args": {"query": "deerflow"}}]
+    assert event["content"]["tool_calls"] == [{"id": "call-1", "name": "web_search", "args": {"query": "deerflow"}}]
     _assert_fixed_event_valid(event)
 
 

@@ -314,7 +314,16 @@ def _memory_retrieval_adapter_set(lines: list[str]) -> bool:
             continue
         match = re.fullmatch(r"retrieval_adapter:\s*(\S.*)", stripped)
         if match:
-            return bool(match.group(1).strip().strip("'\""))
+            value = match.group(1).strip().strip("'\"")
+            if not value:
+                return False
+            # ``fts5`` is upstream's built-in default adapter and ships in the
+            # harness core — no optional extra needed. Only dotted custom
+            # factories (e.g. the fastembed semantic adapter) pull the
+            # memory-retrieval extra.
+            if value == "fts5":
+                return False
+            return "." in value
     return False
 
 

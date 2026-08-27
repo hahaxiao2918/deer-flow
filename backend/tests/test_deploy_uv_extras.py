@@ -105,6 +105,8 @@ def test_deploy_build_auto_detects_postgres_extra_when_other_extras_are_enabled(
     )
     (worktree / "extensions_config.json").write_text('{"mcpServers":{},"skills":{}}\n', encoding="utf-8")
     (worktree / ".env").write_text("", encoding="utf-8")
+    # deploy.sh's config preflight runs config-upgrade against this template.
+    shutil.copy(REPO_ROOT / "config.example.yaml", worktree / "config.example.yaml")
 
     capture = tmp_path / "uv_extras.txt"
     bin_dir = tmp_path / "bin"
@@ -145,6 +147,8 @@ def test_deploy_uses_dotenv_without_sourcing_shell_syntax(tmp_path):
     )
     (worktree / "extensions_config.json").write_text('{"mcpServers":{},"skills":{}}\n', encoding="utf-8")
     marker = tmp_path / "sourced-marker"
+    # deploy.sh's config preflight runs config-upgrade against this template.
+    shutil.copy(REPO_ROOT / "config.example.yaml", worktree / "config.example.yaml")
     (worktree / ".env").write_text(
         f"DATABASE_URL=postgresql://user:pass@localhost/db?sslmode=require&application_name=deer\nUNSAFE=$(touch {shlex.quote(str(marker))})\nUV_EXTRAS=discord\n",
         encoding="utf-8",
@@ -205,6 +209,8 @@ def test_deploy_build_auto_detects_postgres_extra_with_python_fallback(tmp_path)
     )
     docker.chmod(0o755)
     (worktree / ".env").write_text("", encoding="utf-8")
+    # deploy.sh's config preflight runs config-upgrade against this template.
+    shutil.copy(REPO_ROOT / "config.example.yaml", worktree / "config.example.yaml")
     python3 = bin_dir / "python3"
     python3.write_text("#!/usr/bin/env sh\nexit 1\n", encoding="utf-8")
     python3.chmod(0o755)

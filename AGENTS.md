@@ -2,316 +2,98 @@
 
 This file provides guidance to AI coding agents (Claude Code, Codex, and others) when working with code in this repository. It is the source of truth; the sibling `CLAUDE.md` imports it via `@AGENTS.md`.
 
-It is the **monorepo orientation layer**: it maps the whole repo and points to the
-module guides that own the depth. For anything inside a module, read that module's
-guide rather than expecting full detail here:
+It is the **monorepo orientation layer**: it maps the repo and points to the module guides that own the depth. For anything inside a module, read that module's guide:
 
-- **[backend/AGENTS.md](backend/AGENTS.md)** — backend depth: harness/app split, agent &
-  middleware chain, sandbox, MCP, skills, memory, IM channels, persistence/migrations,
-  config system, test layout.
-- **[frontend/AGENTS.md](frontend/AGENTS.md)** — frontend depth: Next.js App Router layout,
-  thread/streaming data flow, code style, commands.
+- **[backend/AGENTS.md](backend/AGENTS.md)** — harness/app split, agent & middleware chain, sandbox, MCP, skills, memory, IM channels, persistence/migrations, config system, test layout.
+- **[frontend/AGENTS.md](frontend/AGENTS.md)** — Next.js App Router layout, thread/streaming data flow, code style, commands.
 
 ## What is DeerFlow
 
-DeerFlow is a LangGraph-based AI super-agent system with a full-stack architecture. The
-backend runs a "super agent" with sandboxed execution, persistent memory, subagent
-delegation, and extensible tools (built-in, MCP, community), all per-thread isolated. The
-frontend is a Next.js chat UI. External IM platforms (Feishu, Slack, Telegram, Discord,
-DingTalk) bridge into the same agent through the Gateway.
+DeerFlow is a LangGraph-based AI super-agent system: a backend "super agent" with sandboxed execution, persistent memory, subagent delegation, and extensible tools (built-in, MCP, community), all per-thread isolated; a Next.js chat frontend; and IM bridges (Feishu, Slack, Telegram, Discord, DingTalk) into the same agent through the Gateway.
 
 ## Service Topology
 
 A single `make dev` / Docker stack runs four cooperating services:
 
-| Service         | Port                                                              | Role                                                                 |
-| --------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
-| **Nginx**       | `12026` (`make dev`); `2026` (Docker)                            | Unified reverse-proxy entry point — open this in the browser        |
-| **Gateway API** | `18001` (`make dev`); `8001` (Docker)                            | FastAPI REST API + embedded LangGraph-compatible agent runtime      |
-| **Frontend**    | `13000` (`make dev`); `3000` (Docker)                            | Next.js web interface                                               |
-| **Provisioner** | `8002`                                                            | Optional — only when sandbox is configured for provisioner/K8s mode |
+| Service         | Port (`make dev`; Docker) | Role                                                                |
+| --------------- | ------------------------- | ------------------------------------------------------------------- |
+| **Nginx**       | `12026`; `2026`           | Unified reverse-proxy entry — open this in the browser               |
+| **Gateway API** | `18001`; `8001`           | FastAPI REST API + embedded LangGraph-compatible agent runtime       |
+| **Frontend**    | `13000`; `3000`           | Next.js web interface                                                |
+| **Provisioner** | `8002`                    | Optional — only when sandbox is configured for provisioner/K8s mode  |
 
-Nginx is the single public entry: it serves the frontend and proxies `/api/langgraph/*`
-to the Gateway's LangGraph runtime, rewriting it to Gateway's native `/api/*` routes; all
-other `/api/*` go straight to the Gateway REST routers. See
-[backend/AGENTS.md](backend/AGENTS.md) for the runtime and router detail.
-It compresses HTML and configured textual assets, while deliberately leaving SSE,
-fonts, images, audio, and video uncompressed at the proxy layer.
+Nginx serves the frontend, proxies `/api/langgraph/*` to the Gateway's LangGraph runtime (rewritten to native `/api/*` routes), and passes other `/api/*` straight to the Gateway REST routers (detail in [backend/AGENTS.md](backend/AGENTS.md)). It compresses HTML and configured textual assets, deliberately leaving SSE, fonts, images, audio, and video uncompressed at the proxy layer.
 
-Both compose files publish that entry as `"${BIND_HOST:-127.0.0.1}:${PORT:-2026}:2026"`
-— **loopback by default**, matching the README's documented deployment model. A bare
-`"${PORT}:2026"` binds `0.0.0.0`, which does not.
-The root `PORT` value is Docker ingress configuration only; local orchestration pins
-Next.js to `3000` so loading `.env` cannot make `make dev` wait on the wrong port.
-Nginx itself listens `default_server` on IPv4+IPv6 and the
-Gateway binds `0.0.0.0:8001` inside the container on purpose — both are container-
-internal; the published nginx port is the entire external surface, and the Gateway's
-`8001` is deliberately not published. Any new published port needs an explicit bind
-address; `backend/tests/test_compose_default_bind_host.py` pins this for every service
-in both compose files.
+Both compose files publish the entry as `"${BIND_HOST:-127.0.0.1}:${PORT:-2026}:2026"` — **loopback by default**; a bare `"${PORT}:2026"` binds `0.0.0.0`. The root `PORT` value is Docker ingress only; local orchestration pins Next.js to `13000` (`FRONTEND_PORT` in `scripts/serve.sh`), so loading `.env` cannot make `make dev` wait on the wrong port. Any new published port needs an explicit bind address — `backend/tests/test_compose_default_bind_host.py` pins this for every service in both compose files.
 
-For the current local `make dev` setup, browse to `http://localhost:12026`.
-Production and Docker Compose continue to expose `http://localhost:2026` by default.
+Local `make dev`: browse to `http://localhost:12026`. Docker/production: `http://localhost:2026`.
 
 ## Repository Map
 
 ```
 deer-flow/
-├── Makefile                        # Root orchestration: drives the full stack (dev/start/stop, docker, setup)
+├── Makefile / scripts/             # Root orchestration: full stack + configure/doctor/deploy/setup wizards
 ├── config.example.yaml             # Template → copy to config.yaml (gitignored) at repo root
-├── extensions_config.example.json  # Template → copy to extensions_config.json (gitignored): MCP servers + skills
-├── backend/                        # Python backend — see backend/AGENTS.md
-│   ├── Makefile                    # Per-module backend commands (dev, gateway, test, lint, migrate-rev)
-│   ├── extensions/sources/         # Deployable snapshots of locally installed Python extensions
-│   ├── packages/extension-api/     # deerflow-extension-api package (import: deerflow_extension_api.*) — public extension contract
-│   ├── packages/harness/           # deerflow-harness package (import: deerflow.*) — agent framework
-│   └── app/                        # FastAPI Gateway + IM channels (import: app.*)
-├── frontend/                       # Next.js frontend (pnpm) — see frontend/AGENTS.md
-├── docker/                         # docker-compose files, nginx config, provisioner
-├── skills/                         # Agent skills: public/ (committed), custom/ (gitignored)
-│                                    # Managed integration skill packs are global at .deer-flow/integrations/skills/{provider}/
-│                                    # Integration credentials and enabled state remain per-user
-├── contracts/                      # Cross-component JSON contracts (e.g. subagent status, skill review)
-├── examples/deerflow-extension-example/ # Standalone package demonstrating all extension contribution kinds
-├── scripts/                        # Root orchestration scripts invoked by the Makefile (check, configure, doctor, support_bundle, serve, nginx, docker, deploy, setup_wizard)
-├── tests/                          # Root-level tests (currently tests/skills/ — public skill tests)
-└── docs/                           # Cross-cutting docs, plans, and design notes
+├── extensions_config.example.json  # Template → extensions_config.json (gitignored): MCP servers + skills
+├── backend/                        # Python: packages/harness (deerflow.*), packages/extension-api, app/ (Gateway + IM)
+├── frontend/                       # Next.js frontend (pnpm)
+├── docker/                         # compose files, nginx config, provisioner
+├── skills/                         # public/ (committed), custom/ (gitignored); managed packs in .deer-flow/integrations/skills/
+├── contracts/                      # Cross-component JSON contracts (subagent status, skill review)
+├── examples/deerflow-extension-example/  # Reference extension demonstrating all contribution kinds
+├── tests/                          # Root-level tests (tests/skills/ — public skill tests)
+└── docs/                           # Cross-cutting docs, plans, design notes
 ```
 
-Third-party extensions are loaded from a top-level `plugins:` list in `config.yaml`
-(operator-controlled on purpose — that list causes code to be imported, so it is deliberately
-kept out of the API-writable `extensions_config.json`). Packaged extensions can contribute
-middleware, task lifecycle, system-model observers, Gateway services, and FastAPI HTTP
-routers; the [reference extension](examples/deerflow-extension-example/) demonstrates all
-five. Manage them with `deerflow extensions install/list/enable/disable/remove` or the root
-`make extension-*` wrappers. Every mutation requires a Gateway restart, and both build
-hooks and extension code execute with Gateway privileges, so only trusted operator sources
-belong in this path. The manager transaction, accepted source forms, lock discipline, and
-contribution contract live in
-[the extensions guide](backend/packages/harness/deerflow/extensions/AGENTS.md).
+Third-party extensions load from the top-level `plugins:` list in `config.yaml` — operator-controlled on purpose: that list causes code to be imported, so it stays out of the API-writable `extensions_config.json`. Extensions can contribute middleware, task lifecycle, system-model observers, Gateway services, and FastAPI HTTP routers; manage them with `deerflow extensions ...` or the `make extension-*` wrappers. Every mutation requires a Gateway restart, and build hooks + extension code run with Gateway privileges — only trusted operator sources belong here. Transaction/lock discipline and the contribution contract: [the extensions guide](backend/packages/harness/deerflow/extensions/AGENTS.md).
 
-Runtime config lives at the **repo root**: copy `config.example.yaml` → `config.yaml`
-(main app config) and `extensions_config.example.json` → `extensions_config.json` (MCP
-servers + skills). Both real files are gitignored and may be edited at runtime via the
-Gateway API. Config schema and resolution order are documented in
-[backend/AGENTS.md](backend/AGENTS.md).
+Runtime config lives at the repo root: `config.yaml` (main app) + `extensions_config.json` (MCP servers + skills), both editable at runtime via the Gateway API. Config schema and resolution order: [backend/AGENTS.md](backend/AGENTS.md).
 
-Skill quality review note:
-- `skills/public/skill-reviewer/` is the built-in read-only skill quality reviewer.
-  It uses the harness-layer `review_skill_package` tool and contracts in
-  `contracts/skill_review/`. Model-visible review data is compact and
-  tag-neutralized; full raw payloads stay in tool artifacts. See
-  [backend/AGENTS.md](backend/AGENTS.md) for the non-activation, SkillScan, and
-  `skill-creator` ownership boundaries.
+Skill quality review: `skills/public/skill-reviewer/` is the built-in read-only reviewer (harness `review_skill_package` tool, contracts in `contracts/skill_review/`); see backend/AGENTS.md for the non-activation, SkillScan, and `skill-creator` ownership boundaries.
 
-Scheduled-task note:
-- The scheduled-task MVP adds a workspace page at `/workspace/scheduled-tasks` plus a background scheduler service gated by `config.yaml -> scheduler.enabled`.
-- Scheduled background runs are intentionally non-interactive: they execute through the normal run lifecycle, but the lead-agent toolset excludes `ask_clarification` when `context.non_interactive=true`. The key is honored only for internally-authenticated callers (the scheduler launch path); client-supplied `context.non_interactive` is dropped.
-- Busy scheduled occurrences are persisted as `queued`; `launching` is a short lease-fenced claim, `running` remains the normal Gateway run lifecycle, and `scheduler.queue_timeout_seconds` bounds the durable wait. Do not reintroduce skip-on-overlap or count waiting rows against `max_concurrent_runs`.
-- Scheduled launches use `scheduler.recursion_limit` (default 1000, matching the web UI's `recursion_limit: 1000`, clamped by `max_recursion_limit`). The value is read at dispatch, so a YAML edit applies to the next scheduled run without a Gateway restart.
+Scheduled tasks: workspace page `/workspace/scheduled-tasks` + background scheduler gated by `config.yaml -> scheduler.enabled`. Scheduled runs are intentionally non-interactive — `ask_clarification` is excluded when `context.non_interactive=true`, honored only for internally-authenticated callers (client-supplied values are dropped). Busy occurrences persist as `queued`; `launching` is a short lease-fenced claim; waiting rows never count against `max_concurrent_runs`. `scheduler.recursion_limit` (default 1000, clamped by `max_recursion_limit`) is read at dispatch, so a YAML edit applies to the next scheduled run without a Gateway restart.
 
 ## Commands: Root vs. Module
 
-**Root `make` targets drive the whole stack** (run from the repo root):
+**Root `make` targets drive the whole stack** (from the repo root): `make setup` (interactive wizard) · `make config` (copy templates) · `make install` · `make dev` (hot-reload) · `make start` / `make stop` · `make up` / `make down` (production Docker) · `make docker-start` / `docker-stop` / `docker-logs` (Docker dev) · `make doctor` · `make check` · `make support-bundle` · `make config-upgrade` · `make extension-{install,list,enable,disable,remove}`. Full list: `make help`.
+
+First-time setup order: `make config` → `make install` → `make dev`. Without `config.yaml` present, services fail to boot.
+
+**Per-module commands** (run inside the module):
 
 ```bash
-make setup       # Interactive setup wizard (recommended for new users)
-make doctor      # Check configuration and system requirements
-make support-bundle  # Generate redacted troubleshooting summary, AI issue draft, and optional zip
-make config      # Generate local config files from the examples
-make check       # Check that required tools are installed
-make install     # Install all dependencies (frontend + backend + pre-commit hooks)
-make extension-install SOURCE=...  # Install and enable a trusted Python extension
-make extension-list                # List configured Python extensions
-make extension-enable NAME=...     # Enable an installed extension (restart required)
-make extension-disable NAME=...    # Disable without uninstalling (restart required)
-make extension-remove NAME=...     # Remove package and config entry (restart required)
-make dev         # Start all services with hot-reload (Gateway + Frontend + Nginx)
-make start       # Start all services in production mode (local, optimized)
-make stop        # Stop all running services
-make up / down   # Build/stop the production Docker stack (browser at localhost:2026)
-make docker-start / docker-stop / docker-logs   # Docker development environment
-```
-
-Production startup uses the image's pre-built Python environment with `uv run
---no-sync`, gives the Gateway a real `/health` probe, and makes `make up` wait
-for that probe before printing its success banner. A readiness failure must
-surface Compose status and recent Gateway logs instead of claiming the stack is
-running.
-
-Docker log and restart commands resolve `DEER_FLOW_ROOT` from the current
-checkout before invoking Compose, matching the start and stop commands.
-
-Run `make help` for the full list.
-
-**Per-module commands drive a single module** (run inside that module):
-
-```bash
-# Backend (see backend/AGENTS.md for the full set)
 cd backend && make dev        # Gateway API with reload (port 8001)
 cd backend && make test       # Backend test suite
-cd backend && make lint       # ruff check
-cd backend && make format     # ruff format
+cd backend && make lint       # ruff check; make format to fix
 
-# Frontend (see frontend/AGENTS.md for the full set)
 cd frontend && pnpm dev       # Dev server with Turbopack (port 3000)
 cd frontend && pnpm check     # Lint + type check (run before committing)
 cd frontend && pnpm test      # Unit tests
 ```
 
-Rule of thumb: **root `make` = the full application**; **`backend/Makefile` and `frontend/`
-(`pnpm`) = per-module work.**
+**Single test**: backend `cd backend && python -m pytest tests/path/test.py::test_func -q`; frontend `cd frontend && pnpm rstest run <pattern>`.
 
-Host-side pnpm consumers, including the root/frontend Makefiles and local diagnostic scripts, must run through `scripts/pnpm.py`. Diagnostic scripts resolve the runner and frontend directory to absolute paths before changing the child process working directory, so they remain independent of the caller's current directory. The runner preserves direct `pnpm`/`pnpm.cmd` priority, falls back to `corepack pnpm`, and is invoked from `frontend/` so Corepack honors the package-manager version pinned by that project.
+**Logs**: Docker stack — `make docker-logs`. Local `make dev` — per-service panes; Turbopack errors surface in the browser console, backend tracebacks in the Gateway terminal.
 
-### Prerequisites before `make dev`
+Production startup uses the image's pre-built Python environment (`uv run --no-sync`), gives the Gateway a real `/health` probe, and makes `make up` wait for that probe before printing success — a readiness failure must surface Compose status and recent Gateway logs instead of claiming the stack is running.
 
-`make dev` does **not** generate config files. First-time setup order:
-
-```bash
-make config      # copy config.example.yaml -> config.yaml and extensions_config.example.json -> extensions_config.json (both gitignored)
-make install     # install frontend + backend deps and pre-commit hooks
-make dev         # then start everything
-```
-
-Without `config.yaml` present, services fail to boot. `config.yaml` / `extensions_config.json`
-may be edited at runtime via the Gateway API but are gitignored, so never commit them.
-
-### Run a single test
-
-```bash
-# Backend (pytest); run one file or one test function
-cd backend && python -m pytest tests/test_compose_default_bind_host.py -q
-cd backend && python -m pytest tests/path/to/test.py::test_func -q
-
-# Frontend (rstest)
-cd frontend && pnpm rstest run <pattern>     # e.g. pnpm rstest run my-component
-```
-
-### Logs
-
-- Docker stack: `make docker-logs` (or `docker compose -f docker/... logs -f <svc>`).
-- Local `make dev`: each service logs to its own terminal pane. Frontend Turbopack
-  errors surface in the browser console at `localhost:3000`; backend tracebacks appear
-  in the Gateway terminal.
+Rule of thumb: **root `make` = the full application**; **backend/Makefile and frontend `pnpm` = per-module work**. Host-side pnpm consumers (root/frontend Makefiles, diagnostic scripts) must run through `scripts/pnpm.py` — it preserves direct-pnpm/corepack resolution and keeps diagnostic scripts independent of the caller's cwd.
 
 ## Where to Go Next
 
-- Backend work → **[backend/AGENTS.md](backend/AGENTS.md)**
-- Frontend work → **[frontend/AGENTS.md](frontend/AGENTS.md)**
-- Setup & install → **[Install.md](Install.md)**, **[CONTRIBUTING.md](CONTRIBUTING.md)**
-- Project overview & usage → **[README.md](README.md)** (Shanghai Electric distribution).
-  The upstream bytedance/deer-flow original README and its translations (`README_zh.md`,
-  `README_ja.md`, `README_fr.md`, `README_ru.md`) are archived under
-  [`.readme-archive/`](.readme-archive/ARCHIVE_NOTE.md) — AI-agent reference only, not
-  user-facing docs.
-- Security policy → **[SECURITY.md](SECURITY.md)**
-- Changes → **[CHANGELOG.md](CHANGELOG.md)**
-- Cutting a release → **[RELEASING.md](RELEASING.md)**
-
-## Cross-Cutting Conventions
-
-These apply repo-wide; module guides own the module-specific detail.
+- Backend work → **[backend/AGENTS.md](backend/AGENTS.md)**; Frontend work → **[frontend/AGENTS.md](frontend/AGENTS.md)**
+- Setup & install → [Install.md](Install.md), [CONTRIBUTING.md](CONTRIBUTING.md)
+- Project overview & usage → [README.md](README.md) (Shanghai Electric distribution; upstream READMEs archived under [.readme-archive/](.readme-archive/ARCHIVE_NOTE.md) — AI reference only)
+- Security policy → [SECURITY.md](SECURITY.md); changes → [CHANGELOG.md](CHANGELOG.md); releases → [RELEASING.md](RELEASING.md)
 
 ## Shanghai Electric Distribution and Upstream Sync
 
-This checkout is the Shanghai Electric distribution of DeerFlow. It uses a
-three-branch flow:
+This checkout is the Shanghai Electric distribution; the full operational guide is [docs/shanghai-electric-distribution.md](docs/shanghai-electric-distribution.md). Non-negotiable summary:
 
-- `main` — pristine upstream mirror; tracks `upstream/main` and receives ONLY
-  official upstream updates (no 二开 lands here). `git diff main..codex/prod-canonical`
-  is the pure customization delta.
-- `codex/prod-canonical` (the "prod" branch) — the long-lived customization and
-  production trunk; this is what the deploy host (starl-38) runs.
-- feature branches — short-lived, branched off `codex/prod-canonical`, merged
-  back only after the full regression passes.
-
-- **Remotes** — `origin` is the writable Fork (`hahaxiao2918/deer-flow`).
-  `upstream` is the read-only `bytedance/deer-flow` source. Never change remote
-  URLs or force-push without explicit user approval. The local `upstream`
-  push URL is deliberately disabled; always push enterprise changes only to
-  `origin`.
-- **Update workflow** — when the user asks to update, synchronize upstream, or
-  continue maintenance, the agent owns the full workflow without asking the
-  user to run commands: fetch `upstream`, fast-forward `main` to `upstream/main`
-  and push `main` to `origin`/`gitea`, then merge `main` into
-  `codex/prod-canonical` (never piecemeal cherry-pick; merge, never rebase),
-  retain local customizations while resolving conflicts, run the full
-  regression (`cd backend && make test`; `cd frontend && pnpm install && pnpm
-  check`) and do not push until it is green — `pnpm check` (lint + tsc) does NOT
-  catch stale `node_modules` or unresolvable CSS/package imports, so `pnpm
-  install` must run after any merge that touches `frontend/package.json` (and
-  `make test`'s `uv run` auto-syncs backend deps). Also restart the local dev
-  gateway (`make stop && make dev`) after a merge that changes harness code
-  (`packages/harness/`) — `uvicorn --reload` watches only `backend/app/`, not the
-  editable harness package, so agent/middleware/skill changes are NOT hot-reloaded
-  and a stale gateway will keep running pre-merge code — upstream routinely
-  changes shared classes (agent middleware, mcp, skill policy) that local code
-  depends on — then commit, push
-  `codex/prod-canonical` to `origin`, and rebuild the local Docker stack from
-  the repository root with `./scripts/deploy.sh`.
-  Never replace this checkout with a fresh upstream clone or use
-  `reset --hard` to update it. Ask the user only when a new credential,
-  permission, external approval, or a genuinely product-defining conflict is
-  required; report all other outcomes after completing the work.
-- **Branch discipline** — `codex/prod-canonical` (prod) is the deployment and
-  integration trunk; keep `origin`, `gitea`, and the deploy host on the same
-  prod SHA. `main` stays a pristine upstream mirror (upstream-only). Develop
-  each discrete feature (e.g. SSO) on a short branch off `codex/prod-canonical`
-  and merge it back only after the full regression passes — never push
-  half-finished work to prod, and never land 二开 on `main`.
-  `codex/shanghai-electric` is retired and survives only at archive tag
-  `archive/shanghai-electric-pre-convergence-20260722`; it is not a development,
-  sync, or release target.
-- **Branding ownership** — the root route redirects to `/login`. The branded
-  login experience is owned by `frontend/src/app/(auth)/login/page.tsx`; brand
-  images live under `frontend/public/images/branding/`. Do not restore the
-  original public landing page or replace Shanghai Electric identity without a
-  user request.
-- **Secrets and runtime state** — never commit tokens, `.env`,
-  `extensions_config.json`, or `.deer-flow` data. In particular, the local
-  `github token.md` is intentionally ignored. Docker builds from the current
-  checkout; `docker compose up --build` does not replace source control history.
-  Keep `backend/.deer-flow` excluded from the Docker build context: it contains
-  live per-thread state and can include sandbox-owned paths that the Docker
-  builder cannot read.
-- **`config.yaml` 内网 gitea 同步策略(config-gitea-sync 方案)** — 例外:`config.yaml`
-  **已纳入版本控制**,dev/prod 共用一份,经 gitea 同步以消除配置漂移。安全前提:(1) 本仓库为
-  纯内网私有部署;(2) config.yaml 中所有密钥用 `$ENV_VAR` 占位(已扫描确认无明文 secret),
-  真实值只在各机 `.env`(仍不入库,由 `.env.template` 约束变量集);(3) upstream 更新后跑
-  `make config-upgrade` 合并新增字段。**严禁**把真实 secret 写进 config.yaml;新增 secret 字段必须用 `$` 占位。
-
-- **Production deployment safety** — `scripts/deploy.sh` is the only supported
-  entry point for rebuilding, starting, or stopping the production DeerFlow
-  stack. Do not run ad-hoc `docker compose up`, `down`, `stop`, or `rm` commands
-  for `gateway`, `frontend`, or `nginx`; the deployment script owns the `.env`
-  file, host-path exports, sandbox overlay, project name, and mount validation.
-  Before considering a deployment successful, the script must confirm that
-  `config.yaml` and `extensions_config.json` are regular host files and that the
-  running gateway mounts those exact resolved paths. A directory at either file
-  path is a hard failure; never delete it or replace it without inspecting its
-  contents. Operations in this repository must target only the `deer-flow`
-  Compose project and must not stop, restart, or recreate unrelated containers
-  such as `ipa-gateway`.
-
-- **Documentation update policy** — keep docs in sync with code: update `README.md` for
-  user-facing changes and the relevant `AGENTS.md` for development/architecture changes in
-  the same change set.
-- **Dev-only parameters must be production-documented** — any environment variable, config
-  flag, or shortcut that is only safe for local development (e.g. `DEER_FLOW_AUTH_DISABLED=1`)
-  must be added to the production-deployment checklist in `docs/production-deployment.md`
-  as part of the same change set. The checklist is the operations handoff source of truth
-  for removing these parameters before deploying to production.
-- **Test-driven development** — features and bug fixes ship with tests. Backend tests live
-  in `backend/tests/` (TDD is mandatory there; see [backend/AGENTS.md](backend/AGENTS.md));
-  frontend tests live in `frontend/tests/`.
-- **Format before pushing** — run `make format` (backend) / `pnpm check` (frontend). Backend
-  CI enforces `ruff format --check`, so formatting must be clean before a push.
-- **Version sources must stay in lockstep** — a release version must match identically in
-  `backend/pyproject.toml`, `frontend/package.json`, and `deploy/helm/deer-flow/Chart.yaml`
-  (`version` + `appVersion`). Pushing a `v*` git tag triggers CI that runs
-  `scripts/verify_versions.sh` and **blocks all publishing** if any source drifts. Before
-  bumping a version, run `scripts/bump_version.sh <ver>` (aligns all four at once) and
-  `scripts/verify_versions.sh <ver>` to catch drift early. See [RELEASING.md](RELEASING.md).
-- **Don't edit `CLAUDE.md`** — it only contains `@AGENTS.md`. All agent guidance changes
-  belong here in `AGENTS.md`; `CLAUDE.md` is a thin import shim.
+- **Branch flow** — `main` is the pristine upstream mirror (upstream-only, no 二开); `codex/prod-canonical` is the customization and production trunk (what starl-38 runs); features branch off prod and merge back only after the full regression passes. Keep `origin`, `gitea`, and the deploy host on the same prod SHA.
+- **Upstream updates** — the agent owns the whole workflow: fetch `upstream`, fast-forward `main` and push to `origin`/`gitea`, **merge** (never rebase, never piecemeal cherry-pick) `main` into prod, resolve conflicts keeping local customizations, then run the full regression before pushing: `cd backend && make test` and `cd frontend && pnpm install && pnpm check` (`pnpm install` is mandatory after any merge touching `frontend/package.json`). Restart the dev gateway (`make stop && make dev`) after harness changes — `uvicorn --reload` does not watch `packages/harness/`. Never `reset --hard` to update.
+- **Remotes** — `origin` = writable fork, `upstream` = read-only bytedance/deer-flow (push disabled), `gitea` = internal mirror. Never change remote URLs or force-push without explicit user approval.
+- **Production deployment** — `scripts/deploy.sh` is the only supported entry point for the prod stack; never ad-hoc `docker compose up/down/stop/rm` on `gateway`/`frontend`/`nginx`, and never touch unrelated containers. The script must verify `config.yaml`/`extensions_config.json` are regular host files mounted at the exact resolved paths; a directory at either path is a hard failure.
+- **Branding** — the root route and unauthenticated workspace guard redirect to `/loginsso`; the branded login is `frontend/src/app/(auth)/login/page.tsx` with assets in `frontend/public/images/branding/`. Do not restore the upstream landing page or change the SynForge·思铸 identity without a user request.
+- **Secrets & config** — never commit tokens, `.env`, `extensions_config.json`, or `.deer-flow` data. Any `config.yaml` shared via gitea must carry every secret as a `$ENV_VAR` placeholder — never write a plaintext secret into it. After upstream updates run `make config-upgrade`. Keep `backend/.deer-flow` out of the Docker build context.
+- **Docs & quality gates** — update `README.md` (user-facing) and the relevant `AGENTS.md` (architecture) in the same change set; register dev-only flags in `docs/production-deployment.md`; backend TDD is mandatory; run `make format` (backend) / `pnpm check` (frontend) before pushing — CI enforces `ruff format --check`.

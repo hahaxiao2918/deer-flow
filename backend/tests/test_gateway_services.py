@@ -2409,8 +2409,11 @@ def test_launch_scheduled_thread_run_falls_back_when_config_unloadable(_stub_app
 
     caplog.set_level(logging.WARNING, logger="app.gateway.services")
     captured = asyncio.run(_scenario())
-    assert captured["config"] == {"recursion_limit": 100}
-    assert any("failed to load app config; falling back to recursion_limit=100" in r.message for r in caplog.records)
+    # Distribution default: the fallback matches our raised _DEFAULT_RECURSION_LIMIT
+    # (250 here, upstream 100) so the RecursionGuard cost model sees enough
+    # headroom for the full middleware chain.
+    assert captured["config"] == {"recursion_limit": 250}
+    assert any("failed to load app config; falling back to recursion_limit=250" in r.message for r in caplog.records)
 
 
 def test_launch_scheduled_thread_run_rejects_legacy_auth_token():

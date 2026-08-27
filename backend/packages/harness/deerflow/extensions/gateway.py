@@ -40,7 +40,13 @@ _HOST_PUBLIC_PATH_PREFIXES = (
     "/openapi.json",
     "/api/v1/auth/oauth/",
     "/api/v1/auth/callback/",
+    # Shanghai Electric distribution: custom non-OIDC OAuth2 provider callbacks
+    # (数字底座/IPD) — mirrors auth_middleware._PUBLIC_PATH_PREFIXES.
+    "/api/v1/auth/oauth2/",
     "/api/webhooks/",
+    # Distribution: dedicated read-only service-token route; the handler fails
+    # closed unless DEER_FLOW_PORTAL_ANALYTICS_TOKEN is configured.
+    "/api/internal/portal-analytics/",
 )
 _HOST_PUBLIC_EXACT_PATHS = frozenset(
     {

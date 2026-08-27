@@ -44,6 +44,11 @@ fi
 GATEWAY_PORT="${GATEWAY_PORT:-18001}"
 FRONTEND_PORT="${FRONTEND_PORT:-13000}"
 NGINX_PORT="${NGINX_PORT:-12026}"
+# run_service launches each service through `sh -c "$cmd"` — a bare child shell
+# that only sees *exported* variables. Without these exports the frontend's
+# `env PORT=$FRONTEND_PORT` expanded to an empty string in that child shell
+# and Next.js died with `env 'PORT' is invalid ''`.
+export GATEWAY_PORT FRONTEND_PORT NGINX_PORT
 
 _pick_python() {
     local candidate
@@ -311,10 +316,13 @@ DEERFLOW_PNPM_RUNNER="$REPO_ROOT/scripts/pnpm.py"
 export DEERFLOW_PNPM_PYTHON DEERFLOW_PNPM_RUNNER
 
 # Frontend command
+# Distribution: the local frontend port is $FRONTEND_PORT (default 13000), not
+# upstream's 3000 — keep it ahead of the command so no inner assignment can
+# override it.
 if $DEV_MODE; then
-    FRONTEND_CMD='env PORT=3000 "$DEERFLOW_PNPM_PYTHON" "$DEERFLOW_PNPM_RUNNER" run dev'
+    FRONTEND_CMD='env PORT=$FRONTEND_PORT "$DEERFLOW_PNPM_PYTHON" "$DEERFLOW_PNPM_RUNNER" run dev'
 else
-    FRONTEND_CMD="env PORT=3000 BETTER_AUTH_SECRET=$($DEERFLOW_PNPM_PYTHON -c 'import secrets; print(secrets.token_hex(16))') \"\$DEERFLOW_PNPM_PYTHON\" \"\$DEERFLOW_PNPM_RUNNER\" run preview"
+    FRONTEND_CMD="env PORT=\$FRONTEND_PORT BETTER_AUTH_SECRET=$($DEERFLOW_PNPM_PYTHON -c 'import secrets; print(secrets.token_hex(16))') \"\$DEERFLOW_PNPM_PYTHON\" \"\$DEERFLOW_PNPM_RUNNER\" run preview"
 fi
 
 # Runtime path defaults. Local `make dev` launches Gateway from `backend/`,

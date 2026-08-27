@@ -110,3 +110,9 @@ members = ["packages/harness", "packages/extension-api"]
 [tool.uv.sources]
 deerflow-harness = { workspace = true }
 deerflow-extension-api = { workspace = true }
+# tenki-sandbox was deleted from the PyPI simple index after upstream's lock was
+# generated (the project page 404s), but the published wheel file is still
+# served. Any re-lock (e.g. for our distribution-only memory-retrieval extra)
+# would otherwise fail resolution. Pin the exact locked artifact; drop this once
+# upstream re-locks against a restored/renamed package.
+tenki-sandbox = { url = "https://files.pythonhosted.org/packages/3b/f7/3c02da98793dc0e56230c520064d7d233c6e0edab13b410c031e1cfe7fd9/tenki_sandbox-0.4.0-py3-none-any.whl" }

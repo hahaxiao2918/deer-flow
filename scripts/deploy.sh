@@ -213,6 +213,12 @@ fi
 # Resolve bind sources before Compose sees them. Docker otherwise creates a
 # directory for a missing host path, which can make the gateway appear started
 # while its runtime configuration is unusable.
+#
+# These preflights (existence, YAML syntax, config-upgrade) guard *starting*
+# the stack and may exit 1 or rewrite config.yaml — both must never block
+# `down`, which is the only supported shutdown path when the config is the
+# thing that is broken. The `down` branch below sets its own compose defaults.
+if [ "$CMD" != "down" ]; then
 require_regular_file DEER_FLOW_CONFIG_PATH
 require_regular_file DEER_FLOW_EXTENSIONS_CONFIG_PATH
 
@@ -222,7 +228,20 @@ require_regular_file DEER_FLOW_EXTENSIONS_CONFIG_PATH
 # 新增字段 merge 进来(幂等:config_version 已最新时为 no-op)。任一步失败则中止,
 # 不进 compose up,保护运行中的生产。
 echo -e "${GREEN}→ Config preflight ($DEER_FLOW_CONFIG_PATH)...${NC}"
-if ! python3 -c "import yaml; yaml.safe_load(open('$DEER_FLOW_CONFIG_PATH'))" 2>/dev/null; then
+# Some deploy hosts have a broken python3 but a working python (or vice versa);
+# probe both for a PyYAML-capable interpreter instead of assuming python3.
+YAML_PY=""
+for _py in python3 python; do
+    if command -v "$_py" >/dev/null 2>&1 && "$_py" -c "import yaml" 2>/dev/null; then
+        YAML_PY="$_py"
+        break
+    fi
+done
+if [ -z "$YAML_PY" ]; then
+    echo -e "${RED}✗ 未找到带 PyYAML 的 python3/python,无法校验 config.yaml,中止部署(未启动 Compose)${NC}" >&2
+    exit 1
+fi
+if ! "$YAML_PY" -c "import yaml; yaml.safe_load(open('$DEER_FLOW_CONFIG_PATH'))" 2>/dev/null; then
     echo -e "${RED}✗ config.yaml YAML 语法无效,中止部署(未启动 Compose)${NC}" >&2
     exit 1
 fi
@@ -231,6 +250,7 @@ echo -e "${GREEN}✓ config.yaml YAML 语法有效${NC}"
     echo -e "${RED}✗ config-upgrade 失败,中止部署${NC}" >&2
     exit 1
 }
+fi  # CMD != down: startup preflights
 
 
 # ── BETTER_AUTH_SECRET ───────────────────────────────────────────────────────
@@ -238,7 +258,7 @@ echo -e "${GREEN}✓ config.yaml YAML 语法有效${NC}"
 # sessions survive container restarts.
 
 _secret_file="$DEER_FLOW_HOME/.better-auth-secret"
-if [ -z "$BETTER_AUTH_SECRET" ]; then
+if [ "$CMD" != "down" ] && [ -z "$BETTER_AUTH_SECRET" ]; then
     if [ -f "$_secret_file" ]; then
         export BETTER_AUTH_SECRET
         BETTER_AUTH_SECRET="$(cat "$_secret_file")"

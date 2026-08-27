@@ -1134,7 +1134,10 @@ async def oauth2_callback(
 
     # state_payload is None for the IPD-initiated (portal click) flow — fall
     # back to defaults (no caller-chosen next / no remember preference).
-    redirect_target = (state_payload.next_path if state_payload else "") or "/workspace"
+    # Revalidate next_path as defense-in-depth, mirroring the OIDC callback:
+    # /start validates before writing the cookie, but a future state writer
+    # may not.
+    redirect_target = validate_next_param(state_payload.next_path if state_payload else None) or "/workspace"
     frontend_base = oidc_config.frontend_base_url or ""
     callback_redirect = f"{frontend_base}/auth/callback?next={urllib.parse.quote(redirect_target)}"
 
