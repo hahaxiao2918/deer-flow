@@ -105,6 +105,118 @@ def _bash_call(cmd="ls"):
     return {"name": "bash", "id": f"call_{cmd}", "args": {"command": cmd}}
 
 
+def _read_call(path="workspace/report.md"):
+    return {"name": "read_file", "id": f"read_{path}", "args": {"path": path}}
+
+
+def _write_call(path="workspace/report.md", content="v1"):
+    return {"name": "write_file", "id": f"write_{path}_{content}", "args": {"path": path, "content": content}}
+
+
+def _str_replace_call(path="workspace/report.md", new_str="v2"):
+    return {"name": "str_replace", "id": f"srep_{path}_{new_str}", "args": {"path": path, "old_str": "v1", "new_str": new_str}}
+
+
+class TestSelfWrittenArtifactReadExemption:
+    """Layer-1 identical-call counting must not flag reads of files the run
+    itself wrote/edited (edit-verify cycles).
+
+    Production 2026-08-27 (thread d069999a, both runs): the model re-read an
+    85-line report it was editing; read_file's stable key is path+200-line
+    bucket, so a sub-200-line file collapses to one bucket and every re-read
+    hashes identically — 3 re-reads fired the loop warning and the model
+    (over-)obeyed the hard-worded message, truncating deliverables twice.
+    read_before_write is enabled by design: punishing mandated re-reads is
+    incoherent. Layer-2 frequency counting still sees these reads."""
+
+    def test_rereading_self_written_file_does_not_warn(self):
+        mw = LoopDetectionMiddleware(warn_threshold=3, hard_limit=5)
+        runtime = _make_runtime()
+        # The run writes its report once (varying content → distinct hashes).
+        mw._apply(_make_state(tool_calls=[_write_call(content="v1")]), runtime)
+        mw._apply(_make_state(tool_calls=[_str_replace_call(new_str="fix A")]), runtime)
+        # Then re-reads the same file 5 times (identical key: one 200-line bucket).
+        for i in range(5):
+            result = mw._apply(_make_state(tool_calls=[_read_call()]), runtime)
+            assert result is None, f"read #{i + 1} of own artifact must not warn"
+        assert not mw._pending_warnings[_pending_key()]
+
+    def test_rereading_never_written_file_still_warns(self):
+        """The exemption is scoped to paths this thread wrote — fresh inputs
+        keep full loop protection."""
+        mw = LoopDetectionMiddleware(warn_threshold=3, hard_limit=5)
+        runtime = _make_runtime()
+        mw._apply(_make_state(tool_calls=[_write_call(path="workspace/other.md")]), runtime)
+        for _ in range(2):
+            assert mw._apply(_make_state(tool_calls=[_read_call(path="workspace/unwritten.md")]), runtime) is None
+        mw._apply(_make_state(tool_calls=[_read_call(path="workspace/unwritten.md")]), runtime)
+        assert mw._pending_warnings[_pending_key()], "identical reads of a never-written path must still warn"
+
+    def test_write_and_read_in_same_batch_exempts_the_read(self):
+        """A batch that writes then reads the same path (parallel calls) is an
+        edit-verify cycle in one breath — the read is exempt from the hash."""
+        mw = LoopDetectionMiddleware(warn_threshold=3, hard_limit=5)
+        runtime = _make_runtime()
+        for i in range(3):
+            batch = [_write_call(content=f"v{i}"), _read_call()]
+            assert mw._apply(_make_state(tool_calls=batch), runtime) is None
+        assert not mw._pending_warnings[_pending_key()]
+
+    def test_batch_of_only_exempt_reads_records_no_hash(self):
+        """When every call in a batch is exempt, no hash is recorded at all
+        (an empty-batch hash would collide across distinct responses)."""
+        mw = LoopDetectionMiddleware(warn_threshold=3, hard_limit=5)
+        runtime = _make_runtime()
+        mw._apply(_make_state(tool_calls=[_write_call()]), runtime)
+        history_len_after_write = len(mw._history["test-thread"])
+        for _ in range(4):
+            mw._apply(_make_state(tool_calls=[_read_call()]), runtime)
+        assert len(mw._history["test-thread"]) == history_len_after_write
+
+    def test_exempt_reads_still_count_toward_frequency_layer(self):
+        """Defense in depth: exempt reads remain visible to Layer-2 frequency
+        counting, so a pathological read storm still gets stopped."""
+        mw = LoopDetectionMiddleware(warn_threshold=3, hard_limit=5, tool_freq_warn=3, tool_freq_hard_limit=50)
+        runtime = _make_runtime()
+        mw._apply(_make_state(tool_calls=[_write_call()]), runtime)
+        for _ in range(3):
+            mw._apply(_make_state(tool_calls=[_read_call()]), runtime)
+        warnings = mw._pending_warnings[_pending_key()]
+        assert any("read_file" in w for w in warnings), "Layer 2 must still see exempt reads"
+
+    def test_written_path_exemption_scoped_per_thread(self):
+        mw = LoopDetectionMiddleware(warn_threshold=3, hard_limit=5)
+        runtime_a = _make_runtime(thread_id="thread-a")
+        runtime_b = _make_runtime(thread_id="thread-b")
+        mw._apply(_make_state(tool_calls=[_write_call()]), runtime_a)
+        # thread-b never wrote the file: 3 identical reads still warn there.
+        for _ in range(3):
+            mw._apply(_make_state(tool_calls=[_read_call()]), runtime_b)
+        assert any("LOOP DETECTED" in w for w in mw._pending_warnings[("thread-b", "test-run")])
+
+    def test_reset_clears_written_paths(self):
+        mw = LoopDetectionMiddleware(warn_threshold=3, hard_limit=5)
+        runtime = _make_runtime()
+        mw._apply(_make_state(tool_calls=[_write_call()]), runtime)
+        mw.reset(thread_id="test-thread")
+        for _ in range(3):
+            mw._apply(_make_state(tool_calls=[_read_call()]), runtime)
+        assert any("LOOP DETECTED" in w for w in mw._pending_warnings[_pending_key()])
+
+    def test_warning_message_gives_progressing_models_an_out(self):
+        """The warn text must be conditional, not a hard command — over-obedient
+        models truncated healthy deliverable-writing runs because the old text
+        ordered an immediate stop with no escape hatch (2026-08-27)."""
+        mw = LoopDetectionMiddleware(warn_threshold=3, hard_limit=5)
+        runtime = _make_runtime()
+        for _ in range(3):
+            mw._apply(_make_state(tool_calls=[_bash_call("ls")]), runtime)
+        text = mw._pending_warnings[_pending_key()][0]
+        assert "LOOP DETECTED" in text
+        assert "still making progress" in text or "deliberate" in text
+        assert "Stop calling tools and produce your final answer now." not in text
+
+
 class TestHashToolCalls:
     def test_same_calls_same_hash(self):
         a = _hash_tool_calls([_bash_call("ls")])

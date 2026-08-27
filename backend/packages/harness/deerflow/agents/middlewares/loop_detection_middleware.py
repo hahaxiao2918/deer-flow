@@ -173,15 +173,56 @@ def _hash_tool_calls(tool_calls: list[dict]) -> str:
     return hashlib.md5(blob.encode()).hexdigest()[:12]
 
 
-_WARNING_MSG = "[LOOP DETECTED] You are repeating the same tool calls. Stop calling tools and produce your final answer now. If you cannot complete the task, summarize what you accomplished so far."
+_WARNING_MSG = (
+    "[LOOP DETECTED] You are repeating the same tool calls. If each repeat is deliberate and still making "
+    "progress, vary the approach — different arguments or a different tool — and continue the task. Only if "
+    "you are stuck with no new progress: stop calling tools and produce your final answer now; if you cannot "
+    "complete the task, summarize what you accomplished so far."
+)
 
 _TOOL_FREQ_WARNING_MSG = (
-    "[LOOP DETECTED] You have called {tool_name} {count} times without producing a final answer. Stop calling tools and produce your final answer now. If you cannot complete the task, summarize what you accomplished so far."
+    "[LOOP DETECTED] You have called {tool_name} {count} times. If each call is deliberate and still making "
+    "progress, vary the approach and continue the task. Only if you are stuck with no new progress: stop "
+    "calling tools and produce your final answer now; if you cannot complete the task, summarize what you "
+    "accomplished so far."
 )
 
 _HARD_STOP_MSG = "[FORCED STOP] Repeated tool calls exceeded the safety limit. Producing final answer with results collected so far."
 
 _TOOL_FREQ_HARD_STOP_MSG = "[FORCED STOP] Tool {tool_name} called {count} times — exceeded the per-tool safety limit. Producing final answer with results collected so far."
+
+# Tools whose calls declare a path the run is writing. Subsequent read_file
+# calls on those paths are exempt from Layer-1 identical-call counting: an
+# edit-verify cycle (write → read → edit → read) is mandated behaviour when
+# read_before_write is enabled, but read_file's stable key (path + 200-line
+# bucket) collapses any sub-200-line file to a single bucket, so every re-read
+# hashes identically and a careful writer trips the loop warning (production
+# 2026-08-27: both runs of thread d069999a truncated deliverables this way).
+# Layer-2 frequency counting still sees these reads.
+_WRITING_TOOL_NAMES = frozenset({"write_file", "str_replace"})
+
+
+def _declared_write_path(tool_call: dict) -> str | None:
+    """Return the path a write_file/str_replace call targets, if any."""
+    if tool_call.get("name") not in _WRITING_TOOL_NAMES:
+        return None
+    args, _ = _normalize_tool_call_args(tool_call.get("args", {}))
+    path = args.get("path")
+    return path if isinstance(path, str) and path else None
+
+
+def _is_exempt_read(tool_call: dict, written_paths: set[str]) -> bool:
+    """True for read_file calls on a path this thread has written/edited.
+
+    Path matching is exact-string, best-effort: models use consistent path
+    forms within a thread, and a missed exemption only restores the old
+    (warn-level) behaviour.
+    """
+    if tool_call.get("name") != "read_file":
+        return False
+    args, _ = _normalize_tool_call_args(tool_call.get("args", {}))
+    path = args.get("path")
+    return isinstance(path, str) and path in written_paths
 
 
 class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
@@ -254,6 +295,11 @@ class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
         self._lock = threading.Lock()
         self._history: OrderedDict[str, list[str]] = OrderedDict()
         self._warned: dict[str, set[str]] = defaultdict(set)
+        # Paths each thread has written/edited (write_file/str_replace targets):
+        # read_file calls on these are exempt from Layer-1 identical counting —
+        # see ``_is_exempt_read``. Persists across runs in the thread like the
+        # other per-thread state; cleared by LRU eviction and ``reset()``.
+        self._written_paths: defaultdict[str, set[str]] = defaultdict(set)
         # Windowed per-tool-type frequency: recent tool names per thread,
         # trimmed to ``window_size`` so the count decays instead of growing
         # monotonically (replaces the old monotonic ``_tool_freq`` integer).
@@ -367,6 +413,7 @@ class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
         while len(self._history) > self.max_tracked_threads:
             evicted_id, _ = self._history.popitem(last=False)
             self._warned.pop(evicted_id, None)
+            self._written_paths.pop(evicted_id, None)
             self._tool_name_history.pop(evicted_id, None)
             self._tool_name_counter.pop(evicted_id, None)
             self._tool_freq_warned.pop(evicted_id, None)
@@ -421,9 +468,13 @@ class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
 
         Two detection layers:
           1. **Hash-based** (existing): catches identical tool call sets.
+             ``read_file`` calls on paths this thread has written/edited
+             (``write_file``/``str_replace`` targets) are exempt — see
+             :func:`_is_exempt_read`.
           2. **Frequency-based** (new): catches the same *tool type* being
              called many times with varying arguments (e.g. ``read_file``
-             on 40 different files).
+             on 40 different files). Counts every call, exempt or not, so
+             a pathological read storm is still bounded.
 
         Returns:
             (warning_message_or_none, should_hard_stop)
@@ -441,7 +492,6 @@ class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
             return None, False
 
         thread_id = self._get_thread_id(runtime)
-        call_hash = _hash_tool_calls(tool_calls)
 
         with self._lock:
             # Touch / create entry (move to end for LRU)
@@ -452,38 +502,42 @@ class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
                 self._evict_if_needed()
 
             history = self._history[thread_id]
-            history.append(call_hash)
-            if len(history) > self.window_size:
-                history[:] = history[-self.window_size :]
 
-            warned_hashes = self._warned.get(thread_id)
-            if warned_hashes is not None:
-                warned_hashes.intersection_update(history)
-                if not warned_hashes:
-                    self._warned.pop(thread_id, None)
+            # Record paths this batch declares written (before hashing, so a
+            # same-batch write+read pair is already exempt), then drop reads
+            # of the thread's own artifacts from Layer-1 counting.
+            written = self._written_paths[thread_id]
+            for tc in tool_calls:
+                write_path = _declared_write_path(tc)
+                if write_path is not None:
+                    written.add(write_path)
+            countable = [tc for tc in tool_calls if not _is_exempt_read(tc, written)]
 
-            count = history.count(call_hash)
             tool_names = [tc.get("name", "?") for tc in tool_calls]
 
             # --- Layer 1: hash-based (identical call sets) ---
-            if count >= self.hard_limit:
-                logger.error(
-                    "Loop hard limit reached — forcing stop",
-                    extra={
-                        "thread_id": thread_id,
-                        "call_hash": call_hash,
-                        "count": count,
-                        "tools": tool_names,
-                    },
-                )
-                return _HARD_STOP_MSG, True
+            # Skipped entirely when every call in the batch is an exempt read;
+            # an empty batch hash would otherwise collide across responses.
+            call_hash = _hash_tool_calls(countable) if countable else None
+            if call_hash is not None:
+                history.append(call_hash)
+                if len(history) > self.window_size:
+                    history[:] = history[-self.window_size :]
 
-            if count >= self.warn_threshold:
-                warned = self._warned[thread_id]
-                if call_hash not in warned:
-                    warned.add(call_hash)
-                    logger.warning(
-                        "Repetitive tool calls detected — injecting warning",
+                # Prune AFTER appending: the current hash must count as
+                # in-window, or a warned hash about to re-fire would be
+                # dropped from ``warned`` and re-warn on every repeat.
+                warned_hashes = self._warned.get(thread_id)
+                if warned_hashes is not None:
+                    warned_hashes.intersection_update(history)
+                    if not warned_hashes:
+                        self._warned.pop(thread_id, None)
+
+                count = history.count(call_hash)
+
+                if count >= self.hard_limit:
+                    logger.error(
+                        "Loop hard limit reached — forcing stop",
                         extra={
                             "thread_id": thread_id,
                             "call_hash": call_hash,
@@ -491,7 +545,22 @@ class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
                             "tools": tool_names,
                         },
                     )
-                    return _WARNING_MSG, False
+                    return _HARD_STOP_MSG, True
+
+                if count >= self.warn_threshold:
+                    warned = self._warned[thread_id]
+                    if call_hash not in warned:
+                        warned.add(call_hash)
+                        logger.warning(
+                            "Repetitive tool calls detected — injecting warning",
+                            extra={
+                                "thread_id": thread_id,
+                                "call_hash": call_hash,
+                                "count": count,
+                                "tools": tool_names,
+                            },
+                        )
+                        return _WARNING_MSG, False
 
             # --- Layer 2: per-tool-type frequency (windowed) ---
             tool_name_history = self._tool_name_history[thread_id]
@@ -729,6 +798,7 @@ class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
             if thread_id:
                 self._history.pop(thread_id, None)
                 self._warned.pop(thread_id, None)
+                self._written_paths.pop(thread_id, None)
                 self._tool_name_history.pop(thread_id, None)
                 self._tool_name_counter.pop(thread_id, None)
                 self._tool_freq_warned.pop(thread_id, None)
@@ -738,6 +808,7 @@ class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
             else:
                 self._history.clear()
                 self._warned.clear()
+                self._written_paths.clear()
                 self._tool_name_history.clear()
                 self._tool_name_counter.clear()
                 self._tool_freq_warned.clear()
