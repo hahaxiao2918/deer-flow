@@ -18,6 +18,7 @@ DeerMem default); tracing is via the base ``MemoryManager.callbacks`` field
 from __future__ import annotations
 
 import logging
+import math
 from pathlib import Path
 from typing import Any, Literal
 
@@ -69,8 +70,8 @@ class DeerMemConfig(BaseModel):
         description="Maximum wait for the per-scope cross-process advisory file lock.",
     )
     retrieval_adapter: str = Field(
-        default="",
-        description="Optional dotted retrieval-adapter factory. It receives DeerMemConfig and must implement RetrievalPort.",
+        default="fts5",
+        description="Retrieval adapter factory: 'fts5' (default), an empty string to disable, or a dotted factory receiving DeerMemConfig and implementing RetrievalPort.",
     )
     retrieval_model: str = Field(
         default="BAAI/bge-small-zh-v1.5",
@@ -90,8 +91,34 @@ class DeerMemConfig(BaseModel):
         le=300,
         description="Seconds to wait before processing queued updates (debounce).",
     )
+    queue_max_depth: int = Field(
+        default=1000,
+        ge=0,
+        description=("Backpressure cap on pending items. 0 = unlimited. When the cap is reached, new non-signal updates are rejected (QueueFull); signal updates are always admitted so important memories are never shed."),
+    )
     # ── Facts ────────────────────────────────────────────────────────────
     max_facts: int = Field(default=100, ge=10, le=500, description="Maximum number of facts to store.")
+    fact_eviction_policy: Literal["confidence", "hybrid-v1"] = Field(
+        default="confidence",
+        description=("Capacity-eviction policy. 'confidence' preserves the historical behavior; 'hybrid-v1' combines confidence, explicit-confirmation freshness, and query-driven access heat with bounded correction slots."),
+    )
+    fact_eviction_shadow_enabled: bool = Field(
+        default=False,
+        description=("When true, also compute hybrid-v1 during confidence-policy trims and include its disagreement in the metadata-only eviction audit."),
+    )
+    eviction_confidence_weight: float = Field(default=0.65, ge=0.0, le=1.0)
+    eviction_confirmation_weight: float = Field(default=0.25, ge=0.0, le=1.0)
+    eviction_access_weight: float = Field(default=0.10, ge=0.0, le=1.0)
+    eviction_confirmation_half_life_days: int = Field(default=90, ge=1, le=3650)
+    eviction_access_half_life_days: int = Field(default=30, ge=1, le=3650)
+    eviction_correction_reserved_fraction: float = Field(default=0.10, ge=0.0, le=1.0)
+    eviction_correction_reserved_max: int = Field(default=10, ge=0, le=100)
+    eviction_audit_max_entries: int = Field(
+        default=200,
+        ge=0,
+        le=10000,
+        description="Maximum metadata-only capacity-eviction audit events per user/agent scope; 0 disables the audit.",
+    )
     fact_confidence_threshold: float = Field(
         default=0.7,
         ge=0.0,
@@ -210,6 +237,29 @@ class DeerMemConfig(BaseModel):
         le=20,
         description=("Maximum number of source facts per consolidation group. Prevents the LLM from merging too many facts into one and losing important details."),
     )
+    # ── Extraction quality callback (post-invoke observability) ─────────
+    extraction_callback: Any = Field(
+        default=None,
+        description=(
+            "Optional ``callback(metrics)`` invoked AFTER the extraction LLM "
+            "call (token usage, facts passing/rejected by the confidence "
+            "filter, rejection rate, prompt version). The host injects a "
+            "Langfuse-based callback to emit an extraction span; None = no "
+            "post-invoke observability. Set programmatically (not from YAML)."
+        ),
+    )
+    # ── Watermark cache (in-memory, bounded LRU) ─────────────────────────
+    watermark_max_keys: int = Field(
+        default=4096,
+        ge=0,
+        description=(
+            "Soft cap on the in-memory conversation-watermark cache (one entry "
+            "per distinct thread/user/agent). The cache is a bounded LRU: when "
+            "over capacity the least-recently-used entry is dropped, and a "
+            "dropped key re-extracts one batch on that thread's next turn (the "
+            "same as a restart). 0 = unbounded."
+        ),
+    )
     # ── Message processing (externalized patterns / prompts) ──
     patterns_dir: str | None = Field(
         default=None,
@@ -281,6 +331,9 @@ class DeerMemConfig(BaseModel):
                     f"storage_path as a root DIRECTORY (per-user memory under "
                     f"{{storage_path}}/users/{{uid}}/memory.json). Point it at a directory."
                 )
+        weight_sum = self.eviction_confidence_weight + self.eviction_confirmation_weight + self.eviction_access_weight
+        if not math.isclose(weight_sum, 1.0, rel_tol=0.0, abs_tol=1e-9):
+            raise ValueError("DeerMem eviction weights must sum to 1.0")
         return self
 
     @classmethod

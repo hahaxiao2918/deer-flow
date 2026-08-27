@@ -29,14 +29,14 @@ import { useI18n } from "@/core/i18n/hooks";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 
 import { OnboardingDialog } from "./onboarding/onboarding-dialog";
-import { SettingsDialog } from "./settings";
+import { useSettingsDialog } from "./settings";
 
 export function CommandPalette() {
   const { t } = useI18n();
   const router = useRouter();
+  const { openSettings } = useSettingsDialog();
   const [open, setOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [isMac, setIsMac] = useState(false);
 
@@ -47,8 +47,8 @@ export function CommandPalette() {
 
   const handleOpenSettings = useCallback(() => {
     setOpen(false);
-    setSettingsOpen(true);
-  }, []);
+    openSettings("appearance");
+  }, [openSettings]);
 
   const handleShowOnboarding = useCallback(() => {
     setOpen(false);
@@ -80,7 +80,6 @@ export function CommandPalette() {
 
   return (
     <>
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <OnboardingDialog open={onboardingOpen} onOpenChange={setOnboardingOpen} />
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder={t.shortcuts.searchActions} />

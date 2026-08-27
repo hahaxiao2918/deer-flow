@@ -16,6 +16,7 @@ export interface Translations {
     delete: string;
     edit: string;
     rename: string;
+    renameFailed: string;
     share: string;
     openInNewWindow: string;
     close: string;
@@ -42,11 +43,27 @@ export interface Translations {
     exportAsMarkdown: string;
     exportAsJSON: string;
     exportSuccess: string;
+    exportFailed: string;
     regenerate: string;
+    editAndRerun: string;
+    updateAndRerun: string;
+    editRerunWarning: string;
     branch: string;
     showArtifacts: string;
     browser: string;
     showBrowser: string;
+  };
+
+  runDuration: {
+    reasoning: string;
+    working: string;
+    completedIn: (duration: string) => string;
+    description: string;
+    lessThanSecond: string;
+    hours: (value: number) => string;
+    minutes: (value: number) => string;
+    seconds: (value: number) => string;
+    separator: string;
   };
 
   home: {
@@ -101,6 +118,26 @@ export interface Translations {
     linkCopied: string;
   };
 
+  artifactEditing: {
+    unsaved: string;
+    saving: string;
+    saved: string;
+    exit: string;
+    discard: string;
+    discardChanges: string;
+    conflict: string;
+    conflictShort: string;
+    runInProgress: string;
+    saveFailed: string;
+  };
+
+  artifactPreview: {
+    limited: (previewSize: string, totalSize?: string) => string;
+    loadFullFile: string;
+    loadingFullFile: string;
+    previewFailed: string;
+  };
+
   // Citations
   citations: {
     sourcesSummary: (count: number) => string;
@@ -133,6 +170,7 @@ export interface Translations {
   // Input Box
   inputBox: {
     placeholder: string;
+    disclaimer: string;
     createSkillPrompt: string;
     addAttachments: string;
     inputPolish: string;
@@ -225,6 +263,74 @@ export interface Translations {
     channels: string;
   };
 
+  // Thread-scoped MCP background tasks
+  backgroundTasks: {
+    label: string;
+    title: string;
+    description: string;
+    active: string;
+    recent: string;
+    empty: string;
+    emptyHint: string;
+    loadFailed: string;
+    retry: string;
+    cancel: string;
+    cancelling: string;
+    cancelFailed: string;
+    cancellationRetrying: (attempt: number) => string;
+    notificationRetrying: (attempt: number) => string;
+    notificationStopped: string;
+    trackingDegraded: string;
+    viewDetails: string;
+    hideDetails: string;
+    detailsFailed: string;
+    result: string;
+    resultArtifact: string;
+    inputRequired: string;
+    inputUnavailable: string;
+    lastPollError: string;
+    created: (time: string) => string;
+    updated: (time: string) => string;
+    status: {
+      submitted: string;
+      working: string;
+      inputRequired: string;
+      completed: string;
+      failed: string;
+      cancelled: string;
+    };
+  };
+
+  subagentBatches: {
+    label: string;
+    title: string;
+    description: string;
+    workerUnavailable: string;
+    empty: string;
+    emptyHint: string;
+    loadFailed: string;
+    active: string;
+    recent: string;
+    pause: string;
+    resume: string;
+    cancel: string;
+    retryItem: string;
+    exportResults: string;
+    viewItems: string;
+    hideItems: string;
+    itemsFailed: string;
+    progress: (completed: number, total: number) => string;
+    limits: (live: number, running: number) => string;
+    status: {
+      queued: string;
+      running: string;
+      paused: string;
+      completed: string;
+      failed: string;
+      cancelled: string;
+    };
+  };
+
   // Scheduled tasks
   scheduledTasks: {
     scheduleType: { cron: string; once: string };
@@ -268,6 +374,8 @@ export interface Translations {
       fresh: string;
       reuse: string;
       threadIdPlaceholder: string;
+      reuseNoticeTitle: string;
+      reuseNoticeDescription: string;
     };
     filters: {
       allStatuses: string;
@@ -328,6 +436,7 @@ export interface Translations {
     runTrigger: { scheduled: string; manual: string };
     runStatus: {
       queued: string;
+      launching: string;
       running: string;
       success: string;
       failed: string;
@@ -417,6 +526,9 @@ export interface Translations {
     logout: string;
     gatewayUnavailable: string;
     gatewayUnavailableRetrying: string;
+    modelLoadFailed: string;
+    modelLoadRetry: string;
+    modelLoadRetrying: string;
   };
 
   // Conversation
@@ -425,14 +537,19 @@ export interface Translations {
     startConversation: string;
     branchCreated: string;
     branchFailed: string;
+    streamReplayGap: string;
   };
 
   // Chats
   chats: {
     searchChats: string;
+    branchLabel: (title: string, parentTitle: string) => string;
     loadMoreToSearch: string;
     loadingMore: string;
     loadOlderChats: string;
+    pinChat: string;
+    unpinChat: string;
+    pinChatFailed: string;
   };
 
   // Sidecar
@@ -531,6 +648,9 @@ export interface Translations {
     otherPlaceholder: string;
     submit: string;
     emptyError: string;
+    requiredError: string;
+    requiredA11yLabel: string;
+    selectPlaceholder: string;
     answeredValue: (value: string) => string;
   };
 
@@ -591,6 +711,12 @@ export interface Translations {
     removeTodo: (content: string) => string;
   };
 
+  contextUsage: {
+    label: string;
+    title: string;
+    badgeAriaLabel: (percentage: string) => string;
+  };
+
   // Shortcuts
   shortcuts: {
     searchActions: string;
@@ -610,8 +736,10 @@ export interface Translations {
       account: string;
       appearance: string;
       channels: string;
+      integrations: string;
       memory: string;
       tools: string;
+      subagents: string;
       skills: string;
       notification: string;
       about: string;
@@ -707,10 +835,161 @@ export interface Translations {
       adminRequired: string;
       empty: string;
     };
+    subagents: {
+      title: string;
+      description: string;
+      executionNote: string;
+      adminNote: string;
+      create: string;
+      empty: string;
+      sourceBuiltin: string;
+      sourceConfig: string;
+      sourceManaged: string;
+      conflict: string;
+      overridden: string;
+      createTitle: string;
+      editTitle: string;
+      name: string;
+      nameHint: string;
+      displayName: string;
+      descriptionLabel: string;
+      systemPrompt: string;
+      model: string;
+      inheritModel: string;
+      tools: string;
+      skills: string;
+      listModeAll: string;
+      listModeNone: string;
+      listModeSelected: string;
+      listNamesPlaceholder: string;
+      maxTurns: string;
+      timeout: string;
+      created: string;
+      saved: string;
+      deleted: string;
+      deleteConfirm: string;
+      bindingTitle: string;
+      bindingDescription: string;
+      allAllowed: string;
+      noneAllowed: string;
+      selectedAllowed: string;
+      missing: string;
+    };
     channels: {
       title: string;
       description: string;
       disabled: string;
+    };
+    integrations: {
+      title: string;
+      description: string;
+      refresh: string;
+      install: string;
+      reinstall: string;
+      installing: string;
+      ready: string;
+      pending: string;
+      available: string;
+      unavailable: string;
+      connected: string;
+      loadFailed: string;
+      adminRequired: string;
+      lark: {
+        title: string;
+        description: string;
+        skillPack: string;
+        gatewayCli: string;
+        auth: string;
+        sandboxRuntime: string;
+        sandboxRuntimeInitContainer: string;
+        sandboxRuntimeBroker: string;
+        sandboxRuntimeGatewayDownload: string;
+        sandboxRuntimeNotReady: string;
+        notInstalled: string;
+        skillsInstalled: (installed: number, expected: number) => string;
+        installedVersion: (version: string) => string;
+        updateAvailable: (version: string) => string;
+        runtimeVersionMismatch: string;
+        authNotConfigured: string;
+        authConfigured: string;
+        authConfiguredFor: (user: string) => string;
+        connect: string;
+        authStarting: string;
+        checkingConnection: string;
+        connectedAction: string;
+        requestPermissions: string;
+        alreadyConnected: string;
+        changeAppButton: string;
+        changeAppTitle: string;
+        changeAppDescription: string;
+        changeAppIdLabel: string;
+        changeAppSecretLabel: string;
+        changeAppAuthResetNote: string;
+        changeAppSubmit: string;
+        changeAppReRegister: string;
+        changeAppSwitched: string;
+        brandFeishu: string;
+        brandLark: string;
+        connectionStarted: string;
+        connectionReady: string;
+        authStarted: string;
+        authorizationStillPending: string;
+        permissionTitle: string;
+        permissionDescription: string;
+        authDomains: Record<
+          | "approval"
+          | "apps"
+          | "attendance"
+          | "base"
+          | "calendar"
+          | "contact"
+          | "docs"
+          | "drive"
+          | "event"
+          | "im"
+          | "mail"
+          | "markdown"
+          | "mindnotes"
+          | "minutes"
+          | "note"
+          | "okr"
+          | "sheets"
+          | "slides"
+          | "task"
+          | "vc"
+          | "wiki"
+          | "all",
+          { label: string; description: string }
+        >;
+        customScopeLabel: string;
+        customScopePlaceholder: string;
+        customScopeDescription: string;
+        openConnectionLinkTitle: string;
+        openConnectionLinkDescription: string;
+        openAuthLinkTitle: string;
+        openAuthLinkDescription: string;
+        waitingAuthTitle: string;
+        waitingAuthDescription: string;
+        openAuthLink: string;
+        copyAuthLink: string;
+        completeAuth: string;
+        continueAuth: string;
+        preparingAuthorization: string;
+        completingAuth: string;
+        authExpiresIn: (seconds: number) => string;
+        installingTitle: string;
+        installingDescription: string;
+        installNextTitle: string;
+        installNextDescription: string;
+        cliNextTitle: string;
+        cliNextDescription: string;
+        configuredTitle: string;
+        configuredDescription: string;
+        connectedTitle: string;
+        connectedDescription: string;
+        authNextTitle: string;
+        authNextDescription: string;
+      };
     };
     skills: {
       title: string;
@@ -782,6 +1061,9 @@ export interface Translations {
     haveAccountSignIn: string;
     backToHome: string;
     networkError: string;
+    serviceUnavailableTitle: string;
+    serviceUnavailableDescription: string;
+    retry: string;
     authFailed: string;
     errors: {
       sso_failed: string;

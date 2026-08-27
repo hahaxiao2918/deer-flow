@@ -158,6 +158,9 @@ def _build_runtime_middlewares(
     include_uploads: bool,
     include_dangling_tool_call_patch: bool,
     lazy_init: bool = True,
+    receipts_render_mode: str = "delegation_only",
+    authorization_provider=None,
+    authorization_infrastructure_tool_names: frozenset[str] = frozenset(),
 ) -> list[AgentMiddleware]:
     """Build shared base middlewares for agent execution."""
     from deerflow.agents.middlewares.input_sanitization_middleware import InputSanitizationMiddleware
@@ -200,7 +203,47 @@ def _build_runtime_middlewares(
         tail.append(DanglingToolCallMiddleware())
     tail.append(LLMErrorHandlingMiddleware(app_config=app_config))
 
-    # Guardrail middleware (if configured)
+    # ToolReceiptMiddleware is the outermost wrap_tool_call layer: Guardrail,
+    # SandboxAudit, ReadBeforeWrite, and ToolProgress can all short-circuit a
+    # call with their own ToolMessage, and SandboxAudit rebuilds medium-risk
+    # results — an inner receipt layer would miss those results and silently
+    # gap the ledger. Stamping out here still sees deerflow_tool_meta on
+    # normal results (ToolErrorHandling stamps it on the inner return path)
+    # and on self-stamped short-circuit messages; the remainder fall back to
+    # message.status (see make_tool_receipt).
+    verification_config = app_config.verification
+    if verification_config.receipts_enabled:
+        from deerflow.agents.middlewares.tool_receipt_middleware import ToolReceiptMiddleware
+
+        tail.append(ToolReceiptMiddleware(render_mode=receipts_render_mode))
+
+    # Authorization uses the existing GuardrailMiddleware so execution-time
+    # deny, audit, and fail-closed handling stay in one proven implementation.
+    # It is appended before an explicit guardrail provider, making authorization
+    # the outer guard and avoiding an unnecessary external policy call for an
+    # already-denied tool.
+    authorization_config = app_config.authorization
+    if authorization_config.enabled is True:
+        if authorization_provider is None:
+            from deerflow.authz.runtime import resolve_authorization_provider
+
+            authorization_provider = resolve_authorization_provider(authorization_config)
+        if authorization_provider is not None:
+            from deerflow.authz.adapter import GuardrailAuthorizationAdapter
+            from deerflow.guardrails.middleware import GuardrailMiddleware
+
+            tail.append(
+                GuardrailMiddleware(
+                    GuardrailAuthorizationAdapter(
+                        authorization_provider,
+                        default_role=authorization_config.default_role,
+                        infrastructure_tool_names=authorization_infrastructure_tool_names,
+                    ),
+                    fail_closed=authorization_config.fail_closed,
+                )
+            )
+
+    # Explicit guardrail middleware remains independently active when configured.
     guardrails_config = app_config.guardrails
     if guardrails_config.enabled and guardrails_config.provider:
         import inspect
@@ -242,36 +285,40 @@ def _build_runtime_middlewares(
     # on every result before ToolProgressMiddleware reads it in _update_state_from_result.
     # Framework rule: first in list = outermost (types.py: "compose with first in list as outermost layer").
     tool_progress_config = app_config.tool_progress
-    _ToolProgressMiddleware = None
     if tool_progress_config.enabled:
-        from deerflow.agents.middlewares.tool_progress_middleware import ToolProgressMiddleware as _ToolProgressMiddleware
+        from deerflow.agents.middlewares.tool_progress_middleware import ToolProgressMiddleware
 
-        tail.append(_ToolProgressMiddleware.from_config(tool_progress_config))
+        tail.append(ToolProgressMiddleware.from_config(tool_progress_config))
 
     tail.append(ToolErrorHandlingMiddleware(app_config=app_config))
 
     middlewares = [*outer_wrappers, *thread_hooks, *tail]
 
-    # Guard: ToolProgressMiddleware (outer) must appear before ToolErrorHandlingMiddleware (inner)
-    # so that its wrap_tool_call chain encloses the stamping step.  Fail loudly at build time
-    # rather than silently no-oping at runtime if a future insertion reverses the order.
-    # Uses isinstance (not type().__name__) so subclasses and renames are covered.
-    if _ToolProgressMiddleware is not None:
-        _progress_idx = next((i for i, m in enumerate(middlewares) if isinstance(m, _ToolProgressMiddleware)), None)
-        _error_idx = next((i for i, m in enumerate(middlewares) if isinstance(m, ToolErrorHandlingMiddleware)), None)
-        if _progress_idx is not None and _error_idx is not None and _progress_idx > _error_idx:
-            raise RuntimeError(f"ToolProgressMiddleware must be outer (index {_progress_idx}) of ToolErrorHandlingMiddleware (index {_error_idx}) — check middleware append order")
-
+    # Ordering invariants are declared in deerflow.extensions.ordering and
+    # validated once at the end of the composing builder, after extension
+    # contributions are merged in — otherwise a contribution could silently
+    # reverse an invariant this builder had already checked.
     return middlewares
 
 
-def build_lead_runtime_middlewares(*, app_config: AppConfig, lazy_init: bool = True) -> list[AgentMiddleware]:
+def build_lead_runtime_middlewares(
+    *,
+    app_config: AppConfig,
+    lazy_init: bool = True,
+    authorization_provider=None,
+    deferred_setup: "DeferredToolSetup | None" = None,
+) -> list[AgentMiddleware]:
     """Middlewares shared by lead agent runtime before lead-only middlewares."""
     return _build_runtime_middlewares(
         app_config=app_config,
         include_uploads=True,
         include_dangling_tool_call_patch=True,
         lazy_init=lazy_init,
+        # The lead renders the receipt ledger only while processing subagent
+        # results (default "delegation_only"); stamping stays always-on.
+        receipts_render_mode=app_config.verification.receipts_render_mode,
+        authorization_provider=authorization_provider,
+        authorization_infrastructure_tool_names=(frozenset({deferred_setup.tool_search_tool.name}) if authorization_provider is not None and deferred_setup is not None and deferred_setup.tool_search_tool is not None else frozenset()),
     )
 
 
@@ -283,8 +330,10 @@ def build_subagent_runtime_middlewares(
     deferred_setup: "DeferredToolSetup | None" = None,
     mcp_routing_middleware: AgentMiddleware | None = None,
     agent_name: str | None = None,
-    user_id: str | None = None,
     available_skills: set[str] | None = None,
+    user_id: str | None = None,
+    authorization_provider=None,
+    extensions=None,
 ) -> list[AgentMiddleware]:
     """Middlewares shared by subagent runtime before subagent-only middlewares."""
     if app_config is None:
@@ -292,11 +341,45 @@ def build_subagent_runtime_middlewares(
 
         app_config = get_app_config()
 
+    from deerflow.extensions import get_agent_build_extensions
+
+    resolved_extensions = extensions if extensions is not None else get_agent_build_extensions()
+
     middlewares = _build_runtime_middlewares(
         app_config=app_config,
         include_uploads=False,
         include_dangling_tool_call_patch=True,
         lazy_init=lazy_init,
+        # Subagent chains always render the ledger: citations are produced in
+        # the subagent context — no ledger, no citations, Layer 1 goes inert.
+        receipts_render_mode="always",
+        authorization_provider=authorization_provider,
+        authorization_infrastructure_tool_names=(frozenset({deferred_setup.tool_search_tool.name}) if authorization_provider is not None and deferred_setup is not None and deferred_setup.tool_search_tool is not None else frozenset()),
+    )
+
+    # Enabled/configured skills are discoverable metadata, not automatically
+    # active authority. Mirror the lead agent's activation + policy pair so a
+    # subagent keeps its ordinary tool set until a slash command or a completed
+    # SKILL.md read activates the corresponding allowed-tools declaration.
+    from deerflow.agents.middlewares.skill_activation_middleware import SkillActivationMiddleware
+    from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
+
+    slash_source_owner_token = secrets.token_urlsafe(24)
+    middlewares.append(
+        SkillActivationMiddleware(
+            available_skills=available_skills,
+            app_config=app_config,
+            user_id=user_id,
+            slash_source_owner_token=slash_source_owner_token,
+        )
+    )
+    middlewares.append(
+        SkillToolPolicyMiddleware(
+            available_skills=available_skills,
+            app_config=app_config,
+            user_id=user_id,
+            slash_source_owner_token=slash_source_owner_token,
+        )
     )
 
     if model_name is None and app_config.models:
@@ -439,48 +522,62 @@ def build_subagent_runtime_middlewares(
     summarization_middleware = create_summarization_middleware(
         app_config=app_config,
         skip_memory_flush=True,
+        # The subagent's resolved model is the source of truth for null-model
+        # summarization: the subagent context/configurable does not carry the child
+        # model (it inherits the parent's), so passing it directly is what makes a
+        # distinct-model subagent summarize with its own model, not the parent's.
+        run_model_name=model_name,
+        extensions=resolved_extensions,
     )
     if summarization_middleware is not None:
         middlewares.append(summarization_middleware)
 
-    # SkillToolPolicyMiddleware — mirror the lead agent: enforce each skill's
-    # allowed-tools only when that skill is actually active this turn (slash
-    # activation or captured in skill_context). Previously subagents applied the
-    # union of *all* enabled skills' allowed-tools at build time, which stripped
-    # most tools whenever any enabled skill declared the field. This runtime
-    # filter keeps the full tool surface available unless a skill is genuinely
-    # active, matching the semantics introduced for the lead agent in #72d9b21.
-    from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
+    # SubagentDateContextMiddleware (#4781) — inject framework-owned temporal
+    # context before the first model call without registering the lead agent's
+    # DynamicContextMiddleware. The latter also reads user memory, performs a
+    # persisted ID swap, and handles midnight updates; none belongs in a one-shot
+    # subagent execution. This date-only reminder intentionally has no AppConfig
+    # or memory dependency.
+    from deerflow.agents.middlewares.dynamic_context_middleware import SubagentDateContextMiddleware
 
-    # Mirror the lead agent (lead_agent/agent.py): SkillToolPolicyMiddleware
-    # requires a per-build ``slash_source_owner_token`` to authenticate
-    # slash-driven skill tool calls within this agent's own dispatch. Generate a
-    # fresh token here so the upstream-introduced required kwarg is satisfied for
-    # subagents (the lead path at build_middlewares does the same).
-    slash_source_owner_token = secrets.token_urlsafe(24)
-    middlewares.append(
-        SkillToolPolicyMiddleware(
-            available_skills=available_skills,
-            app_config=app_config,
-            user_id=user_id,
-            slash_source_owner_token=slash_source_owner_token,
-        )
-    )
+    middlewares.append(SubagentDateContextMiddleware())
 
-    # SystemMessageCoalescingMiddleware (#4040) — DurableContextMiddleware above
-    # inserts a second ``SystemMessage(authority_contract)`` after the leading
-    # system prompt (subagents carry their prompt as a leading ``SystemMessage``
-    # in ``messages``, not via ``create_agent(system_prompt=...)``). Two system
-    # messages — or a non-leading one — are exactly what the strict backends this
-    # targets (vLLM/SGLang/Qwen/Anthropic) reject, so the durable fix would trade
-    # #4039's assistant-first 400 for a duplicate-system 400. Mirror the lead
-    # chain: append the coalescer innermost so it merges every SystemMessage into
-    # one leading ``system_message`` on the outgoing request. It only rewrites the
-    # per-request payload (no ``after_model``/``consume_stop_reason``), so it is
-    # inert to the Phase 2 guard-cap channel, and must sit inner of
-    # DurableContextMiddleware to observe the injected system message.
+    # SystemMessageCoalescingMiddleware (#4040, #4781) — DurableContextMiddleware
+    # above can insert ``SystemMessage(authority_contract)``, and the date-only
+    # middleware adds another hidden SystemMessage after the leading subagent
+    # prompt. Multiple or non-leading system messages are exactly what strict
+    # backends (vLLM/SGLang/Qwen/Anthropic) reject. Append the coalescer innermost
+    # so every SystemMessage becomes one leading ``system_message`` on the
+    # outgoing request. It only rewrites the per-request payload (no
+    # ``after_model``/``consume_stop_reason``), so it is inert to the Phase 2
+    # guard-cap channel and observes both durable authority and date context.
     from deerflow.agents.middlewares.system_message_coalescing_middleware import SystemMessageCoalescingMiddleware
 
     middlewares.append(SystemMessageCoalescingMiddleware())
 
-    return middlewares
+    from deerflow_extension_api import AgentScope
+
+    from deerflow.extensions.stack import compose_with_extensions
+
+    if not resolved_extensions.has_middleware_contributors:
+        return compose_with_extensions(middlewares, AgentScope.SUBAGENT, None, resolved_extensions)
+
+    from deerflow_extension_api import AgentBuildContext
+
+    from deerflow.extensions.policy import project_host_policy
+
+    return compose_with_extensions(
+        middlewares,
+        AgentScope.SUBAGENT,
+        AgentBuildContext(
+            scope=AgentScope.SUBAGENT,
+            agent_name=agent_name,
+            model_name=model_name,
+            policy=project_host_policy(
+                app_config,
+                token_budget_config=token_budget_config,
+                max_subagents_per_run=None,
+            ),
+        ),
+        resolved_extensions,
+    )

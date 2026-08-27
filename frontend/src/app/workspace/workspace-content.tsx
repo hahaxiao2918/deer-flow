@@ -5,7 +5,10 @@ import { QueryClientProvider } from "@/components/query-client-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { CommandPalette } from "@/components/workspace/command-palette";
 import { GatewayOfflineBanner } from "@/components/workspace/gateway-offline-banner";
+import { ModelLoadErrorBanner } from "@/components/workspace/model-load-error-banner";
 import { OnboardingDialog } from "@/components/workspace/onboarding/onboarding-dialog";
+import { SettingsDialogHost } from "@/components/workspace/settings";
+import { WorkspaceSettingsDeepLink } from "@/components/workspace/workspace-settings-deep-link";
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
 
 function parseSidebarOpenCookie(
@@ -34,11 +37,14 @@ export async function WorkspaceContent({
         <WorkspaceSidebar />
         <SidebarInset className="min-w-0">
           <GatewayOfflineBanner gatewayUnavailable={gatewayUnavailable} />
+          <ModelLoadErrorBanner gatewayUnavailable={gatewayUnavailable} />
           {children}
         </SidebarInset>
       </SidebarProvider>
       <CommandPalette />
       <OnboardingDialog />
+      <SettingsDialogHost />
+      <WorkspaceSettingsDeepLink />
       <Toaster position="top-center" />
     </QueryClientProvider>
   );

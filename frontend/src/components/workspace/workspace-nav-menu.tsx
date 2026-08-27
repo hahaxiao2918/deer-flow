@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useI18n } from "@/core/i18n/hooks";
 
-import { SettingsDialog } from "./settings";
+import { useSettingsDialog } from "./settings";
 
 function NavMenuButtonContent({
   isSidebarOpen,
@@ -41,7 +41,7 @@ function NavMenuButtonContent({
 }
 
 export function WorkspaceNavMenu() {
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { openSettings } = useSettingsDialog();
   const [mounted, setMounted] = useState(false);
   const { open: isSidebarOpen } = useSidebar();
   const { t } = useI18n();
@@ -52,11 +52,6 @@ export function WorkspaceNavMenu() {
 
   return (
     <>
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        defaultSection="appearance"
-      />
       <SidebarMenu className="w-full">
         <SidebarMenuItem>
           {mounted ? (
@@ -77,7 +72,7 @@ export function WorkspaceNavMenu() {
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     onClick={() => {
-                      setSettingsOpen(true);
+                      openSettings("appearance");
                     }}
                   >
                     <Settings2Icon />

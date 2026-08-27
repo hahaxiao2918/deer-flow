@@ -16,6 +16,7 @@ from app.gateway.deps import (
     get_scheduled_task_service,
     get_thread_store,
 )
+from deerflow.persistence.scheduled_tasks import ActiveScheduledTaskMutationConflict
 from deerflow.scheduler.schedules import (
     next_run_at as compute_next_run_at,
 )
@@ -23,20 +24,34 @@ from deerflow.scheduler.schedules import (
     normalize_cron_expression,
     validate_timezone,
 )
+from deerflow.utils.thread_id import ThreadId
 
 router = APIRouter(prefix="/api", tags=["scheduled-tasks"])
 
 
-def _ensure_task_mutable(task: dict[str, Any]) -> None:
+def _active_occurrence_conflict_detail(status: str) -> str:
+    detail = f"Scheduled task has an active {status} occurrence; retry after it finishes"
+    if status == "queued":
+        detail += " or cancel the queued occurrence by pausing the task"
+    return detail
+
+
+async def _ensure_task_mutable(task: dict[str, Any], repo) -> None:
     if task.get("status") == "running":
         raise HTTPException(
             status_code=409,
             detail="Scheduled task is currently running; retry after the active execution finishes",
         )
+    active_status = await repo.get_active_run_status(task["id"])
+    if active_status is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=_active_occurrence_conflict_detail(active_status),
+        )
 
 
 class ScheduledTaskCreateRequest(BaseModel):
-    thread_id: str | None = None
+    thread_id: ThreadId | None = None
     context_mode: str = "fresh_thread_per_run"
     title: str = Field(min_length=1)
     prompt: str = Field(min_length=1)
@@ -47,7 +62,7 @@ class ScheduledTaskCreateRequest(BaseModel):
 
 class ScheduledTaskUpdateRequest(BaseModel):
     context_mode: str | None = None
-    thread_id: str | None = None
+    thread_id: ThreadId | None = None
     title: str | None = Field(default=None, min_length=1)
     prompt: str | None = Field(default=None, min_length=1)
     schedule_spec: dict[str, Any] | None = None
@@ -147,7 +162,7 @@ async def update_scheduled_task(task_id: str, request: Request, body: ScheduledT
     existing = await repo.get(task_id, user_id=str(user.id))
     if existing is None:
         raise HTTPException(status_code=404, detail="Scheduled task not found")
-    _ensure_task_mutable(existing)
+    await _ensure_task_mutable(existing, repo)
 
     updates = body.model_dump(exclude_none=True)
     if "context_mode" in updates:
@@ -207,11 +222,20 @@ async def update_scheduled_task(task_id: str, request: Request, body: ScheduledT
         if next_run_at is not None and existing["status"] in {"completed", "failed", "cancelled"}:
             updates["status"] = "enabled"
 
-    updated = await repo.update(
-        task_id,
-        user_id=str(user.id),
-        updates=updates,
-    )
+    try:
+        updated = await repo.update(
+            task_id,
+            user_id=str(user.id),
+            updates=updates,
+            require_mutable=True,
+        )
+    except ActiveScheduledTaskMutationConflict as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=_active_occurrence_conflict_detail(exc.status),
+        ) from exc
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Scheduled task not found")
     return updated
 
 
@@ -225,11 +249,25 @@ async def pause_scheduled_task(task_id: str, request: Request):
     existing = await repo.get(task_id, user_id=str(user.id))
     if existing is None:
         raise HTTPException(status_code=404, detail="Scheduled task not found")
-    _ensure_task_mutable(existing)
-    updated = await repo.update(task_id, user_id=str(user.id), updates={"status": "paused"})
-    if updated is None:
+    if existing.get("status") == "running":
+        raise HTTPException(
+            status_code=409,
+            detail="Scheduled task is currently running; retry after the active execution finishes",
+        )
+    result = await repo.pause_with_queue_cancellation(
+        task_id,
+        user_id=str(user.id),
+        error="scheduled task was paused while queued",
+        now=datetime.now(UTC),
+    )
+    if result == "not_found":
         raise HTTPException(status_code=404, detail="Scheduled task not found")
-    return updated
+    if result == "executing":
+        raise HTTPException(
+            status_code=409,
+            detail="Scheduled task is already launching or running; retry after the active execution finishes",
+        )
+    return await repo.get(task_id, user_id=str(user.id))
 
 
 @router.post("/scheduled-tasks/{task_id}/resume")
@@ -242,8 +280,19 @@ async def resume_scheduled_task(task_id: str, request: Request):
     existing = await repo.get(task_id, user_id=str(user.id))
     if existing is None:
         raise HTTPException(status_code=404, detail="Scheduled task not found")
-    _ensure_task_mutable(existing)
-    updated = await repo.update(task_id, user_id=str(user.id), updates={"status": "enabled"})
+    await _ensure_task_mutable(existing, repo)
+    try:
+        updated = await repo.update(
+            task_id,
+            user_id=str(user.id),
+            updates={"status": "enabled"},
+            require_mutable=True,
+        )
+    except ActiveScheduledTaskMutationConflict as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=_active_occurrence_conflict_detail(exc.status),
+        ) from exc
     if updated is None:
         raise HTTPException(status_code=404, detail="Scheduled task not found")
     return updated
@@ -261,6 +310,8 @@ async def trigger_scheduled_task(task_id: str, request: Request):
     if task is None:
         raise HTTPException(status_code=404, detail="Scheduled task not found")
     result = await service.dispatch_task(task, now=datetime.now(UTC), trigger="manual")
+    if result["outcome"] == "not_found":
+        raise HTTPException(status_code=404, detail=result["error"] or "Scheduled task not found")
     if result["outcome"] == "conflict":
         raise HTTPException(status_code=409, detail=result["error"] or "Scheduled task trigger conflicted with an active run")
     if result["outcome"] == "failed":
@@ -275,10 +326,20 @@ async def delete_scheduled_task(task_id: str, request: Request):
     user = await get_optional_user_from_request(request)
     if user is None:
         raise HTTPException(status_code=401, detail="Authentication required")
-    deleted = await repo.delete(task_id, user_id=str(user.id))
-    if not deleted:
+    result = await repo.delete_with_queue_cancellation(
+        task_id,
+        user_id=str(user.id),
+        error="scheduled task was deleted while queued",
+        now=datetime.now(UTC),
+    )
+    if result == "not_found":
         raise HTTPException(status_code=404, detail="Scheduled task not found")
-    return {"id": task_id, "deleted": deleted}
+    if result == "executing":
+        raise HTTPException(
+            status_code=409,
+            detail="Scheduled task is already launching or running; retry after the active execution finishes",
+        )
+    return {"id": task_id, "deleted": True}
 
 
 @router.get("/scheduled-tasks/{task_id}/runs")
@@ -302,7 +363,7 @@ async def list_scheduled_task_runs(
 
 @router.get("/threads/{thread_id}/scheduled-tasks")
 @require_permission("threads", "read", owner_check=True)
-async def list_thread_scheduled_tasks(thread_id: str, request: Request):
+async def list_thread_scheduled_tasks(thread_id: ThreadId, request: Request):
     repo = get_scheduled_task_repo(request)
     user = await get_optional_user_from_request(request)
     if user is None:

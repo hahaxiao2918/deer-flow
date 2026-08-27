@@ -451,7 +451,7 @@ def test_update_agent_soul_failure_does_not_replace_config(tmp_path, patched_pat
             raise OSError("disk full while staging SOUL.md")
         return real_named_temp_file(*args, **kwargs)
 
-    with patch("deerflow.tools.builtins.update_agent_tool.tempfile.NamedTemporaryFile", side_effect=_explode_on_soul):
+    with patch("deerflow.persistence.agents.file.tempfile.NamedTemporaryFile", side_effect=_explode_on_soul):
         result = update_agent.func(runtime=_runtime(), description="new-desc", soul="new soul")
 
     cfg = yaml.safe_load((agent_dir / "config.yaml").read_text())
@@ -500,7 +500,14 @@ def test_update_agent_round_trips_known_fields(tmp_path, patched_paths):
     """
     _seed_agent(tmp_path, description="legacy")
 
-    fake_cfg = AgentConfig(name="test-agent", description="legacy", skills=["s1"], tool_groups=["g1"], model="m1")
+    fake_cfg = AgentConfig(
+        name="test-agent",
+        description="legacy",
+        skills=["s1"],
+        tool_groups=["g1"],
+        model="m1",
+        allowed_subagents=["planner"],
+    )
     fake_app_config = MagicMock()
     fake_app_config.get_model_config.return_value = object()
     with patch("deerflow.tools.builtins.update_agent_tool.load_agent_config", return_value=fake_cfg):
@@ -512,6 +519,7 @@ def test_update_agent_round_trips_known_fields(tmp_path, patched_paths):
     assert cfg["skills"] == ["s1"]
     assert cfg["tool_groups"] == ["g1"]
     assert cfg["model"] == "m1"
+    assert cfg["allowed_subagents"] == ["planner"]
 
 
 def test_update_agent_refuses_on_webhook_channel(tmp_path, patched_paths):
