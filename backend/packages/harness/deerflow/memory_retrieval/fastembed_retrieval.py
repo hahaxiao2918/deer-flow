@@ -9,7 +9,7 @@ Wiring (config.yaml)::
 
     memory:
       backend_config:
-        retrieval_adapter: deerflow.memory_retrieval.fastembed_retrieval:create_retrieval
+        retrieval_adapter: deerflow.memory_retrieval.fastembed_retrieval.create_retrieval
 
 The factory receives the parsed ``DeerMemConfig``, so ``retrieval_model`` and
 ``retrieval_cache_dir`` from ``memory.backend_config`` flow through unchanged.
@@ -230,7 +230,7 @@ _SINGLETON_LOCK = threading.Lock()
 
 
 def create_retrieval(config: Any) -> FastembedRetrieval:
-    """Dotted-factory entry: ``deerflow.memory_retrieval.fastembed_retrieval:create_retrieval``.
+    """Dotted-factory entry: ``deerflow.memory_retrieval.fastembed_retrieval.create_retrieval``.
 
     Receives the parsed ``DeerMemConfig``; reads ``retrieval_model`` and
     ``retrieval_cache_dir`` from it. The embedding model is process-expensive

@@ -15,7 +15,7 @@ Wiring (config.yaml)::
 
     memory:
       backend_config:
-        retrieval_adapter: deerflow.memory_retrieval.openai_embedding_retrieval:create_retrieval
+        retrieval_adapter: deerflow.memory_retrieval.openai_embedding_retrieval.create_retrieval
         retrieval_model: Qwen3-VL-Embedding
         retrieval_base_url: https://ai.example.com/v1
         retrieval_api_key: $MY_EMBEDDING_API_KEY
@@ -103,7 +103,7 @@ _SINGLETON_LOCK = threading.Lock()
 
 
 def create_retrieval(config: Any, *, client: Any = None) -> FastembedRetrieval:
-    """Dotted-factory entry: ``deerflow.memory_retrieval.openai_embedding_retrieval:create_retrieval``.
+    """Dotted-factory entry: ``deerflow.memory_retrieval.openai_embedding_retrieval.create_retrieval``.
 
     Receives the parsed ``DeerMemConfig``; reads ``retrieval_model`` (API model
     name), ``retrieval_base_url``, ``retrieval_api_key`` and
