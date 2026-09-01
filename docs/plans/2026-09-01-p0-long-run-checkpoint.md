@@ -1,8 +1,8 @@
 # P0 长程工作检查点
 
-更新时间：2026-09-02 00:13 CST
-当前分支：`codex/p0-stream-cancel-fixes`
-当前 HEAD：`2308562d0edb58dd35f05ce2e78f34392aac4afe`
+更新时间：2026-09-02 06:22 CST
+当前分支：`codex/p0-release-candidate`
+当前 HEAD：`55e3c05f830f5e9382261a1bf564d80cb2b0210c`
 
 ## 不可变约束
 
@@ -27,8 +27,8 @@
 - [x] 收紧并提交 Luna 的两轮流式 Playwright 用例。
 - [x] 在修复前提交上运行负向对照，证明旧实现失败。
 - [x] 修复并提交 SSO-first / break-glass 认证测试隔离。
-- [ ] 组装 `codex/p0-release-candidate`。
-- [ ] 发布候选全量后端、前端、Playwright 和本地栈回归全绿。
+- [x] 组装 `codex/p0-release-candidate`。
+- [ ] 发布候选全量后端、前端、Playwright 和本地栈回归全绿（仅剩本地栈）。
 - [ ] 合入 `codex/prod-canonical`，同步远端并正式部署。
 - [ ] 完成生产验收与观察。
 - [ ] 完成专利/Aminer 字段调查报告。
@@ -62,12 +62,21 @@
 - 一次显式指向主 `config.yaml` 的实验因当前 shell 缺少配置引用的
   `HUB_EGRESS_TOKEN` 而在配置解析阶段失败，结果无效且未改配置；不要把它
   计入回归结论。
+- 发布候选合并提交：`9d55046cc`（P0）与 `0120b0128`（认证基线）；
+  `55e3c05f8` 仅修复两份计划文档的行尾空格，`git diff --check` 通过。
+- 发布候选定向后端：`291 passed`；`make format` 通过，1260 文件无变化。
+- 发布候选前端：frozen install、`pnpm check`、139 文件 1068/1068 单测、
+  production build 全部通过。
+- 发布候选 Playwright：两轮流式/刷新/重连与两项 SSO entry 共 `3 passed`。
+- 发布候选后端全量：`12611 passed, 78 skipped, 30 warnings`，耗时
+  `806.94s (0:13:26)`，零失败。
+- Goal 在额度恢复后于 06:22 CST 自动续跑并取回完整 pytest 汇总；计划中的
+  02:17 Scheduled task 因当前客户端未暴露 automation 工具，未能创建。
 - 两个用户未跟踪文件必须一直保留且不纳入提交。
 
 ## 下一步
 
-1. 从 `codex/prod-canonical` 创建 `codex/p0-release-candidate`，合并当前 P0
-   分支和 `codex/sso-auth-test-baseline`。
-2. 先处理合并冲突并运行定向门禁，再开始耗时的后端/前端全量回归。
-3. 每个全量命令完成后立即将最终摘要写入本文件，额度中断后不得重复已完成
-   且有最终摘要的命令。
+1. 在发布候选 worktree 通过根级 `make stop && make dev` 完整启动本地栈。
+2. 验证 Gateway/Nginx 健康、普通对话 SSE、后台 run 立即取消后 Gateway
+   持续响应；完成后停止本地栈。
+3. 做最终静态/敏感文件审计；全绿后合入 `codex/prod-canonical`。
