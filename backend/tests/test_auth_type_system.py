@@ -58,6 +58,19 @@ def _persistence_engine(tmp_path):
         asyncio.run(close_engine())
 
 
+@pytest.fixture(autouse=True)
+def _auth_test_state(monkeypatch):
+    """Keep local-auth contract tests independent from deployment config/state."""
+    from app.gateway.routers import auth
+
+    monkeypatch.setattr(auth, "_local_registration_enabled", lambda: True)
+    auth._login_attempts.clear()
+    try:
+        yield
+    finally:
+        auth._login_attempts.clear()
+
+
 def _setup_config():
     set_auth_config(AuthConfig(jwt_secret=_TEST_SECRET))
 

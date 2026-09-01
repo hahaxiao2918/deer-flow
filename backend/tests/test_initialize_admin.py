@@ -19,12 +19,14 @@ _TEST_SECRET = "test-secret-key-initialize-admin-min-32"
 
 
 @pytest.fixture(autouse=True)
-def _setup_auth(tmp_path):
+def _setup_auth(tmp_path, monkeypatch):
     """Fresh SQLite engine + auth config per test."""
     from app.gateway import deps
+    from app.gateway.routers import auth
     from app.gateway.routers.auth import _SETUP_STATUS_CACHE, _SETUP_STATUS_INFLIGHT
     from deerflow.persistence.engine import close_engine, init_engine
 
+    monkeypatch.setattr(auth, "_local_registration_enabled", lambda: True)
     set_auth_config(AuthConfig(jwt_secret=_TEST_SECRET))
     url = f"sqlite+aiosqlite:///{tmp_path}/init_admin.db"
     asyncio.run(init_engine("sqlite", url=url, sqlite_dir=str(tmp_path)))
