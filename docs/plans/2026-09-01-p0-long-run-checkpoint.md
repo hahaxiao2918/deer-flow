@@ -1,8 +1,8 @@
 # P0 长程工作检查点
 
-更新时间：2026-09-02 06:22 CST
+更新时间：2026-09-02 07:10 CST
 当前分支：`codex/p0-release-candidate`
-当前 HEAD：`55e3c05f830f5e9382261a1bf564d80cb2b0210c`
+当前 HEAD：`43575ba31`（本次检查点提交前）
 
 ## 不可变约束
 
@@ -28,7 +28,7 @@
 - [x] 在修复前提交上运行负向对照，证明旧实现失败。
 - [x] 修复并提交 SSO-first / break-glass 认证测试隔离。
 - [x] 组装 `codex/p0-release-candidate`。
-- [ ] 发布候选全量后端、前端、Playwright 和本地栈回归全绿（仅剩本地栈）。
+- [x] 发布候选全量后端、前端、Playwright 和本地栈回归全绿。
 - [ ] 合入 `codex/prod-canonical`，同步远端并正式部署。
 - [ ] 完成生产验收与观察。
 - [ ] 完成专利/Aminer 字段调查报告。
@@ -70,13 +70,23 @@
 - 发布候选 Playwright：两轮流式/刷新/重连与两项 SSO entry 共 `3 passed`。
 - 发布候选后端全量：`12611 passed, 78 skipped, 30 warnings`，耗时
   `806.94s (0:13:26)`，零失败。
+- 发布候选本地栈通过根级 `make dev` 完整启动：Gateway `:18001/health`、
+  Nginx `:12026/health` 均为 200，根路径 307 到 `/loginsso`，登录页 200。
+- 使用本地临时账户执行真实 API 冒烟：普通 stream POST 为 200、收到
+  `event: end`；后台 run 立即取消为 204，状态转为 `interrupted`，随后连续
+  5 次 Gateway 健康检查均为 200。
+- 浏览器核验通过：展开品牌 `WavesInsight`、折叠品牌“观澜”均为单行且无
+  溢出；首页描述为智海·观澜 2.0 文案，用户撤销修改的原问候语保持不变；
+  设置页不存在“关于/About”。
+- 本地栈已经停止，12026/13000/18001 均未监听；仅在发布候选 worktree
+  创建的配置软链接、临时数据库、临时账户及 smoke thread 已全部清理，未触碰
+  主工作区运行数据。
 - Goal 在额度恢复后于 06:22 CST 自动续跑并取回完整 pytest 汇总；计划中的
   02:17 Scheduled task 因当前客户端未暴露 automation 工具，未能创建。
 - 两个用户未跟踪文件必须一直保留且不纳入提交。
 
 ## 下一步
 
-1. 在发布候选 worktree 通过根级 `make stop && make dev` 完整启动本地栈。
-2. 验证 Gateway/Nginx 健康、普通对话 SSE、后台 run 立即取消后 Gateway
-   持续响应；完成后停止本地栈。
-3. 做最终静态/敏感文件审计；全绿后合入 `codex/prod-canonical`。
+1. 做最终静态/敏感文件审计并提交本检查点。
+2. 将发布候选合入 `codex/prod-canonical`，记录部署前后 SHA。
+3. 同步 `origin`、`gitea`，随后只通过生产 `./scripts/deploy.sh` 部署并验收。
