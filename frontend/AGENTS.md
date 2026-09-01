@@ -111,17 +111,19 @@ Preserve this behavior, including local login, registration, setup handling,
 and authenticated redirects.
 
 - The branded login shell is `src/app/(auth)/login/page.tsx`.
-- The product identity is `SynForge·思铸`. The login page uses its regular
+- The product identity is `智海·观澜`. The login page uses its regular
   Shanghai Electric visual by default, with an optional hidden visual variant.
-- The workspace header displays `SynForge` when expanded and `思铸` when
-  collapsed; browser titles use the `SynForge·思铸` brand suffix.
+- The workspace header displays `WavesInsight` when expanded and `观澜` when
+  collapsed; browser titles use the `智海·观澜` brand suffix. Both header forms
+  must stay on one line, reducing font size rather than wrapping.
 - Brand raster assets belong in `public/images/branding/` and should use
   `next/image` when rendered in components.
 - `src/app/layout.tsx` declares the Shanghai Electric symbol as the browser
   favicon. Keep that metadata pointing at the branded asset.
 - `components/workspace/workspace-nav-menu.tsx` intentionally exposes only
   Settings in its lower-left dropdown; do not reintroduce upstream website,
-  GitHub, support, issue, or About links without an explicit request.
+  GitHub, support, issue, or About links without an explicit request. The
+  Settings dialog also intentionally omits its About section and deep link.
 - Treat this as an enterprise customization: keep it when merging upstream
   frontend updates unless the user explicitly asks to change the identity or
   restore the original landing page.

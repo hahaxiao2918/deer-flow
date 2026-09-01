@@ -9,16 +9,16 @@ describe("core copy loading", () => {
       loadTranslations("zh-CN"),
     ]);
     expect(english.inputBox.disclaimer).toBe(
-      "SynForge·思铸 is AI and can make mistakes",
+      "智海·观澜 is AI and can make mistakes",
     );
     expect(chinese.inputBox.disclaimer).toBe(
       "内容由AI生成，重要信息请务必核查",
     );
     expect(english.channels.descriptions.buzz).toBe(
-      "Buzz channels and direct messages through your SynForge·思铸 agent.",
+      "Buzz channels and direct messages through your 智海·观澜 agent.",
     );
     expect(chinese.channels.descriptions.buzz).toBe(
-      "通过 SynForge·思铸 智能体接收 Buzz 频道消息和私聊。",
+      "通过 智海·观澜 智能体接收 Buzz 频道消息和私聊。",
     );
   });
 });

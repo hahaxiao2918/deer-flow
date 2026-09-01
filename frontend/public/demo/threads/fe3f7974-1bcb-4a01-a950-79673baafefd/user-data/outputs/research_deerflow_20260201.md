@@ -48,7 +48,7 @@ During this period, DeerFlow underwent significant feature expansion including M
 
 #### January 2026 - Present
 
-As of February 2026, DeerFlow has entered a transition phase to DeerFlow 2.0, with active development continuing on the main branch [DeerFlow Official Website](https://deerflow.tech/). Recent commits show ongoing improvements to JSON repair handling, MCP tool integration, and fallback report generation mechanisms. The framework now supports private knowledgebases including RAGFlow, Qdrant, Milvus, and VikingDB, along with Docker and Docker Compose deployment options for production environments.
+As of February 2026, DeerFlow has entered a transition phase to DeerFlow 2.0, with active development continuing on the main branch [DeerFlow Official Website](//). Recent commits show ongoing improvements to JSON repair handling, MCP tool integration, and fallback report generation mechanisms. The framework now supports private knowledgebases including RAGFlow, Qdrant, Milvus, and VikingDB, along with Docker and Docker Compose deployment options for production environments.
 
 ---
 
@@ -198,7 +198,7 @@ DeerFlow occupies a unique position in the deep research framework landscape by 
 ### Primary Sources
 
 1. **DeerFlow GitHub Repository**: Official source code, documentation, and development history [DeerFlow GitHub Repository](https://github.com/bytedance/deer-flow)
-2. **DeerFlow Official Website**: Platform showcasing features, case studies, and deployment options [DeerFlow Official Website](https://deerflow.tech/)
+2. **DeerFlow Official Website**: Platform showcasing features, case studies, and deployment options [DeerFlow Official Website](//)
 3. **GitHub API Data**: Repository metrics, contributor statistics, and commit history
 
 ### Media Coverage

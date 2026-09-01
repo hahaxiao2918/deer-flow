@@ -25,7 +25,7 @@ import { useI18n } from "@/core/i18n/hooks";
 type LoginBackground = "standard" | "hidden";
 
 const LOGIN_BACKGROUND_IMAGES: Record<LoginBackground, string> = {
-  standard: "/images/branding/synforge-login-background-standard-v3.png",
+  standard: "/images/branding/knowledge-agent-background.png",
   hidden: "/images/branding/synforge-login-background.png",
 };
 
@@ -216,32 +216,32 @@ export default function LoginPage() {
         backgroundColor: "#eaf4ff",
         backgroundImage: `url('${LOGIN_BACKGROUND_IMAGES[background]}'), linear-gradient(to bottom, #d7e9ff, #f2f7ff, #dceeff)`,
         backgroundPosition:
-          background === "standard" ? "left top, center" : "left center, center",
+          background === "standard"
+            ? "left top, center"
+            : "left center, center",
         backgroundRepeat: "no-repeat, no-repeat",
         backgroundSize: "cover, 100% 100%",
       }}
     >
-      {background === "hidden" && (
-        <Image
-          src="/images/branding/shanghai-electric-mark.png"
-          alt="上海电气"
-          width={160}
-          height={44}
-          priority
-          style={{ height: "auto" }}
-          className="absolute top-12 left-6 z-10 h-auto w-32 sm:top-16 sm:left-8 sm:w-40"
-        />
-      )}
+      <Image
+        src="/images/branding/shanghai-electric-mark.png"
+        alt="上海电气"
+        width={160}
+        height={44}
+        priority
+        style={{ height: "auto" }}
+        className="absolute top-12 left-6 z-10 h-auto w-32 sm:top-16 sm:left-8 sm:w-40"
+      />
       <div className="border-border/40 bg-background/85 w-full max-w-md space-y-6 rounded-3xl border p-8 shadow-xl backdrop-blur-sm md:translate-x-full">
         <div className="text-center">
-          <Image
-            src="/images/branding/synforge-brand-lockup-v3.png"
-            alt="SynForge·思铸：战略情报知产超级智能体管理终端"
-            width={1780}
-            height={560}
-            priority
-            className="mx-auto h-auto w-full max-w-80"
-          />
+          <div className="flex flex-col items-center">
+            <p className="text-primary font-serif text-3xl font-semibold tracking-wide">
+              智海·观澜
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs tracking-[0.22em] uppercase">
+              WavesInsight
+            </p>
+          </div>
           <p className="text-muted-foreground mt-2">
             {isLogin ? t.login.signInTitle : t.login.createAccountTitle}
           </p>
