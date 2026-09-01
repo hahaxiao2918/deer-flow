@@ -1,7 +1,9 @@
 # Ultra 模式未派遣子任务调查
 
-日期：2026-09-02（Asia/Shanghai）  
-范围：Ultra 的前后端配置映射、`task` 工具装配、委派提示策略、生产运行证据。  
+日期：2026-09-02（Asia/Shanghai）
+
+范围：Ultra 的前后端配置映射、`task` 工具装配、委派提示策略、生产运行证据。
+
 结论性质：证据调查；本分支不改变委派策略或公共接口。
 
 ## 结论
@@ -109,4 +111,3 @@ backend/tests/test_tool_deduplication.py::test_subagent_async_only_tool_gets_syn
    - `true` 但无 task：结合用户任务判断收益路由，不能直接判为故障；
    - `true` 且模型发出 task 但未执行：再查授权、并发/总量限制和 executor 日志。
 4. 若产品希望提高复杂任务的委派概率，应先定义可度量目标和基准任务集，再调整收益阈值；不要使用“所有 Ultra 强制派遣”作为替代指标。
-
