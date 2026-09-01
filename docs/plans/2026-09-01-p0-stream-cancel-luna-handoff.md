@@ -1,7 +1,7 @@
 # P0 流式排序与子任务取消：Luna 验收交接
 
-日期：2026-09-01  
-工作分支：`codex/p0-stream-cancel-fixes`  
+日期：2026-09-01
+工作分支：`codex/p0-stream-cancel-fixes`
 基线：`codex/prod-canonical` / `7741455e8`
 
 ## 已完成的复杂实现

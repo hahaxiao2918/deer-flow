@@ -1,7 +1,7 @@
 # P0 长程工作检查点
 
-更新时间：2026-09-02 00:13 CST  
-当前分支：`codex/p0-stream-cancel-fixes`  
+更新时间：2026-09-02 00:13 CST
+当前分支：`codex/p0-stream-cancel-fixes`
 当前 HEAD：`2308562d0edb58dd35f05ce2e78f34392aac4afe`
 
 ## 不可变约束
