@@ -81,9 +81,19 @@ async function startControlledStreamServer() {
       "Access-Control-Allow-Origin": "*",
       "Cache-Control": "no-cache",
       "Content-Type": "text/event-stream",
+      "Content-Location": `/threads/${THREAD_ID}/runs/${RUN_ID}`,
     });
     response.write(sse("metadata", { run_id: RUN_ID, thread_id: THREAD_ID }));
     response.write(sse("messages", [streamedStep2Chunk(), {}]));
+    response.write(
+      sse("values", {
+        // Keep the first-turn step exclusively in paged history. If the SSE
+        // snapshot included it, the stream itself could repair the missing
+        // local ordering baseline and make the regression test pass for the
+        // wrong reason.
+        messages: [human1, answer1, human2, step2],
+      }),
+    );
     if (request.method === "POST") {
       initialResponse = response;
       resolveInitial();
@@ -134,6 +144,26 @@ test("keeps first-turn history steps before a second streamed turn across refres
 }) => {
   test.setTimeout(60_000);
   const streamServer = await startControlledStreamServer();
+  let resolveSubmittedRequest!: (request: {
+    method: string;
+    pathname: string;
+  }) => void;
+  const submittedRequest = new Promise<{
+    method: string;
+    pathname: string;
+  }>((resolve) => {
+    resolveSubmittedRequest = resolve;
+  });
+  let resolveReconnectRequest!: (request: {
+    method: string;
+    pathname: string;
+  }) => void;
+  const reconnectRequest = new Promise<{
+    method: string;
+    pathname: string;
+  }>((resolve) => {
+    resolveReconnectRequest = resolve;
+  });
   mockLangGraphAPI(page, {
     threads: [
       {
@@ -144,6 +174,13 @@ test("keeps first-turn history steps before a second streamed turn across refres
         messages: [human1, answer1],
       },
     ],
+    runStreamHandler: (route) => {
+      resolveSubmittedRequest({
+        method: route.request().method(),
+        pathname: new URL(route.request().url()).pathname,
+      });
+      return route.continue({ url: streamServer.url });
+    },
   });
   let finalHistory = false;
   await page.route(`**/api/threads/${THREAD_ID}/messages/page**`, (route) =>
@@ -186,23 +223,33 @@ test("keeps first-turn history steps before a second streamed turn across refres
   );
   await page.route(
     `**/api/langgraph/threads/${THREAD_ID}/runs/${RUN_ID}/stream**`,
-    (route) => route.continue({ url: streamServer.url }),
-  );
-  await page.route(
-    `**/api/langgraph/threads/${THREAD_ID}/runs/stream**`,
-    (route) => route.continue({ url: streamServer.url }),
-  );
-  await page.route("**/api/langgraph/runs/stream**", (route) =>
-    route.continue({ url: streamServer.url }),
+    (route) => {
+      resolveReconnectRequest({
+        method: route.request().method(),
+        pathname: new URL(route.request().url()).pathname,
+      });
+      return route.continue({ url: streamServer.url });
+    },
   );
 
   try {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("deerflow.onboarding-seen", "true");
+    });
     await page.goto(`/workspace/chats/${THREAD_ID}`);
-    const textarea = page.locator("textarea[name='message']");
+    const textarea = page.getByPlaceholder(/how can i assist you/i);
     await expect(textarea).toBeVisible({ timeout: 15_000 });
+    await expect(textarea).toBeEnabled();
     await textarea.fill(HUMAN_2_TEXT);
-    await textarea.evaluate((element) =>
-      element.closest("form")?.requestSubmit(),
+    const submit = page.locator("button[type='submit']");
+    await expect(submit).toHaveCount(1);
+    await expect(submit).toBeVisible();
+    await expect(submit).toBeEnabled();
+    await submit.click();
+    const submitted = await submittedRequest;
+    expect(submitted.method).toBe("POST");
+    expect(submitted.pathname).toBe(
+      `/api/langgraph/threads/${THREAD_ID}/runs/stream`,
     );
     await streamServer.initialConnected;
 
@@ -216,6 +263,11 @@ test("keeps first-turn history steps before a second streamed turn across refres
     );
 
     await page.reload();
+    const joined = await reconnectRequest;
+    expect(joined.method).toBe("GET");
+    expect(joined.pathname).toBe(
+      `/api/langgraph/threads/${THREAD_ID}/runs/${RUN_ID}/stream`,
+    );
     await streamServer.reconnectConnected;
     await expectAbove(
       page.getByText(STEP_1_TEXT),
