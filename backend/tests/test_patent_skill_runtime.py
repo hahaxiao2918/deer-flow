@@ -68,6 +68,16 @@ def test_all_patent_skills_support_clarification_and_artifact_handoff():
     assert "do not use numeric confidence" in labeling
 
 
+def test_query_skill_pins_verified_applicant_and_sort_fields():
+    body = (SKILLS_ROOT / "patent-query-composition" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert "ALL_AN:<name>" in body
+    assert "PBDT_YEARMONTHDAY" in body
+    assert "APD_YEARMONTHDAY" in body
+    assert "sort` fields: PBDT/APD" not in body
+    assert "Do not shorten the first two to `PBDT` / `APD`" in body
+
+
 def test_runtime_manifest_and_schema_are_version_aligned():
     manifest = json.loads((CONTRACT_ROOT / "manifest.json").read_text(encoding="utf-8"))
     schema = json.loads((CONTRACT_ROOT / "v2" / "runtime-contract.schema.json").read_text(encoding="utf-8"))
