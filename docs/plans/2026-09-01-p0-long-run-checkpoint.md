@@ -1,8 +1,8 @@
 # P0 长程工作检查点
 
-更新时间：2026-09-02 07:10 CST
-当前分支：`codex/p0-release-candidate`
-当前 HEAD：`43575ba31`（本次检查点提交前）
+更新时间：2026-09-02 07:24 CST
+当前分支：`codex/prod-canonical`
+当前 HEAD：`a72e2bb5d`（本次检查点提交前）
 
 ## 不可变约束
 
@@ -29,10 +29,12 @@
 - [x] 修复并提交 SSO-first / break-glass 认证测试隔离。
 - [x] 组装 `codex/p0-release-candidate`。
 - [x] 发布候选全量后端、前端、Playwright 和本地栈回归全绿。
-- [ ] 合入 `codex/prod-canonical`，同步远端并正式部署。
-- [ ] 完成生产验收与观察。
-- [ ] 完成专利/Aminer 字段调查报告。
-- [ ] 完成 Ultra 委派行为调查报告。
+- [x] 合入 `codex/prod-canonical`，同步远端并正式部署 P0。
+- [x] 完成 P0 生产验收与观察。
+- [x] 完成专利/Aminer 字段调查报告及确定性字段修正。
+- [x] 完成 Ultra 委派行为调查报告。
+- [ ] 同步并部署专利 Skill 的确定性排序字段修正。
+- [ ] 完成最终生产健康核验、远端 SHA 对齐与检查点收口。
 
 ## 当前事实
 
@@ -84,9 +86,37 @@
 - Goal 在额度恢复后于 06:22 CST 自动续跑并取回完整 pytest 汇总；计划中的
   02:17 Scheduled task 因当前客户端未暴露 automation 工具，未能创建。
 - 两个用户未跟踪文件必须一直保留且不纳入提交。
+- P0 发布候选已通过 `--no-ff` 合入生产主干，P0 生产提交为
+  `f37d260fdad28db662b92c9080506267a1659de6`；部署前计划基线为
+  `7741455e8`，但部署主机实际源代码停在 `ea7ce02eb`，已按生产现场事实记录。
+- `origin`、`gitea` 与生产源代码均已同步到 P0 提交 `f37d260fd`，全程未更新
+  `main`，生产只调用 `./scripts/deploy.sh check/build/down/start`。
+- P0 生产验收通过：Gateway/Frontend/Nginx 健康；外部 SSO 登录成功；确定性
+  Playwright 两轮流式、第二轮中刷新、重连和最终刷新通过；普通真实 stream
+  收到 `event:end`。
+- 生产显式 Ultra 探针成功启动 task 子代理，取消返回 204，run 进入
+  `interrupted`；之后 50 秒内 5 次健康检查全为 200，未再出现 Gateway 死锁。
+- 专利/Aminer 调查分支 `codex/patent-aminer-audit`，提交 `d063a2446`：
+  运行证据表明问题会话没有激活或读取 `patent-query-composition` Skill；本地
+  validator 错误地接受 `PA/CSR/APS`，而付费最小探针确认三者均被智慧芽拒绝、
+  `ALL_AN` 成功。另确认排序字段必须是 `PBDT_YEARMONTHDAY` /
+  `APD_YEARMONTHDAY`，已修正 Skill、manifest 并补契约断言，定向测试 6 passed。
+- Aminer 是独立实体 API，不能套用智慧芽字段。生产 schema 中
+  `search_paper.title` 默认值为 `"LLM"`，只传 keyword 会被默认 title 污染；
+  显式 `title=""` 才得到预期结果。详细矩阵见
+  `docs/investigations/2026-09-02-patent-aminer-query-audit.md`。
+- Ultra 调查分支 `codex/ultra-delegation-audit`，报告提交 `0c9734ca7`、格式收口
+  `0723dc3cf`。结论是 Ultra 开放 task 能力但不保证每次委派；收益路由明确
+  “默认直接执行”。Web 前端会显式展开四项能力字段，但原始 API 只发
+  `mode=ultra` 不会由后端推导 `subagent_enabled=true`。定向契约测试 10 passed。
+- 两个调查分支已分别推送到 `origin` 与 `gitea`，并以独立 merge commit 合入
+  `codex/prod-canonical`；当前功能整合提交为 `a72e2bb5d`，尚待最终推送和生产
+  Skill 更新。
 
 ## 下一步
 
-1. 做最终静态/敏感文件审计并提交本检查点。
-2. 将发布候选合入 `codex/prod-canonical`，记录部署前后 SHA。
-3. 同步 `origin`、`gitea`，随后只通过生产 `./scripts/deploy.sh` 部署并验收。
+1. 提交本检查点并完成最终静态、敏感文件及目标分支审计。
+2. 将 `codex/prod-canonical` 同步到 `origin`、`gitea`，确认 SHA 一致。
+3. 生产仓库快进后只通过 `./scripts/deploy.sh check/build/down/start` 部署专利
+   Skill 修正，核验健康与 Skill 投影。
+4. 写入最终部署 SHA/结果，推送检查点收口提交并再次确认远端与生产源代码一致。
