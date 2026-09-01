@@ -1,6 +1,6 @@
 # P0 长程工作检查点
 
-更新时间：2026-09-02 00:00 CST  
+更新时间：2026-09-02 00:13 CST  
 当前分支：`codex/p0-stream-cancel-fixes`  
 当前 HEAD：`2308562d0edb58dd35f05ce2e78f34392aac4afe`
 
@@ -26,7 +26,7 @@
 
 - [x] 收紧并提交 Luna 的两轮流式 Playwright 用例。
 - [x] 在修复前提交上运行负向对照，证明旧实现失败。
-- [ ] 修复并提交 SSO-first / break-glass 认证测试隔离。
+- [x] 修复并提交 SSO-first / break-glass 认证测试隔离。
 - [ ] 组装 `codex/p0-release-candidate`。
 - [ ] 发布候选全量后端、前端、Playwright 和本地栈回归全绿。
 - [ ] 合入 `codex/prod-canonical`，同步远端并正式部署。
@@ -52,11 +52,22 @@
 - Luna 后端全量结果为 `12594 passed, 78 skipped, 17 failed`；失败集中于认证
   测试读取生产 `allow_registration: false` 及共享 `_login_attempts` 状态，不能
   宣称全绿。
+- 认证基线分支 `codex/sso-auth-test-baseline` 已形成三个独立提交：
+  - `66070a2fb`：本地认证契约显式启用测试注册并隔离 `_login_attempts`；
+  - `282684b10`：subagent middleware policy 测试显式传入 `AppConfig`，不再
+    隐式读取宿主配置；
+  - `34c93a26d`：IPD `/loginsso` start/callback 前端 E2E。
+- 后端认证、SSO、注册门禁与 subagent policy 定向结果：`209 passed`。
+- SSO 前端 E2E：`2 passed`；该 worktree 的 `pnpm check` 通过。
+- 一次显式指向主 `config.yaml` 的实验因当前 shell 缺少配置引用的
+  `HUB_EGRESS_TOKEN` 而在配置解析阶段失败，结果无效且未改配置；不要把它
+  计入回归结论。
 - 两个用户未跟踪文件必须一直保留且不纳入提交。
 
 ## 下一步
 
-1. 在 `/home/lxdd/deerflow-sso-auth-test-baseline` 阅读 backend 指南与认证测试，
-   用测试专用 fixture 显式启用本地注册并隔离 `_login_attempts`。
-2. 先运行 17 项失败相关测试以及 SSO/local-registration 定向测试。
-3. 定向全绿后提交测试隔离改动，再组装发布候选。
+1. 从 `codex/prod-canonical` 创建 `codex/p0-release-candidate`，合并当前 P0
+   分支和 `codex/sso-auth-test-baseline`。
+2. 先处理合并冲突并运行定向门禁，再开始耗时的后端/前端全量回归。
+3. 每个全量命令完成后立即将最终摘要写入本文件，额度中断后不得重复已完成
+   且有最终摘要的命令。
