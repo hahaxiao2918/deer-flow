@@ -64,6 +64,7 @@
 ### 前端增强与 IM 频道
 
 - 对话流式排序以当前线程的分页历史、SDK 消息和已提交渲染快照共同建立轮次边界，避免第二轮开始或刷新重连时把上一轮工具步骤搬到新一轮；token 用量仍只按 SDK 消息核算。
+- 后台子任务取消在释放任务注册表锁后执行，避免 `Future.cancel()` 同步完成回调重入锁并挂死整个 Gateway。
 - 子任务时间线展示 tool-call 参数；favicon 替换；设置菜单精简。
 - IM 频道（Feishu / Slack / Telegram / Discord / DingTalk）经 Gateway 桥接同一个 agent，实现位于 `backend/app/channels/`——分发版主线使用 Web UI，IM 细节见 [backend/AGENTS.md](backend/AGENTS.md)。
 
