@@ -212,6 +212,37 @@ function messageIdentity(message: Message): string | undefined {
   return undefined;
 }
 
+/**
+ * Capture every message identity already visible when a local turn starts.
+ * Token accounting intentionally uses only the SDK checkpoint messages, but
+ * display ordering must also protect paged history and the committed render
+ * ledger: either can contain an older step that is absent from the SDK tail.
+ */
+export function buildLocalTurnOrderBaselineIdentities({
+  threadId,
+  persistedMessages,
+  visibleHistory,
+  renderedSnapshot,
+}: {
+  threadId: string;
+  persistedMessages: readonly Message[];
+  visibleHistory: readonly Message[];
+  renderedSnapshot: {
+    threadId: string | null;
+    messages: readonly Message[];
+  };
+}): Set<string> {
+  const currentThreadRenderedMessages =
+    renderedSnapshot.threadId === threadId
+      ? renderedSnapshot.messages
+      : EMPTY_MESSAGES;
+  return new Set(
+    [...persistedMessages, ...visibleHistory, ...currentThreadRenderedMessages]
+      .map(messageIdentity)
+      .filter(isNonEmptyString),
+  );
+}
+
 function dedupeMessagesByIdentity(messages: Message[]): Message[] {
   const lastIndexByIdentity = new Map<string, number>();
   const lastVisibleIndexByIdentity = new Map<string, number>();
@@ -675,7 +706,9 @@ export function restoreLocalTurnMessageOrder(
  * accepted transient, far safer than pulling a completed turn's answer
  * below the next user message. A resent turn after an interrupted run and
  * pagination orphans from older turns (#4399) fail the checks as well and
- * are left untouched.
+ * are left untouched. When an interrupted turn and the next turn share one
+ * synthetic run_id, the previous human anchor plus the missing terminal
+ * answer makes step ownership ambiguous, so that layout is also preserved.
  */
 export function restoreReconnectedTurnMessageOrder(
   messages: Message[],
@@ -719,6 +752,21 @@ export function restoreReconnectedTurnMessageOrder(
     ) {
       candidateStart = index + 1;
     }
+  }
+
+  const previousHumanRunId =
+    segmentStart > 0 ? getMessageRunId(messages[segmentStart - 1]!) : undefined;
+  const hasUniformRunIdSincePreviousHuman =
+    previousHumanRunId !== undefined &&
+    messages
+      .slice(segmentStart - 1)
+      .every(
+        (message) =>
+          isHiddenFromUIMessage(message) ||
+          getMessageRunId(message) === previousHumanRunId,
+      );
+  if (candidateStart === segmentStart && hasUniformRunIdSincePreviousHuman) {
+    return messages;
   }
 
   const runIdsAfter = new Set<string>();
@@ -2074,9 +2122,13 @@ export function useThreadStream({
           .map(messageIdentity)
           .filter((id): id is string => Boolean(id)),
       );
-      localTurnOrderBaselineIdentitiesRef.current = new Set(
-        pendingUsageBaselineMessageIdsRef.current,
-      );
+      localTurnOrderBaselineIdentitiesRef.current =
+        buildLocalTurnOrderBaselineIdentities({
+          threadId,
+          persistedMessages,
+          visibleHistory,
+          renderedSnapshot: renderedMessageSnapshotRef.current,
+        });
 
       // Build optimistic files list with uploading status
       const optimisticFiles: FileInMessage[] = (message.files ?? []).map(
@@ -2256,6 +2308,7 @@ export function useThreadStream({
       queryClient,
       humanMessageCount,
       persistedMessages,
+      visibleHistory,
     ],
   );
 
@@ -2281,9 +2334,13 @@ export function useThreadStream({
           .map(messageIdentity)
           .filter((id): id is string => Boolean(id)),
       );
-      localTurnOrderBaselineIdentitiesRef.current = new Set(
-        pendingUsageBaselineMessageIdsRef.current,
-      );
+      localTurnOrderBaselineIdentitiesRef.current =
+        buildLocalTurnOrderBaselineIdentities({
+          threadId,
+          persistedMessages,
+          visibleHistory,
+          renderedSnapshot: renderedMessageSnapshotRef.current,
+        });
       setLiveMessagesThreadId(threadId);
       listeners.current.onSend?.(threadId);
       let preparedSupersededRunId: string | null = null;
@@ -2387,7 +2444,14 @@ export function useThreadStream({
         sendInFlightRef.current = false;
       }
     },
-    [context, humanMessageCount, persistedMessages, queryClient, thread],
+    [
+      context,
+      humanMessageCount,
+      persistedMessages,
+      queryClient,
+      thread,
+      visibleHistory,
+    ],
   );
 
   const regenerateMessage = useCallback(
