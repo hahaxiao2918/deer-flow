@@ -89,16 +89,16 @@ export const enUS: Translations = {
   welcome: {
     greeting: "Hello, again!",
     description:
-      "Welcome to SynForge·思铸, a super agent for complex work.\nSynForge helps you investigate information, search patents, organize intelligence, build web pages, and generate slides.\nYou can also define your own skills.",
+      "智海·观澜 2.0 is an upgraded research and analysis workspace built on news, literature, and patent data. Use it to conduct complex analysis with greater freedom.",
 
     createYourOwnSkill: "Create Your Own Skill",
     createYourOwnSkillDescription:
-      "Create your own skill to extend SynForge. With customized skills,\nSynForge can help you search the web, analyze data, and generate\nartifacts like slides and web pages.",
+      "Create your own skill to extend 智海·观澜. With customized skills,\n智海·观澜 can help you search the web, analyze data, and generate\nartifacts like slides and web pages.",
   },
 
   // Onboarding guide (first visit)
   onboarding: {
-    title: "Welcome to SynForge·思铸",
+    title: "Welcome to 智海·观澜",
     subtitle: "Take a minute to learn about models and the four modes.",
 
     modelsTitle: "Models",
@@ -117,9 +117,9 @@ export const enUS: Translations = {
     modesTitle: "Four Modes",
     modesIntro: "Switch modes above the composer based on task complexity:",
     modeFlashName: "Flash",
-    modeFlashDesc:
-      "Fastest completion; good for simple Q&A and light edits",
-    modeFlashCons: "Trade-off: may be less accurate; complex tasks can go wrong",
+    modeFlashDesc: "Fastest completion; good for simple Q&A and light edits",
+    modeFlashCons:
+      "Trade-off: may be less accurate; complex tasks can go wrong",
     modeThinkingName: "Thinking",
     modeThinkingDesc:
       "Thinks before acting; the balanced default for most daily tasks",
@@ -205,7 +205,7 @@ export const enUS: Translations = {
   // Input Box
   inputBox: {
     placeholder: "How can I assist you today?",
-    disclaimer: "SynForge·思铸 is AI and can make mistakes",
+    disclaimer: "智海·观澜 is AI and can make mistakes",
     createSkillPrompt:
       "We're going to build a new skill step by step with `skill-creator`. To start, what do you want this skill to do?",
     addAttachments: "Add attachments",
@@ -218,7 +218,7 @@ export const enUS: Translations = {
     voiceInputStartLabel: "Dictate with voice",
     voiceInputStopLabel: "Stop voice input",
     voiceInputStart:
-      "Dictate with voice. SynForge·思铸 receives only transcribed text; audio is handled by your browser or system speech service.",
+      "Dictate with voice. 智海·观澜 receives only transcribed text; audio is handled by your browser or system speech service.",
     voiceInputStop: "Stop voice input",
     voiceInputListening: "Listening... Click to stop voice input.",
     voiceInputUnsupported:
@@ -363,12 +363,12 @@ export const enUS: Translations = {
     cancelling: "Cancelling…",
     cancelFailed: "Failed to cancel task",
     cancellationRetrying: (attempt) =>
-      `Cancellation attempt ${attempt} failed; SynForge·思铸 will keep retrying.`,
+      `Cancellation attempt ${attempt} failed; 智海·观澜 will keep retrying.`,
     notificationRetrying: (attempt) =>
-      `Chat notification attempt ${attempt} failed; SynForge·思铸 will retry with backoff.`,
+      `Chat notification attempt ${attempt} failed; 智海·观澜 will retry with backoff.`,
     notificationStopped:
       "Chat notification delivery stopped after repeated or permanent failures.",
-    trackingDegraded: "Status checks are delayed; SynForge·思铸 is still retrying.",
+    trackingDegraded: "Status checks are delayed; 智海·观澜 is still retrying.",
     viewDetails: "View details",
     hideDetails: "Hide details",
     detailsFailed: "Couldn't load task details",
@@ -469,7 +469,7 @@ export const enUS: Translations = {
       threadIdPlaceholder: "Thread ID",
       reuseNoticeTitle: "Uses this thread's conversation history",
       reuseNoticeDescription:
-        "If this thread has an active run at the scheduled time, SynForge·思铸 queues this occurrence and starts it when the thread is available. It fails if the configured queue wait limit is exceeded.",
+        "If this thread has an active run at the scheduled time, 智海·观澜 queues this occurrence and starts it when the thread is available. It fails if the configured queue wait limit is exceeded.",
     },
     filters: {
       allStatuses: "All statuses",
@@ -599,13 +599,13 @@ export const enUS: Translations = {
     save: "Save agent",
     saving: "Saving agent...",
     saveRequested:
-      "Save requested. SynForge·思铸 is generating and saving an initial version now.",
+      "Save requested. 智海·观澜 is generating and saving an initial version now.",
     saveHint:
       "You can save this agent at any time from the top-right menu, even if this is only a first draft.",
     saveCommandMessage:
       "Please save this custom agent now based on everything we have discussed so far. Treat this as my explicit confirmation to save. If some details are still missing, make reasonable assumptions, generate a concise first SOUL.md in English, and call setup_agent immediately without asking me for more confirmation.",
     agentCreatedPendingRefresh:
-      "The agent was created, but SynForge·思铸 could not load it yet. Please refresh this page in a moment.",
+      "The agent was created, but 智海·观澜 could not load it yet. Please refresh this page in a moment.",
     more: "More actions",
     agentCreated: "Agent created!",
     startChatting: "Start chatting",
@@ -639,13 +639,13 @@ export const enUS: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "SynForge·思铸 official website",
-    githubTooltip: "SynForge·思铸 on GitHub",
+    officialWebsite: "智海·观澜 official website",
+    githubTooltip: "智海·观澜 on GitHub",
     settingsAndMore: "Settings and more",
-    visitGithub: "SynForge·思铸 on GitHub",
+    visitGithub: "智海·观澜 on GitHub",
     reportIssue: "Report an issue",
     contactUs: "Contact us",
-    about: "About SynForge·思铸",
+    about: "About 智海·观澜",
     logout: "Log out",
     gatewayUnavailable: "Gateway is temporarily unavailable.",
     gatewayUnavailableRetrying: "Retrying in the background…",
@@ -726,21 +726,21 @@ export const enUS: Translations = {
     saveAndConnect: "Save and connect",
     saveChanges: "Save changes",
     descriptions: {
-      buzz: "Buzz channels and direct messages through your SynForge·思铸 agent.",
-      telegram: "Telegram direct messages through your SynForge·思铸 bot.",
+      buzz: "Buzz channels and direct messages through your 智海·观澜 agent.",
+      telegram: "Telegram direct messages through your 智海·观澜 bot.",
       slack: "Slack workspace messages and mentions.",
-      discord: "Discord server messages through your SynForge·思铸 bot.",
-      feishu: "Feishu and Lark messages through your SynForge·思铸 app.",
-      dingtalk: "DingTalk Stream Push messages through your SynForge·思铸 bot.",
-      wechat: "WeChat iLink messages through your SynForge·思铸 bot.",
-      wecom: "WeCom messages through your SynForge·思铸 AI bot.",
+      discord: "Discord server messages through your 智海·观澜 bot.",
+      feishu: "Feishu and Lark messages through your 智海·观澜 app.",
+      dingtalk: "DingTalk Stream Push messages through your 智海·观澜 bot.",
+      wechat: "WeChat iLink messages through your 智海·观澜 bot.",
+      wecom: "WeCom messages through your 智海·观澜 AI bot.",
     },
     connectedAs: (name: string) => `Connected as ${name}.`,
   },
 
   // Page titles (document title)
   pages: {
-    appName: "SynForge·思铸",
+    appName: "智海·观澜",
     chats: "Chats",
     newChat: "New chat",
     untitled: "Untitled",
@@ -766,7 +766,7 @@ export const enUS: Translations = {
     writeFile: "Write file",
     clickToViewContent: "Click to view file content",
     writeTodos: "Update to-do list",
-    skillInstallTooltip: "Install skill and make it available to SynForge·思铸",
+    skillInstallTooltip: "Install skill and make it available to 智海·观澜",
     browserNavigate: (url: string) => `Open ${url} in browser`,
     browserNavigateGeneric: "Open page in browser",
     browserClick: "Click element in browser",
@@ -865,7 +865,7 @@ export const enUS: Translations = {
     actions: "Actions",
     keyboardShortcuts: "Keyboard Shortcuts",
     keyboardShortcutsDescription:
-      "Navigate SynForge·思铸 faster with keyboard shortcuts.",
+      "Navigate 智海·观澜 faster with keyboard shortcuts.",
     openCommandPalette: "Open Command Palette",
     toggleSidebar: "Toggle Sidebar",
   },
@@ -873,7 +873,7 @@ export const enUS: Translations = {
   // Settings
   settings: {
     title: "Settings",
-    description: "Adjust how SynForge·思铸 looks and behaves for you.",
+    description: "Adjust how 智海·观澜 looks and behaves for you.",
     sections: {
       account: "Account",
       appearance: "Appearance",
@@ -889,7 +889,7 @@ export const enUS: Translations = {
     memory: {
       title: "Memory",
       description:
-        "SynForge·思铸 automatically learns from your conversations in the background. These memories help it understand you better and deliver a more personalized experience.",
+        "智海·观澜 automatically learns from your conversations in the background. These memories help it understand you better and deliver a more personalized experience.",
       empty: "No memory data to display.",
       rawJson: "Raw JSON",
       exportButton: "Export memory",
@@ -1032,7 +1032,7 @@ export const enUS: Translations = {
     channels: {
       title: "Channels",
       description:
-        "Connect IM accounts that can send messages to SynForge·思铸 from outside the browser.",
+        "Connect IM accounts that can send messages to 智海·观澜 from outside the browser.",
       disabled:
         "Channel connections are not enabled on this server. Ask an administrator to enable channel_connections.",
     },
@@ -1086,7 +1086,7 @@ export const enUS: Translations = {
         changeAppButton: "Change Lark app",
         changeAppTitle: "Switch to a different Lark app",
         changeAppDescription:
-          "Point your SynForge·思铸 account at a different Lark/Feishu app. This only affects your account; other users are not changed.",
+          "Point your 智海·观澜 account at a different Lark/Feishu app. This only affects your account; other users are not changed.",
         changeAppIdLabel: "App ID",
         changeAppSecretLabel: "App Secret",
         changeAppAuthResetNote:
@@ -1100,12 +1100,12 @@ export const enUS: Translations = {
         connectionStarted: "Connection link opened",
         connectionReady: "Connection is ready. Opening authorization...",
         authStarted:
-          "Authorization page opened. SynForge·思铸 will detect completion automatically.",
+          "Authorization page opened. 智海·观澜 will detect completion automatically.",
         authorizationStillPending:
-          'Authorization is not complete yet. Finish it in the browser; SynForge·思铸 keeps checking automatically. You can click "I completed authorization" if the page does not update.',
+          'Authorization is not complete yet. Finish it in the browser; 智海·观澜 keeps checking automatically. You can click "I completed authorization" if the page does not update.',
         permissionTitle: "Authorization scope",
         permissionDescription:
-          "By default, SynForge·思铸 only completes the base sign-in and does not request any business permissions. Select the domains you need here; connected users can re-authorize to add more (scopes accumulate).",
+          "By default, 智海·观澜 only completes the base sign-in and does not request any business permissions. Select the domains you need here; connected users can re-authorize to add more (scopes accumulate).",
         authDomains: {
           calendar: {
             label: "Calendar",
@@ -1216,10 +1216,10 @@ export const enUS: Translations = {
           "The first connection needs one browser confirmation from Lark. Open the link below and finish the prompt, then return here to continue authorization.",
         openAuthLinkTitle: "Authorize Lark in your browser",
         openAuthLinkDescription:
-          "Open the link below to authorize. SynForge·思铸 keeps checking automatically and will save the connection after approval.",
+          "Open the link below to authorize. 智海·观澜 keeps checking automatically and will save the connection after approval.",
         waitingAuthTitle: "Waiting for Lark authorization",
         waitingAuthDescription:
-          "Finish authorization in the browser page that just opened. SynForge·思铸 will update this panel automatically; the button below is only a fallback.",
+          "Finish authorization in the browser page that just opened. 智海·观澜 will update this panel automatically; the button below is only a fallback.",
         openAuthLink: "Open link",
         copyAuthLink: "Copy link",
         completeAuth: "I completed authorization",
@@ -1245,7 +1245,7 @@ export const enUS: Translations = {
           "The current user's authorization was verified with Lark during this connection flow. Reconnect whenever you need to refresh it or add permissions.",
         authNextTitle: "Complete browser authorization next",
         authNextDescription:
-          "Click “Connect Lark”; SynForge·思铸 checks the current status first and opens browser authorization only when disconnected or expired.",
+          "Click “Connect Lark”; 智海·观澜 checks the current status first and opens browser authorization only when disconnected or expired.",
       },
     },
     skills: {
@@ -1255,7 +1255,7 @@ export const enUS: Translations = {
       createSkill: "Create skill",
       emptyTitle: "No agent skill yet",
       emptyDescription:
-        "Put your agent skill folders under the `/skills/custom` folder under the root folder of SynForge·思铸.",
+        "Put your agent skill folders under the `/skills/custom` folder under the root folder of 智海·观澜.",
       emptyButton: "Create Your First Skill",
       adminRequired: "Admin privileges are required to manage agent skills.",
       installAdminRequired:
@@ -1264,12 +1264,12 @@ export const enUS: Translations = {
     notification: {
       title: "Notification",
       description:
-        "SynForge·思铸 only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
+        "智海·观澜 only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
       requestPermission: "Request notification permission",
       deniedHint:
         "Notification permission was denied. You can enable it in your browser's site settings to receive completion alerts.",
       testButton: "Send test notification",
-    testTitle: "SynForge·思铸",
+      testTitle: "智海·观澜",
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",
@@ -1283,7 +1283,7 @@ export const enUS: Translations = {
       changePasswordDescription: "Update your account password.",
       ssoPasswordDescription: "Password is managed by your SSO provider.",
       ssoPasswordMessage:
-        "This account signs in with {provider}, so SynForge·思铸 cannot manage or change its password here. Use your SSO provider's account settings instead.",
+        "This account signs in with {provider}, so 智海·观澜 cannot manage or change its password here. Use your SSO provider's account settings instead.",
       currentPassword: "Current password",
       newPassword: "New password",
       confirmNewPassword: "Confirm new password",
@@ -1309,14 +1309,14 @@ export const enUS: Translations = {
     passwordPlaceholder: "•••••••",
     rememberMe: "Keep me signed in",
     rememberMeDescription:
-      "Keep this browser session when possible. DeerFlow stores only your email, never your password.",
+      "Keep this browser session when possible. 智海·观澜 stores only your email, never your password.",
     pleaseWait: "Please wait...",
     signIn: "Sign In",
     createAccount: "Create Account",
     createAdminAccount: "Create admin account",
     adminSetupRequiredTitle: "Administrator setup is required",
     adminSetupRequiredDescription:
-      "SynForge·思铸 needs an administrator account before new regular accounts can be created.",
+      "智海·观澜 needs an administrator account before new regular accounts can be created.",
     orContinueWith: "Or continue with",
     ssoHint:
       "If your account uses single sign-on, sign in with the option below instead.",

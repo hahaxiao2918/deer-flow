@@ -29,20 +29,23 @@ export function WorkspaceHeader({ className }: { className?: string }) {
       >
         {state === "collapsed" ? (
           <div className="group-has-data-[collapsible=icon]/sidebar-wrapper:-translate-y flex w-full cursor-pointer items-center justify-center">
-            <div className="text-primary block pt-1 font-serif text-xs leading-none whitespace-nowrap group-hover/workspace-header:hidden">
-              思铸
+            <div className="text-primary block max-w-full pt-1 font-serif text-xs leading-none whitespace-nowrap group-hover/workspace-header:hidden">
+              观澜
             </div>
             <SidebarTrigger className="hidden pl-2 group-hover/workspace-header:block" />
           </div>
         ) : (
           <div className="flex items-center justify-between gap-2">
             {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" ? (
-              <Link href="/" className="text-primary ml-2 font-serif">
-                SynForge
+              <Link
+                href="/"
+                className="text-primary ml-2 min-w-0 font-serif text-[clamp(0.65rem,1vw,0.875rem)] whitespace-nowrap"
+              >
+                WavesInsight
               </Link>
             ) : (
-              <div className="text-primary ml-2 cursor-default font-serif">
-                SynForge
+              <div className="text-primary ml-2 min-w-0 cursor-default font-serif text-[clamp(0.65rem,1vw,0.875rem)] whitespace-nowrap">
+                WavesInsight
               </div>
             )}
             <SidebarTrigger />

@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="frontend/public/images/branding/synforge-brand-lockup-v3.png" alt="SynForge" width="420">
-</p>
-
-# DeerFlow 上海电气分发版（SynForge）
+# DeerFlow 上海电气分发版（智海·观澜）
 
 基于 [bytedance/deer-flow](https://github.com/bytedance/deer-flow) 二次开发的上海电气内部分发版：一套 LangGraph 架构的 AI super-agent 系统（沙箱执行、持久记忆、子代理委派、可扩展工具），主线使用方式是 **Web UI**（浏览器打开统一入口即可，首次进入走 `/setup` 向导）。
 
@@ -11,7 +7,7 @@
 ## 目录
 
 - [分发版特性](#分发版特性)
-  - [品牌与登录（SynForge）](#品牌与登录synforge)
+  - [品牌与登录（智海·观澜）](#品牌与登录智海观澜)
   - [专利分析套件（patent-research.v2）](#专利分析套件patent-researchv2)
   - [技能系统与质量审核](#技能系统与质量审核)
   - [定时任务](#定时任务)
@@ -26,10 +22,11 @@
 
 以下为上海电气分发版在上游 DeerFlow 基础上的长期增量；`codex/prod-canonical` 是唯一同步、定制和生产分支。
 
-### 品牌与登录（SynForge）
+### 品牌与登录（智海·观澜）
 
-- 打开 Web UI 即进入 SynForge 品牌登录页：根路由重定向 `/login`，登录页为 `frontend/src/app/(auth)/login/page.tsx`，品牌素材在 `frontend/public/images/branding/`。
-- About 页、工作区头部、i18n（中/英）均已品牌化。
+- 打开 Web UI 即进入智海·观澜品牌登录流程：根路由重定向 `/loginsso`，本地应急登录页为 `frontend/src/app/(auth)/login/page.tsx`，品牌素材在 `frontend/public/images/branding/`。
+- 工作区展开头部显示 `WavesInsight`，折叠时显示“观澜”；浏览器标题和中英文界面使用“智海·观澜”。设置中的“关于”入口不对用户展示。
+- 新对话欢迎介绍定位为基于资讯、文献、专利数据底座的研究分析工作台。
 - 纪律：不要恢复上游公共落地页或替换品牌标识，除非有明确需求。
 
 ### 专利分析套件（patent-research.v2）
@@ -66,6 +63,8 @@
 
 ### 前端增强与 IM 频道
 
+- 对话流式排序以当前线程的分页历史、SDK 消息和已提交渲染快照共同建立轮次边界，避免第二轮开始或刷新重连时把上一轮工具步骤搬到新一轮；token 用量仍只按 SDK 消息核算。
+- 后台子任务取消在释放任务注册表锁后执行，避免 `Future.cancel()` 同步完成回调重入锁并挂死整个 Gateway。
 - 子任务时间线展示 tool-call 参数；favicon 替换；设置菜单精简。
 - IM 频道（Feishu / Slack / Telegram / Discord / DingTalk）经 Gateway 桥接同一个 agent，实现位于 `backend/app/channels/`——分发版主线使用 Web UI，IM 细节见 [backend/AGENTS.md](backend/AGENTS.md)。
 

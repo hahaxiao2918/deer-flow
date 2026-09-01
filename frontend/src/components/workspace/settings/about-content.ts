@@ -1,14 +1,14 @@
 /**
- * SynForge about markdown content. Inlined to avoid raw-loader dependency
+ * Product about markdown content. Inlined to avoid raw-loader dependency
  * (Turbopack cannot resolve raw-loader for .md imports).
  */
 import { APP_VERSION } from "@/version";
 
-export const aboutMarkdown = `# 关于 SynForge·思铸 ${APP_VERSION}
+export const aboutMarkdown = `# 关于 智海·观澜 ${APP_VERSION}
 
 > **一个面向复杂工作的超级 Agent**
 
-SynForge·思铸是一套面向企业复杂工作的智能体平台。它通过多智能体协作、长期记忆、沙箱与可扩展 Skills，帮助团队完成研究、分析、内容生成和工作流自动化。
+智海·观澜是一套面向企业复杂工作的智能体平台。它通过多智能体协作、长期记忆、沙箱与可扩展 Skills，帮助团队完成研究、分析、内容生成和工作流自动化。
 
 ---
 
@@ -23,7 +23,7 @@ SynForge·思铸是一套面向企业复杂工作的智能体平台。它通过�
 
 ## 开源致谢
 
-SynForge·思铸基于开源项目 [DeerFlow](https://github.com/bytedance/deer-flow) 构建，并遵循其 **MIT License**。
+智海·观澜基于[上游开源框架](https://github.com/bytedance/deer-flow)构建，并遵循其 **MIT License**。
 
-感谢 DeerFlow、[LangChain](https://github.com/langchain-ai/langchain)、[LangGraph](https://github.com/langchain-ai/langgraph)、[Next.js](https://nextjs.org/) 及所有开源贡献者。
+感谢上游开源框架、[LangChain](https://github.com/langchain-ai/langchain)、[LangGraph](https://github.com/langchain-ai/langgraph)、[Next.js](https://nextjs.org/) 及所有开源贡献者。
 `;

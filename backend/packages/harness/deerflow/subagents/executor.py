@@ -1395,12 +1395,14 @@ def request_cancel_background_task(execution_id: str) -> None:
     """
     with _background_tasks_lock:
         result = _background_tasks.get(execution_id)
-        if result is not None:
-            result.cancel_event.set()
-            future = _background_futures.get(execution_id)
-            if future is not None:
-                future.cancel()
-            logger.info("Requested cancellation for background execution %s", execution_id)
+        future = _background_futures.get(execution_id) if result is not None else None
+    if result is not None:
+        result.cancel_event.set()
+        # Future.cancel() may invoke forget_future synchronously; keep it out of
+        # _background_tasks_lock because that callback acquires the same lock.
+        if future is not None:
+            future.cancel()
+        logger.info("Requested cancellation for background execution %s", execution_id)
 
 
 def get_background_task_result(execution_id: str) -> SubagentResult | None:
