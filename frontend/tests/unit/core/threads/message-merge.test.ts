@@ -3,6 +3,7 @@ import { expect, rs, test } from "@rstest/core";
 import { InfiniteQueryObserver, QueryClient } from "@tanstack/react-query";
 
 import {
+  buildLocalTurnOrderBaselineIdentities,
   buildThreadMessagesPageUrl,
   buildVisibleHistoryMessages,
   areOptimisticMessagesConfirmed,
@@ -1624,6 +1625,89 @@ test("local turn order keeps early streamed steps behind the user message", () =
   ]);
 });
 
+test("local turn baseline includes paged history and the current rendered snapshot", () => {
+  const historyOnlyStep = {
+    id: "history-step-1",
+    type: "ai",
+    content: "First-turn tool step",
+  } as Message;
+  const sdkMessage = {
+    id: "sdk-answer-1",
+    type: "ai",
+    content: "First-turn answer",
+  } as Message;
+  const renderedOnlyStep = {
+    id: "rendered-step-1",
+    type: "tool",
+    content: "Committed first-turn tool result",
+  } as Message;
+  const otherThreadStep = {
+    id: "other-thread-step",
+    type: "ai",
+    content: "Must not leak across threads",
+  } as Message;
+
+  const baseline = buildLocalTurnOrderBaselineIdentities({
+    threadId: "thread-current",
+    persistedMessages: [sdkMessage],
+    visibleHistory: [historyOnlyStep],
+    renderedSnapshot: {
+      threadId: "thread-current",
+      messages: [renderedOnlyStep],
+    },
+  });
+
+  expect([...baseline]).toEqual([
+    "message:sdk-answer-1",
+    "message:history-step-1",
+    "message:rendered-step-1",
+  ]);
+  expect(
+    buildLocalTurnOrderBaselineIdentities({
+      threadId: "thread-current",
+      persistedMessages: [sdkMessage],
+      visibleHistory: [historyOnlyStep],
+      renderedSnapshot: {
+        threadId: "thread-other",
+        messages: [otherThreadStep],
+      },
+    }).has("message:other-thread-step"),
+  ).toBe(false);
+});
+
+test("local turn baseline keeps a history-only first-turn step before the second turn", () => {
+  const human1 = {
+    id: "human-1",
+    type: "human",
+    content: "First question",
+  } as Message;
+  const step1 = {
+    id: "step-1",
+    type: "ai",
+    content: "First-turn step loaded only from paged history",
+  } as Message;
+  const earlyStep2 = {
+    id: "step-2",
+    type: "ai",
+    content: "Second-turn step arrived before the human",
+  } as Message;
+  const human2 = {
+    id: "human-2",
+    type: "human",
+    content: "Second question",
+  } as Message;
+  const baseline = buildLocalTurnOrderBaselineIdentities({
+    threadId: "thread-current",
+    persistedMessages: [human1],
+    visibleHistory: [human1, step1],
+    renderedSnapshot: { threadId: "thread-current", messages: [] },
+  });
+
+  expect(
+    restoreLocalTurnMessageOrder([human1, step1, earlyStep2, human2], baseline),
+  ).toEqual([human1, step1, human2, earlyStep2]);
+});
+
 test("reconnected turn order moves same-run steps back behind the user message", () => {
   // Reload mid-run: replayed `messages-tuple` steps reach the merged list
   // before the turn's human message (the retained replay buffer may have
@@ -1686,6 +1770,43 @@ test("reconnected turn order leaves a resent turn after an interrupted run untou
   expect(
     restoreReconnectedTurnMessageOrder([interruptedStep, human, newStep]),
   ).toEqual([interruptedStep, human, newStep]);
+});
+
+test("reconnected turn order keeps interrupted uniform-run history in its original turn", () => {
+  const human1 = {
+    id: "human-1",
+    type: "human",
+    content: "First question",
+    run_id: "run-x",
+  } as Message;
+  const interruptedStep = {
+    id: "step-1",
+    type: "ai",
+    content: "Working on the first question",
+    tool_calls: [{ id: "tc-1", name: "web_search", args: {} }],
+    run_id: "run-x",
+  } as unknown as Message;
+  const human2 = {
+    id: "human-2",
+    type: "human",
+    content: "Second question",
+    run_id: "run-x",
+  } as Message;
+  const step2 = {
+    id: "step-2",
+    type: "ai",
+    content: "Working on the second question",
+    run_id: "run-x",
+  } as Message;
+
+  expect(
+    restoreReconnectedTurnMessageOrder([
+      human1,
+      interruptedStep,
+      human2,
+      step2,
+    ]),
+  ).toEqual([human1, interruptedStep, human2, step2]);
 });
 
 test("reconnected turn order only moves steps of the sandwiched run in multi-turn history", () => {

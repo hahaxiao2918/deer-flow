@@ -2324,6 +2324,57 @@ class TestCooperativeCancellation:
 
         assert result.cancel_event.is_set()
 
+    def test_request_cancel_invokes_future_cancel_after_releasing_registry_lock(
+        self,
+        executor_module,
+        classes,
+    ):
+        """Future.cancel callbacks must be able to reacquire the registry lock."""
+        SubagentResult = classes["SubagentResult"]
+        SubagentStatus = classes["SubagentStatus"]
+        task_id = "test-cancel-outside-lock"
+        result = SubagentResult(
+            task_id=task_id,
+            trace_id="test-trace",
+            status=SubagentStatus.RUNNING,
+            started_at=datetime.now(),
+        )
+
+        class LockProbingFuture:
+            def __init__(self):
+                self.cancel_calls = 0
+
+            def cancel(self):
+                self.cancel_calls += 1
+                acquired = executor_module._background_tasks_lock.acquire(
+                    blocking=False,
+                )
+                assert acquired, "Future.cancel() ran while registry lock was held"
+                try:
+                    # Simulate Future._invoke_callbacks() calling forget_future
+                    # synchronously on the cancelling thread.
+                    executor_module._background_futures.pop(task_id, None)
+                finally:
+                    executor_module._background_tasks_lock.release()
+                return True
+
+        future = LockProbingFuture()
+        with executor_module._background_tasks_lock:
+            executor_module._background_tasks[task_id] = result
+            executor_module._background_futures[task_id] = future
+
+        try:
+            executor_module.request_cancel_background_task(task_id)
+            executor_module.request_cancel_background_task(task_id)
+
+            assert result.cancel_event.is_set()
+            assert future.cancel_calls == 1
+            assert task_id not in executor_module._background_futures
+        finally:
+            with executor_module._background_tasks_lock:
+                executor_module._background_tasks.pop(task_id, None)
+                executor_module._background_futures.pop(task_id, None)
+
     def test_request_cancel_nonexistent_task_is_noop(self, executor_module):
         """Test that requesting cancellation on a nonexistent task does not raise."""
         executor_module.request_cancel_background_task("nonexistent-task")

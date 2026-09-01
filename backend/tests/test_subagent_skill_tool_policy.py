@@ -107,8 +107,11 @@ def test_subagent_runtime_middlewares_include_skill_tool_policy():
     """build_subagent_runtime_middlewares must include SkillToolPolicyMiddleware."""
     from deerflow.agents.middlewares.skill_tool_policy_middleware import SkillToolPolicyMiddleware
     from deerflow.agents.middlewares.tool_error_handling_middleware import build_subagent_runtime_middlewares
+    from deerflow.config.app_config import AppConfig
+    from deerflow.config.sandbox_config import SandboxConfig
 
-    middlewares = build_subagent_runtime_middlewares()
+    app_config = AppConfig(sandbox=SandboxConfig(use="deerflow.sandbox.local:LocalSandboxProvider"))
+    middlewares = build_subagent_runtime_middlewares(app_config=app_config)
     assert any(isinstance(m, SkillToolPolicyMiddleware) for m in middlewares)
 
 

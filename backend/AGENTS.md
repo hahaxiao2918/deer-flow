@@ -304,6 +304,11 @@ custom deltas on top of upstream and must be preserved across upstream merges:
   is the front-end `/loginsso` interception route. The oauth2 adapter produces
   an `OIDCIdentity`, so user provisioning is reused and `roleCodes` never map to
   admin. See [docs/SSO.md](docs/SSO.md) and `app/gateway/auth/oauth2.py`.
+  Local-auth contract tests must explicitly enable local registration and reset
+  the process-local login-attempt limiter; production `config.yaml` may disable
+  self-registration while preserving `/login` as the break-glass path. Keep
+  SSO-only registration-gate tests separate so neither deployment policy nor
+  shared rate-limit state leaks into cookie/login contract coverage.
 - **RecursionGuardMiddleware** — distribution-only middleware converting hard
   `GraphRecursionError` into a natural finish; see the middleware chain entry
   28.5 in [packages/harness/deerflow/agents/middlewares/AGENTS.md](packages/harness/deerflow/agents/middlewares/AGENTS.md).
